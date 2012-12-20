@@ -1,5 +1,5 @@
 ---
 layout: index
 subsections: []
-categories: [introduction]
+categories: [Introduction]
 ---

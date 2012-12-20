@@ -13,7 +13,7 @@ section=$2
 
 mkdir $base_dir/$section
 mkdir $base_dir/$section/_posts
-cat > $base_dir/$section/index.textile <<END
+cat > $base_dir/$section/index.md <<END
 ---
 layout: index
 subsections: []
@@ -22,6 +22,6 @@ categories: [$section]
 END
 
 # if sections already set
-sed -i -e "s/subsections: \[\(.*\)\]/subsections: [\1, $section]/" $base_dir/index.textile
+sed -i -e "s/subsections: \[\(.*\)\]/subsections: [\1, $section]/" $base_dir/index.md
 # if sections empty
-sed -i -e "s/subsections: \[\(\)\]/subsections: [$section]/" $base_dir/index.textile
+sed -i -e "s/subsections: \[\(\)\]/subsections: [$section]/" $base_dir/index.md
