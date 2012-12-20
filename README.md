@@ -1,4 +1,4 @@
-Explorer
+Platypus Lutra
 ========
 
-Documentation for the Platypus Explorer autonomous watercraft.
+Documentation for the Platypus Lutra autonomous watercraft.
