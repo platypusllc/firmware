@@ -1,12 +1,8 @@
 permalink: none
-#baseurl:   /Lutra
-baseurl: /home/pkv/Desktop/Lutra/_site
+baseurl:   /Lutra
 
 # Is this necessary?
-#url: file:///home/pkv/Desktop/Lutra/_site
+#url: [something]
 
-ga_id: 
-google_search_api_key: 
-google_search_site_url: http://example.com
 title_prefix: Platypus Lutra
 company_name: Platypus, LLC
