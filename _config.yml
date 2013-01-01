@@ -1,6 +1,13 @@
 permalink: none
-base_dir: /Lutra
+#TODO: should this be baseurl? or url?
+#base_dir: /Lutra
+base_dir: /home/pkv/Desktop/Lutra
+
+# Normal variables
+baseurl:   /Lutra
+#url: http://localhost:4000
+
 ga_id: 
 google_search_api_key: 
 google_search_site_url: http://example.com
-title_prefix: Platypus Lutra - 
+title_prefix: Platypus Lutra

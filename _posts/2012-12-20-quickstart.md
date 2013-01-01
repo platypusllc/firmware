@@ -1,7 +1,9 @@
 ---
 layout: default
 title: Quickstart Guide
+categories: Introduction
 ---
+
 # Quickstart Guide
 
 ## Power Boat
