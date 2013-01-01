@@ -1,5 +1,6 @@
 ---
 layout: default
+title: Quickstart Guide
 ---
 # Quickstart Guide
 
@@ -61,3 +62,5 @@ layout: default
     1. Zoom in on the boat triangle, this should be your actual position.
 
 Now you're ready to go!
+
+{% include navbar.ext %}
