@@ -1,13 +1,12 @@
 permalink: none
-#TODO: should this be baseurl? or url?
-#base_dir: /Lutra
-base_dir: /home/pkv/Desktop/Lutra
+#baseurl:   /Lutra
+baseurl: /home/pkv/Desktop/Lutra/_site
 
-# Normal variables
-baseurl:   /Lutra
-#url: http://localhost:4000
+# Is this necessary?
+#url: file:///home/pkv/Desktop/Lutra/_site
 
 ga_id: 
 google_search_api_key: 
 google_search_site_url: http://example.com
 title_prefix: Platypus Lutra
+company_name: Platypus, LLC

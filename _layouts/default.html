@@ -8,9 +8,9 @@
     <meta name="author" content="">
 
     <!-- CSS styles -->
-    <link href="{{site.base_dir}}/assets/css/bootstrap.css" rel="stylesheet">
-    <link href="{{site.base_dir}}/assets/css/bootstrap-responsive.css" rel="stylesheet">
-    <link href="{{site.base_dir}}/assets/css/custom.css" rel="stylesheet">
+    <link href="{{site.baseurl}}/assets/css/bootstrap.css" rel="stylesheet">
+    <link href="{{site.baseurl}}/assets/css/bootstrap-responsive.css" rel="stylesheet">
+    <link href="{{site.baseurl}}/assets/css/custom.css" rel="stylesheet">
 
     <!-- HTML5 shim, for IE6-8 support of HTML5 elements -->
     <!--[if lt IE 9]>
@@ -18,11 +18,11 @@
     <![endif]-->
 
     <!-- Fav and touch icons -->
-    <link rel="apple-touch-icon-precomposed" sizes="144x144" href="{{site.base_dir}}/assets/ico/apple-touch-icon-144-precomposed.png">
-    <link rel="apple-touch-icon-precomposed" sizes="114x114" href="{{site.base_dir}}/assets/ico/apple-touch-icon-114-precomposed.png">
-    <link rel="apple-touch-icon-precomposed" sizes="72x72" href="{{site.base_dir}}/assets/ico/apple-touch-icon-72-precomposed.png">
-    <link rel="apple-touch-icon-precomposed" href="{{site.base_dir}}/assets/ico/apple-touch-icon-57-precomposed.png">
-    <link rel="shortcut icon" href="{{site.base_dir}}/assets/ico/favicon.png">
+    <link rel="apple-touch-icon-precomposed" sizes="144x144" href="{{site.baseurl}}/assets/ico/apple-touch-icon-144-precomposed.png">
+    <link rel="apple-touch-icon-precomposed" sizes="114x114" href="{{site.baseurl}}/assets/ico/apple-touch-icon-114-precomposed.png">
+    <link rel="apple-touch-icon-precomposed" sizes="72x72" href="{{site.baseurl}}/assets/ico/apple-touch-icon-72-precomposed.png">
+    <link rel="apple-touch-icon-precomposed" href="{{site.baseurl}}/assets/ico/apple-touch-icon-57-precomposed.png">
+    <link rel="shortcut icon" href="{{site.baseurl}}/assets/ico/favicon.png">
   </head>
 
   <body>
@@ -39,7 +39,7 @@
           <div class="nav-collapse collapse">
             <ul class="nav">
 	      {% for category in site.categories %}
-	      <li><a href="{{ category | first }}">{{ category.title }}</a></li>
+	      <li><a href="{{ site.baseurl }}/{{ category | first }}">{{ category | first }}</a></li>
 	      {% endfor %}
             </ul>
           </div><!--/.nav-collapse -->
@@ -50,86 +50,53 @@
     <div class="container-fluid">
       <div class="row-fluid">
         <div class="span3">
-          <div class="well sidebar-nav">
+          <div class="well sidebar-nav sidebar-nav-fixed">
             <ul class="nav nav-list">
-              <li class="nav-header">Sidebar</li>
-              <li class="active"><a href="#">Link</a></li>
-              <li><a href="#">Link</a></li>
-              <li><a href="#">Link</a></li>
-              <li><a href="#">Link</a></li>
-              <li class="nav-header">Sidebar</li>
-              <li><a href="#">Link</a></li>
-              <li><a href="#">Link</a></li>
-              <li><a href="#">Link</a></li>
-              <li><a href="#">Link</a></li>
-              <li><a href="#">Link</a></li>
-              <li><a href="#">Link</a></li>
-              <li class="nav-header">Sidebar</li>
-              <li><a href="#">Link</a></li>
-              <li><a href="#">Link</a></li>
-              <li><a href="#">Link</a></li>
+	      {% for category in site.categories %}
+	      {% if page.categories contains category %}
+              <li class="nav-header active">{{ category | first }}</li>
+	      {% else %}
+              <li class="nav-header">{{ category | first }}</li>
+	      {% endif %}
+	      {% for posts in category %}
+	      {% for post in posts %}
+	      {% if page.url == post.url %}
+	      <li class="active"><a href="{{ site.baseurl }}/{{ post.url }}" class="active">{{ post.title }}</a></li>
+	      {% else %}
+	      <li><a href="{{ site.baseurl }}/{{ post.url }}">{{ post.title }}</a></li>
+	      {% endif %}
+	      {% endfor %}
+	      {% endfor %}
+	      {% endfor %}
             </ul>
           </div><!--/.well -->
         </div><!--/span-->
-        <div class="span9">
+        <div class="span9 span-fixed-sidebar">
           <div class="hero-unit">
             <h1>Hello, world!</h1>
             <p>This is a template for a simple marketing or informational website. It includes a large callout called the hero unit and three supporting pieces of content. Use it as a starting point to create something more unique.</p>
             <p><a class="btn btn-primary btn-large">Learn more &raquo;</a></p>
           </div>
           <div class="row-fluid">
-            <div class="span4">
-              <h2>Heading</h2>
-              <p>Donec id elit non mi porta gravida at eget metus. Fusce dapibus, tellus ac cursus commodo, tortor mauris condimentum nibh, ut fermentum massa justo sit amet risus. Etiam porta sem malesuada magna mollis euismod. Donec sed odio dui. </p>
-              <p><a class="btn" href="#">View details &raquo;</a></p>
-            </div><!--/span-->
-            <div class="span4">
-              <h2>Heading</h2>
-              <p>Donec id elit non mi porta gravida at eget metus. Fusce dapibus, tellus ac cursus commodo, tortor mauris condimentum nibh, ut fermentum massa justo sit amet risus. Etiam porta sem malesuada magna mollis euismod. Donec sed odio dui. </p>
-              <p><a class="btn" href="#">View details &raquo;</a></p>
-            </div><!--/span-->
-            <div class="span4">
-              <h2>Heading</h2>
-              <p>Donec id elit non mi porta gravida at eget metus. Fusce dapibus, tellus ac cursus commodo, tortor mauris condimentum nibh, ut fermentum massa justo sit amet risus. Etiam porta sem malesuada magna mollis euismod. Donec sed odio dui. </p>
-              <p><a class="btn" href="#">View details &raquo;</a></p>
-            </div><!--/span-->
-          </div><!--/row-->
-          <div class="row-fluid">
-            <div class="span4">
-              <h2>Heading</h2>
-              <p>Donec id elit non mi porta gravida at eget metus. Fusce dapibus, tellus ac cursus commodo, tortor mauris condimentum nibh, ut fermentum massa justo sit amet risus. Etiam porta sem malesuada magna mollis euismod. Donec sed odio dui. </p>
-              <p><a class="btn" href="#">View details &raquo;</a></p>
-            </div><!--/span-->
-            <div class="span4">
-              <h2>Heading</h2>
-              <p>Donec id elit non mi porta gravida at eget metus. Fusce dapibus, tellus ac cursus commodo, tortor mauris condimentum nibh, ut fermentum massa justo sit amet risus. Etiam porta sem malesuada magna mollis euismod. Donec sed odio dui. </p>
-              <p><a class="btn" href="#">View details &raquo;</a></p>
-            </div><!--/span-->
-            <div class="span4">
-              <h2>Heading</h2>
-              <p>Donec id elit non mi porta gravida at eget metus. Fusce dapibus, tellus ac cursus commodo, tortor mauris condimentum nibh, ut fermentum massa justo sit amet risus. Etiam porta sem malesuada magna mollis euismod. Donec sed odio dui. </p>
-              <p><a class="btn" href="#">View details &raquo;</a></p>
-            </div><!--/span-->
-	    <div class="span4">
+	    <div class="span9">
 	      {{ content }}
 	    </div><!--/span-->
           </div><!--/row-->
+	  
+	  <hr>
+	  
+	  <footer>
+            <p>&copy; {{ site.company_name }} {{ 'now' | date: "%Y" }}</p>
+	  </footer>
         </div><!--/span-->
       </div><!--/row-->
-
-      <hr>
-
-      <footer>
-        <p>&copy; Company 2012</p>
-      </footer>
-
     </div><!--/.fluid-container-->
 
     <!-- Javascript
     ================================================== -->
     <!-- Placed at the end of the document so the pages load faster -->
-    <script src="{{site.base_dir}}/assets/js/jquery.js"></script>
-    <script src="{{site.base_dir}}/assets/js/bootstrap.js"></script>
+    <script src="{{site.baseurl}}/assets/js/jquery.js"></script>
+    <script src="{{site.baseurl}}/assets/js/bootstrap.js"></script>
 
   </body>
 </html>

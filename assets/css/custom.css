@@ -5,3 +5,18 @@ body {
 .sidebar-nav {
     padding: 9px 0;
 }
+
+/* Tweak navbar to be super sleek
+   Based on: http://jsfiddle.net/U8HGz/1/
+-------------------------------------------------- */
+.sidebar-nav-fixed {
+    padding: 9px 0;
+    position:fixed;
+    left:20px;
+    top:60px;
+    width:250px;
+}
+
+.row-fluid > .span-fixed-sidebar {
+    margin-left: 290px;
+}
