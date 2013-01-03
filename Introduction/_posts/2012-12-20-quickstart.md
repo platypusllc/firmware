@@ -10,7 +10,7 @@ title: Quickstart Guide
 1. Listen for beeps from the motor (2 slow beeps, then 3 fast beeps), you should also hear the fan on the ESC running.
 1. Partially close Electronics Compartment (close it as far as it will go, there should be about a 2” opening at the front.)
 
-## Set up Phone
+### Set up Phone
 1. Remove phone enclosure from boat.
 1. Put phone into enclosure and turn on.
 1. Connect to local WiFi network
@@ -45,7 +45,7 @@ title: Quickstart Guide
     1. If it shows you position, it has a lock.  Otherwise it will say "waiting for location" or "location cannot be obtained".  If you get one of these messages, wait a few seconds then click current location icon again until you succeed.
 1. Close Phone Enclosure and attach to Enclosure to boat. The Enclosure just slides onto the mounting bracket and is secure by Velcro.
 
-## Set up Controller Laptop
+#### Set up Controller Laptop
 1. Connect Laptop to same WiFi Network as the boat is connected to.
 1. Launch Airboat App on laptop (for now you have to run from NetBeans):
     1. Open NetBeans

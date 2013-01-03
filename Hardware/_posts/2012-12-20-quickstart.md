@@ -64,4 +64,4 @@ title: Quickstart Guide
 
 Now you're ready to go!
 
-{% include navbar.ext %}
+

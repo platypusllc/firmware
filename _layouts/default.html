@@ -26,6 +26,11 @@
   </head>
 
   <body>
+{% capture content_full %}
+{{ page.content }}
+{% include navbar.ext %}
+{% endcapture %}
+{% assign contents = content_full | markdownify | split:"<!-- navbar -->" %}
 
     <div class="navbar navbar-inverse navbar-fixed-top">
       <div class="navbar-inner">
@@ -61,9 +66,22 @@
 	      {% for posts in category %}
 	      {% for post in posts %}
 	      {% if page.url == post.url %}
-	      <li class="active"><a href="{{ site.baseurl }}/{{ post.url }}" class="active">{{ post.title }}</a></li>
+	      <li class="active">
+		<a href="{{ site.baseurl }}/{{ post.url }}" class="active">
+		  <i class="icon-chevron-right"></i>
+		  {{ post.title }}
+		</a>
+	      </li>
+	      {% if contents[1] %}
+	      {{ contents[1] }}
+	      {% endif %}
 	      {% else %}
-	      <li><a href="{{ site.baseurl }}/{{ post.url }}">{{ post.title }}</a></li>
+	      <li>
+		<a href="{{ site.baseurl }}/{{ post.url }}">
+		  <i class="icon-play-circle"></i>
+		  {{ post.title }}
+		</a>
+	      </li>
 	      {% endif %}
 	      {% endfor %}
 	      {% endfor %}
@@ -72,19 +90,8 @@
           </div><!--/.well -->
         </div><!--/span-->
         <div class="span9 span-fixed-sidebar">
-          <div class="hero-unit">
-            <h1>Hello, world!</h1>
-            <p>This is a template for a simple marketing or informational website. It includes a large callout called the hero unit and three supporting pieces of content. Use it as a starting point to create something more unique.</p>
-            <p><a class="btn btn-primary btn-large">Learn more &raquo;</a></p>
-          </div>
-          <div class="row-fluid">
-	    <div class="span9">
-	      {{ content }}
-	    </div><!--/span-->
-          </div><!--/row-->
-	  
+	  {{ contents[0] }}
 	  <hr>
-	  
 	  <footer>
             <p>&copy; {{ site.company_name }} {{ 'now' | date: "%Y" }}</p>
 	  </footer>
@@ -97,6 +104,7 @@
     <!-- Placed at the end of the document so the pages load faster -->
     <script src="{{site.baseurl}}/assets/js/jquery.js"></script>
     <script src="{{site.baseurl}}/assets/js/bootstrap.js"></script>
+    <script src="http://twitter.github.com/bootstrap/assets/js/bootstrap-scrollspy.js"></script>
 
   </body>
 </html>
