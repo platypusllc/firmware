@@ -1,0 +1,12 @@
+## Parts list for next board
+
+* STM32F4 Discovery - main processor and USB
+* bq77910 - battery charger 
+* Power switch IC + magnetic switch
+* Upgraded connectors - upsize shroud connectors so we can solder them
+* Upgrade main discharge FET to 120A+
+* Separate charge FET - can be low power - how to prevent bidirectional problems
+
+## TODO:
+* Redesign RS485 autoswitch circuit!!!!
+* Fix things on previous TODO list: see hackpad
