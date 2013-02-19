@@ -6,6 +6,7 @@
 * Upgraded connectors - upsize shroud connectors so we can solder them
 * Upgrade main discharge FET to 120A+
 * Separate charge FET - can be low power - how to prevent bidirectional problems
+* LTC2955 pushbutton controller - http://www.linear.com/product/LTC2955
 
 ## TODO:
 * Redesign RS485 autoswitch circuit!!!!
