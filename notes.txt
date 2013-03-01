@@ -10,6 +10,7 @@
 * Anderson PowerClaw 879-PC5930T - main battery connector
 * Use 1K + zener for 5V/RS232 switching
 * 2oz copper probably necessary: http://www.armisteadtechnologies.com/trace.shtml
+* Add connectors for ESC fans
 
 ## TODO:
 * Fix things on previous TODO list: see hackpad
