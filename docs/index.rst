@@ -11,7 +11,7 @@ Contents:
 .. toctree::
    :maxdepth: 2
 
-
+You are now the proud owner of a Platypus Lutra autonomous vehicle!
 
 Indices and tables
 ==================
