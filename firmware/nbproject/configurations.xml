@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configurationDescriptor version="88">
+  <logicalFolder name="root" displayName="root" projectFiles="true" kind="ROOT">
+    <df root="src" name="src">
+      <df name="hardware">
+        <in>analog.c</in>
+        <in>analog.h</in>
+        <in>i2c.cpp</in>
+        <in>i2c.h</in>
+        <in>led.cpp</in>
+        <in>led.h</in>
+        <in>serial.cpp</in>
+        <in>serial.h</in>
+        <in>servo.cpp</in>
+        <in>servo.h</in>
+        <in>task.h</in>
+      </df>
+      <df name="sensors">
+        <in>depth_sensor.h</in>
+        <in>do_sensor.h</in>
+        <in>es2_sensor.h</in>
+        <in>sampler.cpp</in>
+        <in>sampler.h</in>
+        <in>sensor.h</in>
+        <in>te5_sensor.h</in>
+        <in>watercanary_sensor.cpp</in>
+        <in>watercanary_sensor.h</in>
+      </df>
+      <df name="system">
+        <in>TimedAction.cpp</in>
+        <in>TimedAction.h</in>
+        <in>meet_android.cpp</in>
+        <in>meet_android.h</in>
+        <in>portability.cpp</in>
+        <in>portability.h</in>
+      </df>
+      <in>board.h</in>
+      <in>main.cpp</in>
+      <in>rudder.cpp</in>
+      <in>rudder.h</in>
+      <in>thruster.cpp</in>
+      <in>thruster.h</in>
+    </df>
+    <logicalFolder name="ExternalFiles"
+                   displayName="Important Files"
+                   projectFiles="false"
+                   kind="IMPORTANT_FILES_FOLDER">
+      <itemPath>Makefile</itemPath>
+    </logicalFolder>
+  </logicalFolder>
+  <sourceFolderFilter>^(nbproject)$</sourceFolderFilter>
+  <sourceRootList>
+    <Elem>src</Elem>
+  </sourceRootList>
+  <projectmakefile>Makefile</projectmakefile>
+  <confs>
+    <conf name="Default" type="0">
+      <toolsSet>
+        <remote-sources-mode>LOCAL_SOURCES</remote-sources-mode>
+        <compilerSet>default</compilerSet>
+      </toolsSet>
+      <codeAssistance>
+      </codeAssistance>
+      <makefileType>
+        <makeTool>
+          <buildCommandWorkingDir>.</buildCommandWorkingDir>
+          <buildCommand>${MAKE} -f Makefile</buildCommand>
+          <cleanCommand>${MAKE} -f Makefile clean</cleanCommand>
+          <executablePath></executablePath>
+          <cTool>
+            <incDir>
+              <pElem>src</pElem>
+              <pElem>src/hardware</pElem>
+              <pElem>src/sensors</pElem>
+              <pElem>src/system</pElem>
+              <pElem>/usr/lib/avr/include</pElem>
+            </incDir>
+            <preprocessorList>
+              <Elem>F_CPU 32000000UL</Elem>
+              <Elem>__AVR_ATxmega128A1__</Elem>
+            </preprocessorList>
+          </cTool>
+          <ccTool>
+            <incDir>
+              <pElem>src</pElem>
+              <pElem>src/hardware</pElem>
+              <pElem>src/sensors</pElem>
+              <pElem>src/system</pElem>
+              <pElem>/usr/lib/avr/include</pElem>
+            </incDir>
+            <preprocessorList>
+              <Elem>F_CPU 32000000UL</Elem>
+              <Elem>__AVR_ATxmega128A1__</Elem>
+            </preprocessorList>
+          </ccTool>
+        </makeTool>
+      </makefileType>
+    </conf>
+  </confs>
+</configurationDescriptor>
