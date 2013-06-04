@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView 
+	xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="fill_parent"
+    android:layout_height="wrap_content">
+<LinearLayout
+	xmlns:android="http://schemas.android.com/apk/res/android"
+ 	android:layout_width="fill_parent"
+ 	android:layout_height="fill_parent" android:orientation="vertical">
+    <LinearLayout android:id="@+id/FocusHolder" android:focusable="true" android:focusableInTouchMode="true" android:layout_width="0px" android:layout_height="0px">
+		<requestFocus></requestFocus>
+	</LinearLayout>
+	<TextView android:id="@+id/ConnectTitle" android:text="@string/connect_title" android:layout_width="wrap_content" android:layout_height="wrap_content"/>
+	<AutoCompleteTextView android:id="@+id/ConnectAddress" android:text="@string/connect_default_addr" android:layout_width="fill_parent" android:layout_height="wrap_content" android:editable="true" android:isScrollContainer="false" android:singleLine="true" android:typeface="monospace" android:imeOptions="actionDone"/>
+	<TextView android:id="@+id/MasterTitle" android:text="@string/master_title" android:layout_width="wrap_content" android:layout_height="wrap_content"/>
+	<AutoCompleteTextView  android:id="@+id/MasterAddress" android:text="@string/master_default_addr" android:layout_width="fill_parent" android:layout_height="wrap_content"  android:editable="true" android:isScrollContainer="false" android:singleLine="true" android:typeface="monospace" android:imeOptions="actionDone"/>
+	<LinearLayout android:id="@+id/ButtonLayout" android:layout_width="fill_parent" android:layout_height="wrap_content">
+		<edu.cmu.ri.airboat.server.ReadOnlyToggleButton android:id="@+id/ConnectToggle" android:text="@string/connect_toggle" android:layout_width="0dp" android:layout_weight="0.66" android:layout_height="fill_parent"></edu.cmu.ri.airboat.server.ReadOnlyToggleButton>
+		<Button android:id="@+id/DebugButton" android:text="@string/debug_button" android:layout_width="0dp" android:layout_weight="0.33" android:layout_height="wrap_content"/>
+	</LinearLayout>
+	<TextView android:id="@+id/IpAddressTitle" android:text="@string/ipaddress_title" android:layout_width="wrap_content" android:layout_height="wrap_content"/>
+	<TextView android:id="@+id/IpAddressText" android:text="@string/ipaddress_text" android:layout_width="fill_parent" android:layout_height="wrap_content" android:typeface="monospace" android:gravity="center_horizontal"/>
+	<TextView android:id="@+id/FailsafeTitle" android:text="@string/failsafe_title" android:layout_width="wrap_content" android:layout_height="wrap_content"/>
+	<AutoCompleteTextView android:id="@+id/FailsafeAddress" android:text="@string/failsafe_default_addr" android:layout_width="fill_parent" android:layout_height="wrap_content"  android:editable="true" android:isScrollContainer="false" android:singleLine="true" android:typeface="monospace" android:imeOptions="actionDone"/>
+	<LinearLayout android:id="@+id/ButtonLayout" android:layout_width="fill_parent" android:layout_height="wrap_content">
+		<edu.cmu.ri.airboat.server.ReadOnlyToggleButton android:id="@+id/FailsafeToggle" android:text="@string/failsafe_toggle" android:layout_width="0dp" android:layout_weight="0.66" android:layout_height="fill_parent"></edu.cmu.ri.airboat.server.ReadOnlyToggleButton>
+		<Button android:id="@+id/HomeButton" android:text="@string/home_button" android:layout_width="0dp" android:layout_weight="0.33" android:layout_height="wrap_content"/>
+	</LinearLayout>
+</LinearLayout>
+</ScrollView>

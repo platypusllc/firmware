@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+      android:versionCode="1"
+      android:versionName="1.0" package="edu.cmu.ri.airboat.server">
+
+<uses-sdk android:targetSdkVersion="17" android:minSdkVersion="8"/>
+<uses-permission android:name="android.permission.INTERNET" />
+<uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+<uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+<uses-permission android:name="android.permission.CAMERA" />
+<uses-permission android:name="android.permission.WAKE_LOCK" />
+
+<application android:icon="@drawable/icon" android:label="@string/app_name">
+<service android:label="Airboat Service" android:icon="@drawable/icon" android:name="AirboatService"></service>
+<service android:label="Airboat Failsafe" android:icon="@drawable/icon" android:name="AirboatFailsafeService"></service>
+<activity android:label="Airboat Setup" android:icon="@drawable/icon" android:name="AirboatActivity">
+<intent-filter>
+<action android:name="android.intent.action.MAIN"></action>
+<category android:name="android.intent.category.LAUNCHER"></category>
+</intent-filter>
+</activity>
+<activity android:label="Airboat Control" android:icon="@drawable/icon" android:name="AirboatControlActivity"></activity>
+<activity android:label="Airboat Camera" android:icon="@drawable/icon" android:name="AirboatCameraActivity" android:screenOrientation="nosensor" android:configChanges="keyboardHidden|orientation"></activity>
+</application>
+
+
+</manifest> 

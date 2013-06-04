@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+	<!-- General -->
+    <string name="app_name">Airboat Server</string>
+    <!-- EditActivity -->
+<string name="connect_title">Airboat Bluetooth MAC Address:</string>
+<string name="connect_default_addr">00:00:00:00:00:00</string>
+<string name="connect_toggle">connect</string>
+<string name="ipaddress_title">UDP Address:</string>
+<string name="ipaddress_text">No address.</string>
+<string name="debug_button">Debug</string>
+<string name="connected_box">Connected</string>
+<string name="autonomous_box">Autonomous</string>
+<string name="thrust_title">Thrust:</string>
+<string name="thrust_gain_title">Thrust PID Gains:</string>
+<string name="rudder_title">Rudder:</string>
+<string name="rudder_gain_title">Rudder PID Gains:</string>
+<string name="master_title">UDP Registry</string>
+<string name="master_default_addr">athiri.cimds.ri.cmu.edu:6077</string>
+<string name="failsafe_title">Failsafe IP Address:</string>
+<string name="failsafe_default_addr">192.168.1.1</string>
+<string name="failsafe_toggle">failsafe</string>
+<string name="home_button">Set Home</string>
+</resources>

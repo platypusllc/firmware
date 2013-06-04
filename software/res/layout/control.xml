@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+  xmlns:android="http://schemas.android.com/apk/res/android"
+  android:layout_width="fill_parent"
+  android:layout_height="fill_parent" android:orientation="vertical">
+	<CheckBox android:text="@string/connected_box" android:id="@+id/ConnectedBox" android:layout_width="wrap_content" android:layout_height="wrap_content" android:enabled="false"></CheckBox>
+	<CheckBox android:text="@string/autonomous_box" android:id="@+id/AutonomousBox" android:layout_width="wrap_content" android:layout_height="wrap_content" android:clickable="true"></CheckBox>
+	<TextView android:text="@string/thrust_title" android:id="@+id/ThrustTitle" android:layout_width="wrap_content" android:layout_height="wrap_content"></TextView>
+
+	<TextView
+	    android:id="@+id/ThrustValue"
+	    android:layout_width="fill_parent"
+	    android:layout_height="wrap_content"
+	    android:text="0%" >
+</TextView>
+	<SeekBar android:id="@+id/ThrustSlider" android:layout_width="fill_parent" android:layout_height="wrap_content"></SeekBar>
+	<TextView android:text="@string/thrust_gain_title" android:id="@+id/ThrustGainTitle" android:layout_width="wrap_content" android:layout_height="wrap_content"></TextView>
+	<LinearLayout android:id="@+id/ThrustLayout" android:layout_width="fill_parent" android:layout_height="wrap_content">	
+		<EditText android:text="0.000" android:id="@+id/ThrustPGain" android:layout_weight="1" android:layout_width="0dp" android:layout_height="wrap_content" android:editable="true" android:isScrollContainer="false" android:singleLine="true" android:typeface="monospace" android:imeOptions="actionDone"></EditText>
+		<EditText android:text="0.000" android:id="@+id/ThrustIGain" android:layout_weight="1" android:layout_width="0dp" android:layout_height="wrap_content" android:editable="true" android:isScrollContainer="false" android:singleLine="true" android:typeface="monospace" android:imeOptions="actionDone"></EditText>
+		<EditText android:text="0.000" android:id="@+id/ThrustDGain" android:layout_weight="1" android:layout_width="0dp" android:layout_height="wrap_content" android:editable="true" android:isScrollContainer="false" android:singleLine="true" android:typeface="monospace" android:imeOptions="actionDone"></EditText>
+	</LinearLayout>
+	<TextView android:text="@string/rudder_title" android:id="@+id/RudderTitle" android:layout_width="wrap_content" android:layout_height="wrap_content"></TextView>
+
+	<TextView
+	    android:id="@+id/RudderValue"
+	    android:layout_width="fill_parent"
+	    android:layout_height="wrap_content"
+	    android:text="0%" >
+</TextView>
+	<SeekBar android:id="@+id/RudderSlider" android:layout_width="fill_parent" android:layout_height="wrap_content" android:progress="50"></SeekBar>
+	<TextView android:text="@string/rudder_gain_title" android:id="@+id/RudderGainTitle" android:layout_width="wrap_content" android:layout_height="wrap_content"></TextView>
+	<LinearLayout android:id="@+id/RudderLayout" android:layout_width="fill_parent" android:layout_height="wrap_content">
+		<EditText android:text="0.000" android:id="@+id/RudderPGain" android:layout_weight="1" android:layout_width="0dp" android:layout_height="wrap_content" android:editable="true" android:isScrollContainer="false" android:singleLine="true" android:typeface="monospace" android:imeOptions="actionDone"></EditText>
+		<EditText android:text="0.000" android:id="@+id/RudderIGain" android:layout_weight="1" android:layout_width="0dp" android:layout_height="wrap_content" android:editable="true" android:isScrollContainer="false" android:singleLine="true" android:typeface="monospace" android:imeOptions="actionDone"></EditText>
+		<EditText android:text="0.000" android:id="@+id/RudderDGain" android:layout_weight="1" android:layout_width="0dp" android:layout_height="wrap_content" android:editable="true" android:isScrollContainer="false" android:singleLine="true" android:typeface="monospace" android:imeOptions="actionDone"></EditText>
+	</LinearLayout>
+</LinearLayout>
