@@ -1,7 +1,8 @@
 docs/_build
 
-# Ignore intermediate C++ build files.
+# Ignore intermediate build files.
 *.out
 *.out.map
 *.lst
 *.o
+*~
