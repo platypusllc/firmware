@@ -51,27 +51,3 @@ Specifications
 |               | Forward and Downward camera.                               |
 |               | (Others available of request)                              |
 +---------------+------------------------------------------------------------+
-
-========
-Assembly
-========
-
----------------
-Shroud Assembly
----------------
-
---------------------------------
-Electronics Compartment Assembly
---------------------------------
-
-----------------------
-Complete Boat Assembly
-----------------------
-
-=========
-Operation
-=========
-
------------------
-Startup Procedure
------------------

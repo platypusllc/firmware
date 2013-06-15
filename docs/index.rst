@@ -12,8 +12,8 @@ Contents:
    :maxdepth: 2
 
    introduction
-
-You are now the proud owner of a Platypus Lutra autonomous vehicle!
+   assembly
+   operation
 
 Indices and tables
 ==================
