@@ -3,13 +3,15 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to Lutra's documentation!
-=================================
+Lutra v1.1 Users Guide
+======================
 
 Contents:
 
 .. toctree::
    :maxdepth: 2
+
+   introduction
 
 You are now the proud owner of a Platypus Lutra autonomous vehicle!
 
