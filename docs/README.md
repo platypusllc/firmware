@@ -14,7 +14,9 @@ This repository is set up to automatically build using ReadTheDocs.org, which pu
 Usage
 -----
 
-To edit documentation, simply create or modify .rst files in the [docs/](https://github.com/PlatypusLLC/Lutra/tree/master/docs) subfolder and push the changes to GitHub.  When pushed, the documentation will automatically be rebuilt and served within ~10 minutes.  You can check the progress of this build on ReadTheDocs.org. 
+To edit documentation, simply create or modify .rst files in the [docs/](https://github.com/PlatypusLLC/Lutra/tree/master/docs) subfolder and push the changes to GitHub.  You can fine a primer on reStructuredText syntax [here](http://docutils.sourceforge.net/docs/user/rst/quickref.html).
+
+When pushed, the documentation will automatically be rebuilt and served within ~10 minutes.  You can check the progress of this build on ReadTheDocs.org. 
 
 **Remember, everything that is published to this repository is public.  Only commit public documentation to this repository!**
 
