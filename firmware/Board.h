@@ -3,15 +3,19 @@
 
 #include <Arduino.h>
 
-namespace board {
-
+namespace board 
+{
+  
+  // Board type definitions
+  typedef struct LED_t 
+  { 
+    int R;
+    int G;
+    int B;
+  };
+  
 // Pin definitions
 // Left side of Arduino
-typedef struct LED_t { 
-  int R;
-  int G;
-  int B;
-};
 const LED_t LED = { 54, 55, 56 };
 
 const int V_BATT = A3;

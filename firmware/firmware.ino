@@ -15,19 +15,15 @@ char serialNumber[] = "1";
 char url[] = "http://senseplatypus.com";
 
 USBHost Usb;
-ADK adk(&Usb, companyName, applicationName, accessoryName,versionNumber,url,serialNumber);
+ADK adk(&Usb, companyName, applicationName, accessoryName,versionNumber, url, serialNumber);
 
 Servo servo;
+platypus::LED rgb_led;
 
 void setup() {
   Serial.begin(9600);
   while (!Serial); // TODO: probably not needed for Due
- 
-  // Charging control
-  digitalWrite(board::CHG_CTRL, LOW);
-  pinMode(board::CHG_CTRL, INPUT);
-  digitalWrite(board::CHG_CTRL, HIGH);
-  
+   
   // put your setup code here, to run once:
 
   digitalWrite(board::M2_PWR, LOW);
@@ -38,6 +34,8 @@ void setup() {
   servo.attach(board::M1_SERVO);
   servo.write(90);
   Serial.println("Servo started.");
+  
+  rgb_led.set(1,0,0);
   
   delay(1000);
   /*
@@ -74,9 +72,10 @@ unsigned char input_buffer[RECEIVE_BUFFER_SIZE+1];
 uint32_t bytes_read = 0;
 
 void loop() {
-  Usb.Task();
   input_buffer[RECEIVE_BUFFER_SIZE] = 0;
   
+  /*
+  Usb.Task();  
   if (adk.isReady()){
         adk.read(&bytes_read, RECEIVE_BUFFER_SIZE, input_buffer);
         if (bytes_read > 0){
@@ -87,6 +86,13 @@ void loop() {
   } else{
 
   }
+  */
+  rgb_led.set(1,0,0);
+  delay(200);
+  rgb_led.set(0,1,0);
+  delay(200);
+  rgb_led.set(0,0,1);
+  delay(200);
   
 /*
   // Test RGB led
