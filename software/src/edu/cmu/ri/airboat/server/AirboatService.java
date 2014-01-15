@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.Locale;
 
 import javax.measure.unit.NonSI;
 import javax.measure.unit.SI;
@@ -19,6 +20,7 @@ import android.app.Notification;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.Service;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
@@ -26,6 +28,8 @@ import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
+import android.hardware.usb.UsbAccessory;
+import android.hardware.usb.UsbManager;
 import android.location.Criteria;
 import android.location.Location;
 import android.location.LocationListener;
@@ -36,11 +40,11 @@ import android.os.Binder;
 import android.os.Bundle;
 import android.os.Debug;
 import android.os.IBinder;
+import android.os.ParcelFileDescriptor;
 import android.os.PowerManager;
 import android.os.PowerManager.WakeLock;
 import android.os.StrictMode;
 import android.util.Log;
-import at.abraxas.amarino.AmarinoIntent;
 
 import com.google.code.microlog4android.LoggerFactory;
 import com.google.code.microlog4android.appender.FileAppender;
@@ -54,7 +58,7 @@ import edu.cmu.ri.crw.data.UtmPose;
 import edu.cmu.ri.crw.udp.UdpVehicleService;
 
 /**
- * Android Service to register sensor and Amarino handlers for Android.
+ * Android Service to register sensor and USB handlers for Android.
  * Contains a RosVehicleServer and a VehicleServer object.
  * 
  * @author pkv
@@ -62,9 +66,17 @@ import edu.cmu.ri.crw.udp.UdpVehicleService;
  *
  */
 public class AirboatService extends Service {
+	
+	private static final String ACTION_USB_PERMISSION = "edu.cmu.ri.airboat.server.USB_PERMISSION";
 	private static final int SERVICE_ID = 11312;
 	private static final String TAG = AirboatService.class.getName();
 	private static final com.google.code.microlog4android.Logger logger = LoggerFactory.getLogger();
+	
+	// Bookkeeping for Android connectivity
+	private UsbManager usbManager_;
+	private PendingIntent permissionIntent_;
+	private boolean permissionRequestPending_;
+	private UsbAccessory accessory_;
 	
 	// Default values for parameters
 	private static final String DEFAULT_LOG_PREFIX = "airboat_";
@@ -72,7 +84,6 @@ public class AirboatService extends Service {
 	final int GPS_UPDATE_RATE = 200; //in milliseconds
 	
 	// Intent fields definitions
-	public static final String BD_ADDR = "BD_ADDR";
 	public static final String UDP_REGISTRY_ADDR = "UDP_REGISTRY_ADDR";
 	public static final String UPDATE_RATE = "UPDATE_RATE";
 	
@@ -83,7 +94,6 @@ public class AirboatService extends Service {
 	public static boolean isRunning = false;
 
 	// Member parameters 
-	private String _arduinoAddr;
 	private InetSocketAddress _udpRegistryAddr;
 	
 	// Objects implementing actual functionality
@@ -134,7 +144,8 @@ public class AirboatService extends Service {
         				+ location.getAltitude() + ", " + location.getBearing());
         	}
         }
-      };
+	};
+	
     private final SensorEventListener rotationVectorListener = new SensorEventListener() {
 		@Override
 		public void onSensorChanged(SensorEvent event) {
@@ -154,6 +165,7 @@ public class AirboatService extends Service {
 		@Override
 		public void onAccuracyChanged(Sensor sensor, int accuracy) {}
 	};
+	
     /**
      * UPDATE: 7/03/12 - Handles gyro updates by calling the appropriate update.
      */
@@ -162,7 +174,7 @@ public class AirboatService extends Service {
 		public void onSensorChanged(SensorEvent event) {
 			// TODO Auto-generated method stub
 			/* Convert phone coordinates to world coordinates. use magnetometer and accelerometer to get orientation
-			 * Simple rotation is 90¼ clockwise about positive y axis. Thus, transformation is:
+			 * Simple rotation is 90ï¿½ clockwise about positive y axis. Thus, transformation is:
 			// /  M[ 0]   M[ 1]   M[ 2]  \ / values[0] \ = gyroValues[0]
 			// |  M[ 3]   M[ 4]   M[ 5]  | | values[1] | = gyroValues[1]
 			// \  M[ 6]   M[ 7]   M[ 8]  / \ values[2] / = gyroValues[2]
@@ -210,6 +222,13 @@ public class AirboatService extends Service {
 		StrictMode.setThreadPolicy(policy);
 		
 		// TODO: optimize this to allocate resources up here and handle multiple start commands
+		
+		// Register as a USB handler for USB connection and disconnection events
+		usbManager_ = (UsbManager) getSystemService(Context.USB_SERVICE);
+	    permissionIntent_ = PendingIntent.getBroadcast(this, 0, new Intent(ACTION_USB_PERMISSION), 0);
+	    IntentFilter filter = new IntentFilter(ACTION_USB_PERMISSION);
+	    filter.addAction(UsbManager.ACTION_USB_ACCESSORY_DETACHED);
+	    registerReceiver(usbReceiver, filter);
 	}
 
 	/**
@@ -220,14 +239,13 @@ public class AirboatService extends Service {
 		return _airboatImpl;
 	}
 
-	
 	/** 
      * Constructs a default filename from the current date and time.
      * @return the default filename for the current time.
      */
     private static String defaultLogFilename() {
         Date d = new Date();
-        SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMdd_hhmmss");
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMdd_hhmmss", Locale.US);
         return DEFAULT_LOG_PREFIX + sdf.format(d) + ".txt";
     }
     
@@ -242,18 +260,6 @@ public class AirboatService extends Service {
 	public int onStartCommand(final Intent intent, int flags, int startId) {
 		super.onStartCommand(intent, flags, startId);
 		
-		// Ignore startup requests that don't include an intent
-		if (intent == null) {
-			Log.e(TAG, "Started with null intent.");
-			return Service.START_STICKY;
-		}
-			
-		// Ignore startup requests that don't include a device name
-		if (!intent.hasExtra(BD_ADDR)) {
-			Log.e(TAG, "Started with no bluetooth address.");
-			return Service.START_STICKY;
-		}
-			
 		// Ensure that we do not reinitialize if not necessary
 		if (_airboatImpl != null || _udpService != null) {
 			Log.w(TAG, "Attempted to start while running.");
@@ -288,7 +294,6 @@ public class AirboatService extends Service {
 		// Hook up to necessary Android sensors
         SensorManager sm; 
         sm = (SensorManager)getSystemService(SENSOR_SERVICE);
-        //sm.registerListener(magneticListener, compass, SensorManager.SENSOR_DELAY_NORMAL);
         Sensor gyro = sm.getDefaultSensor(Sensor.TYPE_GYROSCOPE);
         sm.registerListener(gyroListener, gyro, SensorManager.SENSOR_DELAY_NORMAL);
         Sensor rotation_vector = sm.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR);
@@ -302,27 +307,12 @@ public class AirboatService extends Service {
         String provider = gps.getBestProvider(c, false);
         gps.requestLocationUpdates(provider, GPS_UPDATE_RATE, 0, locationListener);
 		
-        // Get necessary connection parameters
-		_arduinoAddr = intent.getStringExtra(BD_ADDR);
-		
-        // Create a filter that listens to Amarino connection events
-        IntentFilter amarinoFilter = new IntentFilter();
-        amarinoFilter.addAction(AmarinoIntent.ACTION_CONNECTED_DEVICES);
-        amarinoFilter.addAction(AmarinoIntent.ACTION_CONNECTED);
-        amarinoFilter.addAction(AmarinoIntent.ACTION_DISCONNECTED);
-        sendBroadcast(new Intent(AmarinoIntent.ACTION_GET_CONNECTED_DEVICES));
-        
         // Create a filter to listen for obstacle avoidance instructions
         IntentFilter obstacleFilter = new IntentFilter();
         obstacleFilter.addAction(AirboatImpl.OBSTACLE);
 		
 		// Create the data object
-		_airboatImpl = new AirboatImpl(this, _arduinoAddr);
-		registerReceiver(_airboatImpl.dataCallback, new IntentFilter(AmarinoIntent.ACTION_RECEIVED));
-		registerReceiver(_airboatImpl.connectionCallback, amarinoFilter);
-		registerReceiver(_airboatImpl.avoidObstacle, obstacleFilter);
-		//Log.e("Osman", "Registered the Listener");
-		
+		_airboatImpl = new AirboatImpl(this);
 		
 		// Start up UDP vehicle service in the background
 		new Thread(new Runnable() {
@@ -451,10 +441,6 @@ public class AirboatService extends Service {
         
 		// Disconnect the data object from this service
 		if (_airboatImpl != null) {
-			unregisterReceiver(_airboatImpl.dataCallback);
-			unregisterReceiver(_airboatImpl.connectionCallback);
-			unregisterReceiver(_airboatImpl.avoidObstacle);
-			_airboatImpl.setConnected(false);
 			_airboatImpl.shutdown();
 			_airboatImpl = null;
 		}
@@ -497,5 +483,52 @@ public class AirboatService extends Service {
 		notification.flags |= Notification.FLAG_AUTO_CANCEL;
 		
 		notificationManager.notify(SERVICE_ID, notification);
+	}
+	
+	/**
+	 * Listen for accessory devices to connect to the service
+	 */
+	private final BroadcastReceiver usbReceiver = new BroadcastReceiver() {
+
+		@Override
+		public void onReceive(Context context, Intent intent) {
+			String action = intent.getAction();
+			if (ACTION_USB_PERMISSION.equals(action)) {
+				synchronized (this) {
+					UsbAccessory accessory = (UsbAccessory) intent
+							.getParcelableExtra(UsbManager.EXTRA_ACCESSORY);
+					if (intent.getBooleanExtra(
+							UsbManager.EXTRA_PERMISSION_GRANTED, false)) {
+						openAccessory(accessory);
+					} else {
+						Log.d(TAG, "permission denied for accessory "
+								+ accessory);
+					}
+					permissionRequestPending_ = false;
+				}
+			} else if (UsbManager.ACTION_USB_ACCESSORY_DETACHED.equals(action)) {
+				UsbAccessory accessory = (UsbAccessory) intent
+						.getParcelableExtra(UsbManager.EXTRA_ACCESSORY);
+				if (accessory != null && accessory.equals(accessory_)) {
+					closeAccessory();
+				}
+			}
+		}
+	};
+	  
+	private void openAccessory(UsbAccessory accessory) {
+		ParcelFileDescriptor descriptor = usbManager_.openAccessory(accessory);
+		if (descriptor  != null) {
+			accessory_ = accessory;
+			_airboatImpl.setConnection(descriptor);
+			Log.d(TAG, "accessory opened");
+		} else {
+			Log.d(TAG, "accessory open fail");
+		}
+	}
+
+	private void closeAccessory() {
+		_airboatImpl.setConnection(null);
+		accessory_ = null;
 	}
 }

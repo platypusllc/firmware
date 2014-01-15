@@ -32,8 +32,7 @@ public enum AirboatController {
 	POINT_AND_SHOOT(new VehicleController() {
 		// variable for monitoring previous destination angle for error calculation 
 		private double prev_angle_destination = 0;
-		private final com.google.code.microlog4android.Logger logger_osman = LoggerFactory
-				.getLogger(); // logger to debug
+		
 		// variables for buffer and integration term
 		final int BUFFER_SIZE = 100;
 		double[] buffer = new double[BUFFER_SIZE];

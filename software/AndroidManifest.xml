@@ -1,17 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-      android:versionCode="1"
-      android:versionName="1.0" package="edu.cmu.ri.airboat.server">
+      android:versionCode="3"
+      android:versionName="3.0" package="edu.cmu.ri.airboat.server">
 
-<uses-sdk android:targetSdkVersion="17" android:minSdkVersion="8"/>
+<uses-sdk android:targetSdkVersion="21" android:minSdkVersion="12"/>
 <uses-permission android:name="android.permission.INTERNET" />
 <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
 <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
 <uses-permission android:name="android.permission.CAMERA" />
 <uses-permission android:name="android.permission.WAKE_LOCK" />
 
-<application android:icon="@drawable/icon" android:label="@string/app_name">
-<service android:label="Airboat Service" android:icon="@drawable/icon" android:name="AirboatService"></service>
+<application android:icon="@drawable/icon" android:label="@string/app_name" android:allowBackup="true">
+<service android:label="Airboat Service" android:icon="@drawable/icon" android:name="AirboatService">
+    <intent-filter>
+        <action android:name="android.hardware.usb.action.USB_ACCESSORY_ATTACHED" /> 
+    </intent-filter>
+    <meta-data android:name="android.hardware.usb.action.USB_ACCESSORY_ATTACHED" android:resource="@xml/device_filter" />    
+</service>
 <service android:label="Airboat Failsafe" android:icon="@drawable/icon" android:name="AirboatFailsafeService"></service>
 <activity android:label="Airboat Setup" android:icon="@drawable/icon" android:name="AirboatActivity">
 <intent-filter>
@@ -22,6 +27,5 @@
 <activity android:label="Airboat Control" android:icon="@drawable/icon" android:name="AirboatControlActivity"></activity>
 <activity android:label="Airboat Camera" android:icon="@drawable/icon" android:name="AirboatCameraActivity" android:screenOrientation="nosensor" android:configChanges="keyboardHidden|orientation"></activity>
 </application>
-
 
 </manifest> 

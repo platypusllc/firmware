@@ -1,4 +1,7 @@
+# Ignore generated directories.
 docs/_build
+software/bin
+software/gen
 
 # Ignore intermediate build files.
 *.out

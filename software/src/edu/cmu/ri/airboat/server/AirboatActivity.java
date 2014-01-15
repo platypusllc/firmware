@@ -20,7 +20,6 @@ import android.app.Activity;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
-import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.content.SharedPreferences.Editor;
 import android.location.Location;
@@ -34,13 +33,11 @@ import android.text.TextWatcher;
 import android.util.Log;
 import android.view.View;
 import android.view.View.OnClickListener;
-import android.widget.ArrayAdapter;
 import android.widget.AutoCompleteTextView;
 import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 import android.widget.ToggleButton;
-import at.abraxas.amarino.AmarinoIntent;
 import edu.cmu.ri.airboat.server.AirboatFailsafeService.AirboatFailsafeIntent;
 import edu.cmu.ri.crw.CrwNetworkUtils;
 import edu.cmu.ri.crw.data.Utm;
@@ -65,87 +62,6 @@ public class AirboatActivity extends Activity {
     	// Create the "main" layout from the included XML file 
     	super.onCreate(savedInstanceState);
         setContentView(R.layout.main);
-        
-        // Register handler for Bluetooth address box
-        final AutoCompleteTextView connectAddress = (AutoCompleteTextView)findViewById(R.id.ConnectAddress);
-        connectAddress.setThreshold(1);
-        connectAddress.addTextChangedListener(new TextWatcher() {
-        	
-        	public void onTextChanged(CharSequence s, int start, int before, int count) {}
-			public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
-			
-			public void afterTextChanged(Editable s) {
-				
-				// Remove all ':' and invalid chars from string
-				String clean = s.toString().replaceAll("[:[^[\\d[a-f][A-F]]]]", "");
-				
-				// Insert them back in correct locations
-				StringBuffer str = new StringBuffer(clean);
-				if (str.length() > 2)
-					str.insert(2, ':');
-				if (str.length() > 5)
-					str.insert(5, ':');
-				if (str.length() > 8)
-					str.insert(8, ':');
-				if (str.length() > 11)
-					str.insert(11, ':');
-				if (str.length() > 14)
-					str.insert(14, ':');
-				if (str.length() > 17)
-					str.delete(17, str.length());
-				
-				// If something changed, update string
-				if (!str.toString().equals(s.toString()))
-					s.replace(0, s.length(), str.toString().toUpperCase());
-			}
-		});
-        
-        // Create a filter that listens to Amarino connection events
-        IntentFilter amarinoFilter = new IntentFilter();
-        amarinoFilter.addAction(AmarinoIntent.ACTION_CONNECTED_DEVICES);
-        amarinoFilter.addAction(AmarinoIntent.ACTION_CONNECTED);
-        amarinoFilter.addAction(AmarinoIntent.ACTION_DISCONNECTED);
-        
-		// Create a listener to update the connected devices autocomplete list
-        final ArrayAdapter<String> adapter = new ArrayAdapter<String>(this, android.R.layout.simple_dropdown_item_1line);
-        connectAddress.setAdapter(adapter);
-        _amarinoReceiver = new BroadcastReceiver() {
-			
-			@Override
-			public void onReceive(Context context, Intent intent) {
-				// Check for events indicating connection or disconnection
-				if (intent.getAction().equals(AmarinoIntent.ACTION_CONNECTED)) {
-					final String address = intent.getStringExtra(AmarinoIntent.EXTRA_DEVICE_ADDRESS);
-					connectAddress.post(new Runnable() {
-						public void run() {
-							adapter.add(address);
-							adapter.notifyDataSetChanged();
-						}
-					});
-				} else if (intent.getAction().equals(AmarinoIntent.ACTION_DISCONNECTED)) {
-					final String address = intent.getStringExtra(AmarinoIntent.EXTRA_DEVICE_ADDRESS);
-					connectAddress.post(new Runnable() {
-						public void run() {
-							adapter.remove(address);
-							adapter.notifyDataSetChanged();
-						}
-					});					
-				} else if (intent.getAction().equals(AmarinoIntent.ACTION_CONNECTED_DEVICES)) {
-					final String[] devices = intent.getStringArrayExtra(AmarinoIntent.EXTRA_CONNECTED_DEVICE_ADDRESSES);
-					connectAddress.post(new Runnable() {
-						public void run() {
-							adapter.clear();
-							if (devices != null)
-								for (String device : devices) 
-									adapter.add(device);
-							adapter.notifyDataSetChanged();
-						}
-					});
-				}
-			}
-		};
-		registerReceiver(_amarinoReceiver, amarinoFilter);
-		sendBroadcast(new Intent(AmarinoIntent.ACTION_GET_CONNECTED_DEVICES));
         
 		// Register handler for URI master that changes the color of the URI
 		// if a valid ROS core seems to be reached.
@@ -234,13 +150,11 @@ public class AirboatActivity extends Activity {
 				
 				// Create an intent to properly start the vehicle server
 				Intent intent = new Intent(AirboatActivity.this, AirboatService.class);
-    			intent.putExtra(AirboatService.BD_ADDR, connectAddress.getText().toString());
     			intent.putExtra(AirboatService.UDP_REGISTRY_ADDR, masterAddress.getText().toString());
     			
 				// Save the current BD addr and master URI
 				SharedPreferences prefs = getSharedPreferences(PREFS_PRIVATE, Context.MODE_PRIVATE);
 				Editor prefsPrivateEditor = prefs.edit();
-				prefsPrivateEditor.putString(KEY_BT_ADDR, connectAddress.getText().toString());
 				prefsPrivateEditor.putString(KEY_MASTER_URI, masterAddress.getText().toString());
 				prefsPrivateEditor.commit();
     			
@@ -472,7 +386,6 @@ public class AirboatActivity extends Activity {
         
         // Set text boxes to previous values
         SharedPreferences prefs = getSharedPreferences(PREFS_PRIVATE, Context.MODE_PRIVATE);
-        connectAddress.setText(prefs.getString(KEY_BT_ADDR, connectAddress.getText().toString()));
         masterAddress.setText(prefs.getString(KEY_MASTER_URI, masterAddress.getText().toString()));
         failsafeAddress.setText(prefs.getString(KEY_FAILSAFE_ADDR, failsafeAddress.getText().toString()));
     }

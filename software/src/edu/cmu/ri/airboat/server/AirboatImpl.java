@@ -1,19 +1,26 @@
 package edu.cmu.ri.airboat.server;
 
+import java.io.FileDescriptor;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+
 import robotutils.Pose3D;
-import android.content.BroadcastReceiver;
 import android.content.Context;
-import android.content.Intent;
+import android.os.ParcelFileDescriptor;
 import android.util.Log;
-import at.abraxas.amarino.Amarino;
-import at.abraxas.amarino.AmarinoIntent;
 
 import com.google.code.microlog4android.LoggerFactory;
 
@@ -36,15 +43,16 @@ import edu.cmu.ri.crw.data.UtmPose;
  */
 public class AirboatImpl extends AbstractVehicleServer {
 
-	private static final com.google.code.microlog4android.Logger logger = LoggerFactory
-			.getLogger();
-	public static final String OBSTACLE = "avoidObstacle";
-
 	private static final String logTag = AirboatImpl.class.getName();
+	private static final com.google.code.microlog4android.Logger logger = LoggerFactory.getLogger();
+	
+	public static final String OBSTACLE = "avoidObstacle";
 	public static final int UPDATE_INTERVAL_MS = 200;
 	public static final int NUM_SENSORS = 4;
 	public static final AirboatController DEFAULT_CONTROLLER = AirboatController.POINT_AND_SHOOT;
 
+	private static final Charset US_ASCII = Charset.forName("US-ASCII");
+	
 	protected final SensorType[] _sensorTypes = new SensorType[NUM_SENSORS];
 	protected UtmPose[] _waypoints = new UtmPose[0];
 
@@ -80,15 +88,18 @@ public class AirboatImpl extends AbstractVehicleServer {
 	public static final int RESPONSE_TIMEOUT_MS = 250; // was 200 earlier
 
 	// Status information
-	final AtomicBoolean _isConnected = new AtomicBoolean(true);
 	final AtomicBoolean _isAutonomous = new AtomicBoolean(false);
 
 	// Internal data structures for Amarino callbacks
 	final Context _context;
-	final String _arduinoAddr;
 	final List<String> _partialCommand = new ArrayList<String>(10);
 	public static final double[] DEFAULT_TWIST = {0, 0, 0, 0, 0, 0}; 
 
+	public final Object _connectionLock = new Object();
+	public FileDescriptor _connection = null;
+	public FileInputStream _connectionIn = null;
+	public FileOutputStream _connectionOut= null;
+	
 	/**
 	 * Inertial state vector, currently containing a 6D pose estimate:
 	 * [x,y,z,roll,pitch,yaw]
@@ -105,10 +116,12 @@ public class AirboatImpl extends AbstractVehicleServer {
 	 * ry, rz, rPhi, rPsi, rOmega]
 	 */
 	Twist _velocities = new Twist(DEFAULT_TWIST);
+	
 	/**
 	 * Raw gyroscopic readings from the phone gyro. 
 	 */
 	final double[] _gyroPhone = new double[3];
+	
 	/**
 	 * Hard-coded constants used in Yunde's controller and for new implementation of Arduino code.
 	 * CONSTANTS FORMAT: range_min, range_max, servo_min, servo_max
@@ -128,9 +141,8 @@ public class AirboatImpl extends AbstractVehicleServer {
 	 *            the bluetooth address of the vehicle controller
 	 */
 
-	protected AirboatImpl(Context context, String addr) {
+	protected AirboatImpl(Context context) {
 		_context = context;
-		_arduinoAddr = addr;
 
 		// Start a regular update function
 		_updateTimer.scheduleAtFixedRate(_updateTask, 0, UPDATE_INTERVAL_MS);
@@ -162,23 +174,35 @@ public class AirboatImpl extends AbstractVehicleServer {
 
 			// Call Amarino with new velocities here
 			// Yes, I know this looks silly, but Amarino doesn't handle doubles
-			Amarino.sendDataToArduino(
-										_context,
-										_arduinoAddr,
-										SET_VELOCITY_FN,
-										new float[] { (float) _velocities.dx(),
-												(float) _velocities.dy(), (float) _velocities.dz(),
-												(float) _velocities.drx(),
-												(float) _velocities.dry(),
-												(float) _velocities.drz() });
-
+			try {
+				JSONArray velocity = new JSONArray();
+				velocity.put(_velocities.dx());
+				velocity.put(_velocities.dy());
+				velocity.put(_velocities.dz());
+				velocity.put(_velocities.drx());
+				velocity.put(_velocities.dry());
+				velocity.put(_velocities.drz());
+				
+				JSONObject object = new JSONObject();
+				object.put("velocity", velocity);
+				
+				synchronized(_connectionLock) {
+					if (_connection != null) {
+						_connectionOut.write(object.toString().getBytes(US_ASCII));
+					}
+				}
+			} catch (IOException e) {
+				// TODO: Do something
+			} catch (JSONException e) {
+				// TODO: Do something
+			}
 
 			// Log velocities
 			logger.info("VEL: " + _velocities);
 
 			// Send velocities
 			Twist vel = _velocities.clone();
-			sendVelocity(vel);			
+			sendVelocity(vel);
 		}
 	};
 
@@ -233,273 +257,93 @@ public class AirboatImpl extends AbstractVehicleServer {
 	 * @see AirboatCommand#isConnected()
 	 */
 	public boolean isConnected() {
-		return _isConnected.get();
+		synchronized(_connectionLock) {
+			return (_connection == null);
+		}
 	}
 	/**
-	 * Internal function used to set the connection status of this object
-	 * (indicating whether currently in contact with vehicle controller).
+	 * Internal function used to set the connection object to the vehicle.
 	 */
-	protected void setConnected(boolean isConnected) {
-		_isConnected.set(isConnected);
+	protected void setConnection(ParcelFileDescriptor connection) {
+		synchronized(_connectionLock) {
+			_connection = connection.getFileDescriptor();
+		}
 	}
 
 	/**
 	 * Handles complete Arduino commands, once they are reassembled.
 	 * 
-	 * @param cmd
-	 *            the list of arguments composing a command
+	 * @param response
+	 *            the arguments composing a response
 	 */
-	protected void onCommand(List<String> cmd) {
-
-		// Just like Amarino, we use a flag to differentiate channels
-		switch (cmd.get(0).charAt(0)) {
-		case GET_RUDDER_FN:
-			logger.info("RUDDER: " + cmd);
-			break;
-		case GET_THRUST_FN:
-			logger.info("THRUST: " + cmd);
-			break;
-		case GET_TE_FN:
-			// Check size of function
-			if (cmd.size() != 4) {
-				Log.w(logTag, "Received corrupt sensor function: " + cmd);
-				return;
-			}
-
-			// Broadcast the sensor reading
-			try {
-				SensorData reading = new SensorData();
-				reading.channel = 0;
-				reading.data = new double[3];
-				reading.type = SensorType.TE;
-				for (int i = 0; i < 3; i++)
-					reading.data[i] = Double.parseDouble(cmd.get(i + 1));
-				sendSensor(reading.channel, reading);
-				logger.info("TE: " + cmd);
-			} catch (NumberFormatException e) {
-				Log.w(logTag, "Received corrupt sensor reading: " + cmd);
-			}
-
-			break;
-			
-		case GET_ES_FN:
-			// Check size of function
-			if (cmd.size() != 3) {
-				Log.w(logTag, "Received corrupt sensor function: " + cmd);
-				return;
-			}
-
-			// Broadcast the sensor reading
-			try {
-				SensorData reading = new SensorData();
-				reading.channel = 0;
-				reading.data = new double[2];
-				reading.type = SensorType.TE;
-				for (int i = 0; i < 2; i++)
-					reading.data[i] = Double.parseDouble(cmd.get(i + 1));
-				sendSensor(reading.channel, reading);
-				logger.info("ES2: " + cmd);
-			} catch (NumberFormatException e) {
-				Log.w(logTag, "Received corrupt sensor reading: " + cmd);
-			}
-
-			break;
-		case GET_DEPTH_FN:
-			// Check size of function
-			if (cmd.size() != 2) {
-				Log.w(logTag, "Received corrupt depth function: " + cmd);
-				return;
-			}
-			
-			// Broadcast the sensor reading
-			try {
-				SensorData reading = new SensorData();
-				reading.channel = 1;
-				reading.data = new double[1];
-				reading.type = SensorType.DEPTH;
-				reading.data[0] = Double.parseDouble(cmd.get(1));
-				sendSensor(reading.channel, reading);
-				logger.info("DEPTH: " + cmd);
-			} catch (NumberFormatException e) {
-				Log.w(logTag, "Received corrupt sensor reading: " + cmd);
-			}
-
-			break;
-		case GET_WATERCANARY_FN:
-			// Check size of function
-			if (cmd.size() != 9) {
-				Log.w(logTag, "Received corrupt watercanary function: " + cmd);
-				return;
-			}
-			
-			// Broadcast the sensor reading
-			try {
-				SensorData reading = new SensorData();
-				reading.channel = 2;
-				reading.data = new double[8];
-				reading.type = SensorType.WATERCANARY;
-				for (int i = 0; i < 8; i++)
-					reading.data[i] = Double.parseDouble(cmd.get(i+1));
-				sendSensor(reading.channel, reading);
-				logger.info("FLUOROMETER: " + cmd);
-			} catch (NumberFormatException e) {
-				Log.w(logTag, "Received corrupt sensor reading: " + cmd);
-			}
-
-			break;
-		case GET_DO_FN:
-			// Check size of function
-			if (cmd.size() != 2) {
-				Log.w(logTag, "Received corrupt do function: " + cmd);
-				return;
-			}
-			
-			// Broadcast the sensor reading
-			try {
-				SensorData reading = new SensorData();
-				reading.channel = 3;
-				reading.data = new double[1];
-				reading.type = SensorType.UNKNOWN;
-				reading.data[0] = Double.parseDouble(cmd.get(1));
-				sendSensor(reading.channel, reading);
-				logger.info("DO: " + cmd);
-			} catch (NumberFormatException e) {
-				Log.w(logTag, "Received corrupt sensor reading: " + cmd);
-			}
-
-			break;
-		case GET_MONITOR_FN:
-			// Check size of function
-			if (cmd.size() != 2) {
-				Log.w(logTag, "Received corrupt monitor function: " + cmd);
-				return;
-			} else {
-				Log.w(logTag, "Received valid monitor function: " + cmd);
-			}
-			
-			// Broadcast the sensor reading
-			String[] payload = cmd.get(1).split(",");
-			double[] data = new double[payload.length];
-			for (int i = 0; i < payload.length; ++i) {
-				try {
-					data[i] = Double.parseDouble(payload[i]);
-				} catch (NumberFormatException e) {
+	protected void onCommand(JSONObject response) {
+		
+		// Get a list of the keys in this response
+		@SuppressWarnings("unchecked")
+		Iterator<String> it = (Iterator<String>)response.keys();
+		
+		// Iterate over object keys to decipher commands
+		try {
+			while (it.hasNext()) {
+				String key = it.next();
+				JSONObject args = response.getJSONObject(key);
+				
+				if (key.equalsIgnoreCase("motor")) {
+					logger.info("MOTOR[" + args.getInt("channel") + "]: " + args.getDouble("value"));
+					break;
+				} else if (key.equalsIgnoreCase("servo")) {
+					logger.info("SERVO[" + args.getInt("channel") + "]: " + args.getDouble("value"));
+					break;
+				} else if (key.equalsIgnoreCase("sensor")) {
+					String type = args.getString("type");
+					int index = args.getInt("index");
+					JSONArray vals = args.getJSONArray("values");
+					
+					// Decode the sensor reading
+					SensorData reading = new SensorData();
+					reading.channel = index;
+					reading.type = SensorType.valueOf(type);
+					
+					reading.data = new double[vals.length()];
+					for (int i = 0; i < vals.length(); ++i) {
+						reading.data[i] = vals.getDouble(i);
+					}
+					
+					// Log the sensor reading to file
+					logger.info("SENSOR[" + index + "](" + type + "): " + vals.join(","));
+				} else {
+					Log.w(logTag, "Received unknown function type: " + key);
+					break;
 				}
-			}
-			
-			SensorData reading = new SensorData();
-			reading.channel = 4;
-			reading.data = data;
-			reading.type = SensorType.UNKNOWN;
-			sendSensor(reading.channel, reading);
-			logger.info("MONITOR: " + cmd);
-			break;
-		default:
-			Log.w(logTag, "Received unknown function type: " + cmd);
-			break;
+			} 
+		} catch (JSONException e) {
+			Log.w(logTag, "Malformed response: " + response);
 		}
 	}
-	
-	/**
-	 * Receiver to hear incoming commands to avoid an obstacle. Manipulates data into a list to pass to
-	 * the appropriate controller
-	 */
-	public BroadcastReceiver avoidObstacle = new BroadcastReceiver()
-	{
-
-		@Override
-		public void onReceive(Context context, Intent intent) {
-			// TODO Auto-generated method stub
-				Log.e("Osman","Broadcast Receiver successfully getting intent of the specific action");
-				boolean value = intent.getBooleanExtra(AirboatActivity.OBSTACLE_DATA, false);
-				if (value)
-					Log.e("Osman","Successfully pulled true from the intent");
-				else
-					Log.e("Osman","Failed to pull true from the intent");
-		}
-		
-	};
 
 	/**
-	 * Waits for incoming Amarino data from our device, assembles it into a list
-	 * of strings, then takes that and calls onCommand with it.
+	 * Waits for incoming data from the device, parses it into JSON 
+	 * and calls onCommand with it.
 	 */
-	public BroadcastReceiver dataCallback = new BroadcastReceiver() {
-
+	public Runnable receiver = new Runnable() {
 		@Override
-		public void onReceive(Context context, Intent intent) {
+		public void run() {
+			// Allocate a read buffer
+			byte[] data = new byte[512];
 
-			// The device address from which the data was sent
-			final String address = intent
-					.getStringExtra(AmarinoIntent.EXTRA_DEVICE_ADDRESS);
-
-			// Ignore data from other devices
-			if (!address.equalsIgnoreCase(_arduinoAddr))
-				return;
-
-			// the type of data which is added to the intent
-			final int dataType = intent.getIntExtra(
-					AmarinoIntent.EXTRA_DATA_TYPE, -1);
-
-			// Read in data as string and add to queue for processing
-			if (dataType == AmarinoIntent.STRING_EXTRA) {
-				String newCmd = intent.getStringExtra(AmarinoIntent.EXTRA_DATA);
-
-				// If a command is completed, attempt to execute it
-				if (newCmd.indexOf('\r') >= 0 || newCmd.indexOf('\n') >= 0) {
-					try {
-						onCommand(_partialCommand);
-					} catch (Throwable t) {
-						Log.e(logTag, "Command failed:", t);
+			// Run until connection is closed
+			try {
+				while (true) {
+					synchronized(_connection) {
+						_connectionIn.read(data);
+						JSONObject command = new JSONObject(new String(data, US_ASCII));
+						onCommand(command);
 					}
-					_partialCommand.clear();
-				} else {
-					// Otherwise, just add this command to the list
-					_partialCommand.add(newCmd);
 				}
-			}
-		}
-	};
-
-	/**
-	 * Listens for connection and disconnection of the vehicle controller.
-	 */
-	public BroadcastReceiver connectionCallback = new BroadcastReceiver() {
-
-		@Override
-		public void onReceive(Context context, Intent intent) {
-
-			// Check for events indicating connection or disconnection
-			if (intent.getAction().equals(AmarinoIntent.ACTION_CONNECTED)) {
-				final String address = intent
-						.getStringExtra(AmarinoIntent.EXTRA_DEVICE_ADDRESS);
-				if (!address.equalsIgnoreCase(_arduinoAddr))
-					return;
-
-				Log.i(logTag, "Connected to " + _arduinoAddr);
-				setConnected(true);
-			} else if (intent.getAction().equals(
-					AmarinoIntent.ACTION_DISCONNECTED)) {
-				final String address = intent
-						.getStringExtra(AmarinoIntent.EXTRA_DEVICE_ADDRESS);
-				if (!address.equalsIgnoreCase(_arduinoAddr))
-					return;
-
-				Log.i(logTag, "Disconnected from " + _arduinoAddr);
-				setConnected(false);
-			} else if (intent.getAction().equals(
-					AmarinoIntent.ACTION_CONNECTED_DEVICES)) {
-				final String[] devices = intent
-						.getStringArrayExtra(AmarinoIntent.EXTRA_CONNECTED_DEVICE_ADDRESSES);
-				if (devices != null)
-					for (String device : devices)
-						if (device.equalsIgnoreCase(_arduinoAddr)) {
-							Log.i(logTag, "Connected to " + _arduinoAddr);
-							setConnected(true);
-							return;
-						}
-				Log.i(logTag, "Disconnected from " + _arduinoAddr);
-				setConnected(false);
+			} catch (JSONException e) {
+				// TODO: log errors here
+			} catch (IOException e) {
+				// TODO: log errors here				
 			}
 		}
 	};
@@ -508,7 +352,21 @@ public class AirboatImpl extends AbstractVehicleServer {
 	// This is a hack to support the water sampler until PID is working again.
 	public synchronized byte[] captureImage(int width, int height) {
 		// Call Amarino to fire sampler
-		Amarino.sendDataToArduino(_context, _arduinoAddr, SET_SAMPLER_FN, true);
+		try {
+			JSONObject object = new JSONObject();
+			object.put("sampler", true);
+			
+			synchronized(_connectionLock) {
+				if (_connection != null) {
+					_connectionOut.write(object.toString().getBytes(US_ASCII));
+				}
+			}
+		} catch (IOException e) {
+			// TODO: Do something
+		} catch (JSONException e) {
+			// TODO: Do something
+		}
+
 		Log.i(logTag, "Triggering sampler.");
 		logger.info("SMP: NOW");
 		return new byte[1];
@@ -638,8 +496,7 @@ public class AirboatImpl extends AbstractVehicleServer {
 	@Override
 	public void startWaypoints(final UtmPose[] waypoints,
 			final String controller) {
-		Log.i(logTag,
-				"Starting waypoints with " + controller + ": "
+		Log.i(logTag, "Starting waypoints with " + controller + ": "
 						+ Arrays.toString(waypoints));
 		if (controller.equalsIgnoreCase("PRIMITIVES"))
 		{
@@ -650,8 +507,6 @@ public class AirboatImpl extends AbstractVehicleServer {
 		}
 		else
 		{
-
-
 			// Create a waypoint navigation task
 			TimerTask newNavigationTask = new TimerTask() {
 				final double dt = (double) UPDATE_INTERVAL_MS / 1000.0;
@@ -759,6 +614,7 @@ public class AirboatImpl extends AbstractVehicleServer {
 	public void setVelocity(Twist vel) {
 		_velocities = vel.clone();
 	}
+	
 	@Override
 	public boolean isAutonomous() {
 		return _isAutonomous.get();
@@ -779,8 +635,8 @@ public class AirboatImpl extends AbstractVehicleServer {
 		stopWaypoints();
 		stopCamera();
 
-		_isAutonomous.set(false);
-		_isConnected.set(false);
+		setAutonomous(false);
+		setConnection(null);
 
 		_updateTimer.cancel();
 		_updateTimer.purge();
