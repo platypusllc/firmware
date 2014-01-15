@@ -3,6 +3,7 @@
 
 // TODO: Move these to subdirectory or something!
 #include "Board.h"
+#include <Servo.h>
 
 namespace platypus 
 {
@@ -11,17 +12,49 @@ namespace platypus
   public:
     LED();
     ~LED();
-    void set(uint8_t red, uint8_t green, uint8_t blue);
-    void R(uint8_t red);
-    const uint8_t R();
-    void G(uint8_t green);
-    const uint8_t G();
-    void B(uint8_t blue);
-    const uint8_t B();
+    void set(int red, int green, int blue);
+    void R(int red);
+    int R();
+    void G(int green);
+    int G();
+    void B(int blue);
+    int B();
     
   private:
-    uint8_t r_, g_, b_;
+    int r_, g_, b_;
   };
+  
+  class Motor 
+  { 
+  public:
+    Motor(int channel);
+    virtual ~Motor();
+
+    virtual void arm() = 0;
+    
+    void velocity(float velocity);
+    float velocity();
+    
+    void enable(bool isOn);
+    bool enabled();
+    
+    void enable();
+    void disable();
+    
+    float current();
+    
+  private:
+    Servo servo_;
+    int enable_;
+    bool enabled_;
+    float velocity_;
+  };
+  
+  class VaporPro : public Motor {
+  public:
+    VaporPro(int channel) : Motor(channel) {}
+    void arm();
+  }; 
 }
 
 #endif //PLATYPUS_H

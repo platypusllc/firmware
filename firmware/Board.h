@@ -14,9 +14,21 @@ namespace board
     int B;
   };
   
+  // Board type definitions
+  typedef struct Motor_t 
+  { 
+    int ENABLE;
+    int SERVO;
+    int CURRENT;
+  };
+  
 // Pin definitions
 // Left side of Arduino
 const LED_t LED = { 54, 55, 56 };
+
+const Motor_t MOTOR[2] = { 
+  { 50, 11, A8 }, { 48, 12, A9 }
+};
 
 const int V_BATT = A3;
 

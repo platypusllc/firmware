@@ -17,42 +17,117 @@ LED::~LED()
   pinMode(board::LED.B, INPUT);
 }
 
-void LED::set(uint8_t red, uint8_t green, uint8_t blue)
+void LED::set(int red, int green, int blue)
 {
   R(red);
   G(green);
   B(blue);
 }
 
-void LED::R(uint8_t red)
+void LED::R(int red)
 {
  r_ = red;
  digitalWrite(board::LED.R, !r_);
 }
 
-const uint8_t LED::R()
+int LED::R()
 {
  return r_;
 }
 
-void LED::G(uint8_t green)
+void LED::G(int green)
 {
  g_ = green; 
  digitalWrite(board::LED.G, !g_);
 }
 
-const uint8_t LED::G()
+int LED::G()
 {
  return g_;
 }
 
-void LED::B(uint8_t blue)
+void LED::B(int blue)
 {
  b_ = blue; 
  digitalWrite(board::LED.B, !b_);
 }
 
-const uint8_t LED::B()
+int LED::B()
 {
  return b_;
 }
+
+Motor::Motor(int channel)
+: enable_(board::MOTOR[channel].ENABLE), enabled_(false), velocity_(0)
+{
+  servo_.attach(board::MOTOR[channel].SERVO);
+  digitalWrite(enable_, LOW);
+  pinMode(enable_, OUTPUT);
+}
+
+Motor::~Motor()
+{
+  pinMode(enable_, INPUT);
+  digitalWrite(enable_, LOW);
+  servo_.detach();
+}
+    
+void Motor::velocity(float velocity)
+{
+  if (velocity > 1.0) {
+    velocity = 1.0;
+  }
+  if (velocity < -1.0) {
+     velocity = -1.0; 
+  }
+  velocity_ = velocity;
+  
+  float command = (velocity * 500) + 1500;
+  servo_.writeMicroseconds(command);
+}
+
+float Motor::velocity()
+{
+  return velocity_;
+}
+
+void Motor::enable(bool isOn)
+{
+  enabled_ = isOn;
+  digitalWrite(enable_, enabled_);
+}
+
+bool Motor::enabled()
+{
+  return enabled_;
+}
+    
+void Motor::enable()
+{
+  enable(true);
+}
+
+void Motor::disable()
+{
+  enable(false);  
+}
+    
+float Motor::current()
+{
+ // TODO: fill me in. 
+}
+
+void VaporPro::arm() 
+{
+  enable();
+  
+  velocity(1.0);
+  delay(5500);
+
+  velocity(-1.0);
+  delay(3500);
+
+  velocity(0.0);
+  delay(8500);
+}
+

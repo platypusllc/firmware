@@ -1,6 +1,8 @@
 #include "Platypus.h"
-#include <Servo.h> 
 #include <adk.h>
+
+// Include necessary Arduino headers to inform the IDE to link these libraries
+#include <Servo.h>
 
 // TODO: remove me
 #include "Board.h"
@@ -17,8 +19,8 @@ char url[] = "http://senseplatypus.com";
 USBHost Usb;
 ADK adk(&Usb, companyName, applicationName, accessoryName,versionNumber, url, serialNumber);
 
-Servo servo;
 platypus::LED rgb_led;
+platypus::VaporPro motor(0);
 
 void setup() {
   Serial.begin(9600);
@@ -30,14 +32,12 @@ void setup() {
   pinMode(board::M1_PWR, OUTPUT);
   digitalWrite(board::M1_PWR, LOW);
   pinMode(board::M2_PWR, OUTPUT);
-  
-  servo.attach(board::M1_SERVO);
-  servo.write(90);
-  Serial.println("Servo started.");
-  
+    
   rgb_led.set(1,0,0);
-  
+  motor.arm();
+  rgb_led.set(1,1,0);
   delay(1000);
+  
   /*
   Serial.println("Motor arming.");
   digitalWrite(M2_PWR, HIGH);
@@ -93,6 +93,12 @@ void loop() {
   delay(200);
   rgb_led.set(0,0,1);
   delay(200);
+  
+  if (motor.velocity() < 1.0) {
+    motor.velocity(motor.velocity() + 0.1);
+  } else {
+    motor.velocity(-1.0);    
+  }
   
 /*
   // Test RGB led
