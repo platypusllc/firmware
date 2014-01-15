@@ -1,5 +1,9 @@
+#include "Platypus.h"
 #include <Servo.h> 
 #include <adk.h>
+
+// TODO: remove me
+#include "Board.h"
 
 /** ADK USB Host configuration */
 // Accessory descriptor. 
@@ -13,47 +17,6 @@ char url[] = "http://senseplatypus.com";
 USBHost Usb;
 ADK adk(&Usb, companyName, applicationName, accessoryName,versionNumber,url,serialNumber);
 
-// Pin definitions
-// Left side of Arduino
-const int LED_R = 54;
-const int LED_G = 55;
-const int LED_B = 56;
-
-const int V_BATT = A3;
-
-const int S4_ANALOG = A4;
-const int S3_ANALOG = A5;
-const int S2_ANALOG = A6;
-const int S1_ANALOG = A7;
-
-const int S1_CURRENT = A8;
-const int S2_CURRENT = A9;
-const int S3_CURRENT = A10;
-const int S4_CURRENT = A11;
-
-const int S1_PWR = 66;
-const int S2_PWR = 67;
-const int S3_PWR = 68;
-const int S4_PWR = 69;
-
-const int M2_PWR = 48;
-const int M1_PWR = 50;
-
-const int CHG_CTRL = 51;
-
-// Right side of Arduino
-const int M2_SERVO = 12;
-const int M1_SERVO = 11;
-
-const int S4_B = 9;
-const int S4_A = 8;
-const int S3_B = 7;
-const int S3_A = 6;
-const int S2_B = 5;
-const int S2_A = 4;
-const int S1_B = 3;
-const int S1_A = 2;
-
 Servo servo;
 
 void setup() {
@@ -61,21 +24,18 @@ void setup() {
   while (!Serial); // TODO: probably not needed for Due
  
   // Charging control
-  digitalWrite(CHG_CTRL, LOW);
-  pinMode(CHG_CTRL, INPUT);
-  digitalWrite(CHG_CTRL, HIGH);
+  digitalWrite(board::CHG_CTRL, LOW);
+  pinMode(board::CHG_CTRL, INPUT);
+  digitalWrite(board::CHG_CTRL, HIGH);
   
   // put your setup code here, to run once:
-  pinMode(LED_R, OUTPUT);
-  pinMode(LED_G, OUTPUT);
-  pinMode(LED_B, OUTPUT);
 
-  digitalWrite(M2_PWR, LOW);
-  pinMode(M1_PWR, OUTPUT);
-  digitalWrite(M1_PWR, LOW);
-  pinMode(M2_PWR, OUTPUT);
+  digitalWrite(board::M2_PWR, LOW);
+  pinMode(board::M1_PWR, OUTPUT);
+  digitalWrite(board::M1_PWR, LOW);
+  pinMode(board::M2_PWR, OUTPUT);
   
-  servo.attach(M1_SERVO);
+  servo.attach(board::M1_SERVO);
   servo.write(90);
   Serial.println("Servo started.");
   
