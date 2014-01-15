@@ -119,6 +119,8 @@ float Motor::current()
 
 void VaporPro::arm() 
 {
+  disable();
+  delay(500);
   enable();
   
   velocity(1.0);
