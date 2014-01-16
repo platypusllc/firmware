@@ -17,7 +17,7 @@ char serialNumber[] = "3";
 char url[] = "http://senseplatypus.com";
 
 USBHost Usb;
-ADK adk(&Usb, companyName, applicationName, accessoryName,versionNumber, url, serialNumber);
+ADK adk(&Usb, companyName, applicationName, accessoryName, versionNumber, url, serialNumber);
 
 // Android receive buffer
 const size_t RECEIVE_BUFFER_SIZE = 512;
