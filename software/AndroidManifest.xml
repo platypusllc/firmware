@@ -1,36 +1,25 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-      android:versionCode="3"
-      android:versionName="3.0" package="edu.cmu.ri.airboat.server">
+    package="com.platypus.android.server"
+    android:versionCode="1"
+    android:versionName="3.0.1-SNAPSHOT" >
 
-<uses-sdk android:targetSdkVersion="21" android:minSdkVersion="12"/>
-<uses-feature android:name="android.hardware.usb.accessory" />
-<uses-permission android:name="android.permission.INTERNET" />
-<uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
-<uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
-<uses-permission android:name="android.permission.CAMERA" />
-<uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-sdk
+        android:minSdkVersion="8"
+        android:targetSdkVersion="16" />
 
-<application android:icon="@drawable/icon" android:label="@string/app_name" android:allowBackup="true">
-<service android:name="AirboatService" android:label="Airboat Service" android:icon="@drawable/icon"></service>
-<service android:name="AirboatFailsafeService" android:label="Airboat Failsafe" android:icon="@drawable/icon"></service>
-<activity android:name=".AirboatLauncherActivity" android:label="@string/app_name"
-        android:launchMode="singleInstance" android:theme="@android:style/Theme.NoDisplay"
-        android:excludeFromRecents="true"> 
-    <intent-filter>
-        <action android:name="android.hardware.usb.action.USB_ACCESSORY_ATTACHED" />
-    </intent-filter>
-    <meta-data android:name="android.hardware.usb.action.USB_ACCESSORY_ATTACHED"
-        android:resource="@xml/device_filter" />
-</activity>
-<activity android:label="Airboat Setup" android:icon="@drawable/icon" android:name="AirboatActivity">
-<intent-filter>
-<action android:name="android.intent.action.MAIN"></action>
-<category android:name="android.intent.category.LAUNCHER"></category>
-</intent-filter>
-</activity>
-<activity android:label="Airboat Control" android:icon="@drawable/icon" android:name="AirboatControlActivity"></activity>
-<activity android:label="Airboat Camera" android:icon="@drawable/icon" android:name="AirboatCameraActivity" android:screenOrientation="nosensor" android:configChanges="keyboardHidden|orientation"></activity>
-</application>
+    <application
+        android:allowBackup="true"
+        android:icon="@drawable/ic_launcher"
+        android:label="@string/app_name"
+        android:theme="@style/AppTheme">
+        <activity android:name=".HelloAndroidActivity" >
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+    </application>
 
 </manifest>
