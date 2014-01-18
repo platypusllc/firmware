@@ -9,3 +9,7 @@ software/gen
 *.lst
 *.o
 *~
+
+# Ignore eclipse generated files
+*/.classpath
+*/.settings/
