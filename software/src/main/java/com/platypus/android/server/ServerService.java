@@ -158,7 +158,6 @@ public class ServerService extends IntentService {
      * them to the server.
      */
     OnSharedPreferenceChangeListener prefListener_ = new OnSharedPreferenceChangeListener() {
-        @Override
         public void onSharedPreferenceChanged(
                 SharedPreferences sharedPreferences, String key) {
             // TODO: When android supports java 1.7 compliance, change this to

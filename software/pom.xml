@@ -11,7 +11,7 @@
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<platform.version> 4.1.1.4
-			</platform.version>
+		</platform.version>
 		<android.plugin.version>3.6.0</android.plugin.version>
 	</properties>
 
@@ -21,6 +21,11 @@
 			<artifactId>android</artifactId>
 			<version>${platform.version}</version>
 			<scope>provided</scope>
+		</dependency>
+		<dependency>
+			<groupId>com.squareup.wire</groupId>
+			<artifactId>wire-runtime</artifactId>
+			<version>[1.2.0,)</version>
 		</dependency>
 	</dependencies>
 	<build>
@@ -41,9 +46,9 @@
 				<artifactId>android-maven-plugin</artifactId>
 				<configuration>
 					<sdk>
-						<platform>16</platform>
+						<platform>19</platform>
 					</sdk>
-									</configuration>
+				</configuration>
 			</plugin>
 		</plugins>
 	</build>
