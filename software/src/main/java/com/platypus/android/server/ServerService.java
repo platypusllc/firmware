@@ -102,7 +102,7 @@ public class ServerService extends IntentService {
         // Immediately register the server as a Foreground Service. This
         // prevents android from attempting to kill the service unless it is
         // critically low on resources.
-        Intent notificationIntent = new Intent(this, HelloAndroidActivity.class);
+        Intent notificationIntent = new Intent(this, StatusActivity.class);
         PendingIntent contentIntent = PendingIntent.getActivity(this, 0, notificationIntent, 0);
         Notification foreground_notification = new Notification.Builder(this)
                 .setSmallIcon(R.drawable.ic_stat_platypus_logo_transparent)

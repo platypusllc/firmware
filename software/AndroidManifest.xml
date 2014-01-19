@@ -21,7 +21,9 @@
         android:icon="@drawable/ic_launcher"
         android:label="@string/app_name"
         android:theme="@style/AppTheme" >
-        <activity android:name=".HelloAndroidActivity" >
+        <activity
+            android:name=".StatusActivity"
+            android:label="@string/status_activity_name" >
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
@@ -29,9 +31,16 @@
             </intent-filter>
         </activity>
         <activity
-            android:name=".ServerLauncherActivity"
+            android:name=".SettingsActivity"
+            android:label="@string/settings_activity_name" >
+            <intent-filter>
+                <category android:name="android.intent.category.PREFERENCE" />
+            </intent-filter>
+        </activity>
+        <activity
+            android:name=".LauncherActivity"
             android:excludeFromRecents="true"
-            android:label="@string/app_name"
+            android:label="@string/launcher_activity_name"
             android:launchMode="singleInstance"
             android:theme="@android:style/Theme.NoDisplay" >
             <intent-filter>
