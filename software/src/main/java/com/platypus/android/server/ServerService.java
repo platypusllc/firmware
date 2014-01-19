@@ -152,6 +152,9 @@ public class ServerService extends IntentService {
         } catch (IOException e) {
             Log.w(TAG, "Accessory closed uncleanly.", e);
         }
+        
+        // Unregister as a foreground service and remove notification.
+        stopForeground(true);
     }
 
     /**
@@ -174,9 +177,11 @@ public class ServerService extends IntentService {
         @Override
         public void onReceive(Context context, Intent intent) {
 
-            // Check if this accessory matches the one we have open.
+            // Retrieve the device that was just disconnected.
             UsbAccessory accessory = (UsbAccessory) intent
                     .getParcelableExtra(UsbManager.EXTRA_ACCESSORY);
+            
+            // Check if this accessory matches the one we have open.
             if (usbAccessory_.equals(accessory)) {
                 try {
                     // Close the descriptor for our accessory.
