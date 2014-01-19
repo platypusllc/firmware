@@ -59,8 +59,7 @@ public class ServerService extends IntentService {
         usbManager_ = (UsbManager) getSystemService(Context.USB_SERVICE);
 
         // Listen for shared preference changes
-        SharedPreferences prefs_ = PreferenceManager
-                .getDefaultSharedPreferences(this);
+        prefs_ = PreferenceManager.getDefaultSharedPreferences(this);
         prefs_.registerOnSharedPreferenceChangeListener(prefListener_);
         // TODO: set initial values for these system settings
 
@@ -77,8 +76,6 @@ public class ServerService extends IntentService {
     @Override
     protected void onHandleIntent(Intent intent) {
         
-        Log.e(TAG, "A.");
-
         // Immediately register the server as a Foreground Service. This
         // prevents android from attempting to kill the service unless it is
         // critically low on resources.
@@ -92,8 +89,6 @@ public class ServerService extends IntentService {
                 .setContentIntent(contentIntent).build();
         startForeground(ONGOING_NOTIFICATION_ID, foreground_notification);
 
-        Log.e(TAG, "B.");
-        
         // Connect to control board.
         // (Assume that we can only be launched by the LauncherActivity which
         // provides a handle to the accessory.)
@@ -105,16 +100,12 @@ public class ServerService extends IntentService {
             return;
         }
 
-        Log.e(TAG, "C.");
-        
         // Get input and output streams
         BufferedReader reader = new BufferedReader(new InputStreamReader(
                 new FileInputStream(usbDescriptor_.getFileDescriptor())));
         BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(
                 new FileOutputStream(usbDescriptor_.getFileDescriptor())));
 
-        Log.e(TAG, "D.");
-        
         // Start a loop to receive data from accessory.
         try {
             while (true) {
@@ -132,7 +123,7 @@ public class ServerService extends IntentService {
         try {
             usbDescriptor_.close();
         } catch (IOException e) {
-            Log.w(TAG, "Accessory closed uncleanly.", e);
+            Log.w(TAG, "Failed to close accessory cleanly.", e);
         }
 
         // Unregister as a foreground service and remove notification.
@@ -145,6 +136,13 @@ public class ServerService extends IntentService {
     @Override
     public void onDestroy() {
 
+        // If for any reason the device is not shutdown, do it now.
+        try {
+            usbDescriptor_.close();
+        } catch (IOException e) {
+            Log.w(TAG, "Failed to close accessory cleanly.", e);
+        }
+        
         // Disconnect intent filter to listen for device disconnections
         unregisterReceiver(usbReceiver_);
 
@@ -197,6 +195,7 @@ public class ServerService extends IntentService {
                     // Close the descriptor for our accessory.
                     // (This triggers server shutdown.)
                     usbDescriptor_.close();
+                    Log.e(TAG, "Closing accessory.");
                 } catch (IOException e) {
                     Log.w(TAG, "Failed to close accessory cleanly.", e);
                 }
