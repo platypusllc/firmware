@@ -51,6 +51,9 @@ public class ServerService extends IntentService {
      */
     @Override
     public void onCreate() {
+        
+        // Defer to superclass
+        super.onCreate();
 
         // Get USB Manager to handle USB accessories.
         usbManager_ = (UsbManager) getSystemService(Context.USB_SERVICE);
@@ -67,37 +70,14 @@ public class ServerService extends IntentService {
         registerReceiver(usbReceiver_, filter);
     }
 
-    /**
-     * Listens for changes in the server preferences, and immediately applies
-     * them to the server.
-     */
-    OnSharedPreferenceChangeListener prefListener_ = new OnSharedPreferenceChangeListener() {
-        @Override
-        public void onSharedPreferenceChanged(
-                SharedPreferences sharedPreferences, String key) {
-            // TODO: When android supports java 1.7 compliance, change this to
-            // 'switch'.
-
-            // Check for the key that changed and make the appropriate change to
-            // the server
-            if (key.equalsIgnoreCase("REGISTRY_IP")) {
-                // TODO: Update based on new preferences
-            } else if (key.equalsIgnoreCase("VEHICLE_TYPE")) {
-                // TODO: Update based on new preferences
-            } else if (key.equalsIgnoreCase("FAILSAFE_IP")) {
-                // TODO: Update based on new preferences
-            } else {
-                Log.d(TAG, "Unknown preference '" + key + "' changed.");
-            }
-        }
-    };
-
     /*
      * (non-Javadoc)
      * @see android.app.IntentService#onHandleIntent(android.content.Intent)
      */
     @Override
     protected void onHandleIntent(Intent intent) {
+        
+        Log.e(TAG, "A.");
 
         // Immediately register the server as a Foreground Service. This
         // prevents android from attempting to kill the service unless it is
@@ -112,6 +92,8 @@ public class ServerService extends IntentService {
                 .setContentIntent(contentIntent).build();
         startForeground(ONGOING_NOTIFICATION_ID, foreground_notification);
 
+        Log.e(TAG, "B.");
+        
         // Connect to control board.
         // (Assume that we can only be launched by the LauncherActivity which
         // provides a handle to the accessory.)
@@ -123,12 +105,16 @@ public class ServerService extends IntentService {
             return;
         }
 
+        Log.e(TAG, "C.");
+        
         // Get input and output streams
         BufferedReader reader = new BufferedReader(new InputStreamReader(
                 new FileInputStream(usbDescriptor_.getFileDescriptor())));
         BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(
                 new FileOutputStream(usbDescriptor_.getFileDescriptor())));
 
+        Log.e(TAG, "D.");
+        
         // Start a loop to receive data from accessory.
         try {
             while (true) {
@@ -164,7 +150,35 @@ public class ServerService extends IntentService {
 
         // Unregister the shared preferences
         prefs_.unregisterOnSharedPreferenceChangeListener(prefListener_);
+        
+        // Defer to superclass
+        super.onDestroy();
     }
+    
+    /**
+     * Listens for changes in the server preferences, and immediately applies
+     * them to the server.
+     */
+    OnSharedPreferenceChangeListener prefListener_ = new OnSharedPreferenceChangeListener() {
+        @Override
+        public void onSharedPreferenceChanged(
+                SharedPreferences sharedPreferences, String key) {
+            // TODO: When android supports java 1.7 compliance, change this to
+            // 'switch'.
+
+            // Check for the key that changed and make the appropriate change to
+            // the server
+            if (key.equalsIgnoreCase("REGISTRY_IP")) {
+                // TODO: Update based on new preferences
+            } else if (key.equalsIgnoreCase("VEHICLE_TYPE")) {
+                // TODO: Update based on new preferences
+            } else if (key.equalsIgnoreCase("FAILSAFE_IP")) {
+                // TODO: Update based on new preferences
+            } else {
+                Log.d(TAG, "Unknown preference '" + key + "' changed.");
+            }
+        }
+    };
 
     /**
      * Listen for disconnection events for accessory and close connection.

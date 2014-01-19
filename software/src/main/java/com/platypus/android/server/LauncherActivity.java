@@ -36,7 +36,10 @@ public class LauncherActivity extends Activity {
      */
     @Override
     public void onCreate(Bundle savedInstanceState) {
+        
+        // Defer to superclass
         super.onCreate(savedInstanceState);
+        
         Log.d(TAG, "Starting vehicle service launcher.");
 
         // Register a listener for USB permission events.
@@ -81,6 +84,9 @@ public class LauncherActivity extends Activity {
     protected void onDestroy() {
         // Unregister the receiver for USB permission responses.
         unregisterReceiver(usbReceiver_);
+        
+        // Defer to superclass
+        super.onDestroy();
     }
 
     /**
