@@ -102,7 +102,7 @@ public class ServerService extends IntentService {
         // Immediately register the server as a Foreground Service. This
         // prevents android from attempting to kill the service unless it is
         // critically low on resources.
-        Intent notificationIntent = new Intent(this, StatusActivity.class);
+        Intent notificationIntent = new Intent(this, MainActivity.class);
         PendingIntent contentIntent = PendingIntent.getActivity(this, 0, notificationIntent, 0);
         Notification foreground_notification = new Notification.Builder(this)
                 .setSmallIcon(R.drawable.ic_stat_platypus_logo_transparent)
@@ -112,14 +112,10 @@ public class ServerService extends IntentService {
                 .setContentIntent(contentIntent).build();
         startForeground(ONGOING_NOTIFICATION_ID, foreground_notification);
 
-        // Assume that we can only be launched by the ServerLauncherActivity
-        // which provides a handle to the accessory.
-
-        // TODO: Get the accessory
-
         // Connect to control board.
-        usbAccessory_ = (UsbAccessory) intent
-                .getParcelableExtra(UsbManager.EXTRA_ACCESSORY);
+        // (Assume that we can only be launched by the LauncherActivity which
+        // provides a handle to the accessory.)
+        usbAccessory_ = (UsbAccessory) intent.getParcelableExtra(UsbManager.EXTRA_ACCESSORY);
         usbDescriptor_ = usbManager_.openAccessory(usbAccessory_);
         if (usbDescriptor_ == null) {
             // If the accessory fails to connect, terminate service.
@@ -152,7 +148,7 @@ public class ServerService extends IntentService {
         } catch (IOException e) {
             Log.w(TAG, "Accessory closed uncleanly.", e);
         }
-        
+
         // Unregister as a foreground service and remove notification.
         stopForeground(true);
     }
@@ -180,7 +176,7 @@ public class ServerService extends IntentService {
             // Retrieve the device that was just disconnected.
             UsbAccessory accessory = (UsbAccessory) intent
                     .getParcelableExtra(UsbManager.EXTRA_ACCESSORY);
-            
+
             // Check if this accessory matches the one we have open.
             if (usbAccessory_.equals(accessory)) {
                 try {
