@@ -1,3 +1,49 @@
+package com.platypus.protobuf;
+
+message Vector3 {
+  required double x = 1;
+  required double y = 2;
+  required double z = 3;
+  optional double w = 4;
+}
+
+message WaypointMission {
+  repeated Vector3 waypoints = 1;
+  optional string type = 2;
+}
+
+message RegionMission {
+  repeated Vector3 bounds = 1;
+  optional string type = 2;
+}
+
+message Mission {
+  optional WaypointMission waypoint_mission = 1;
+  optional RegionMission region_mission = 2;
+}
+
+message Sensor {
+  optional string type = 1;
+  optional uint32 channel = 2; 
+  repeated double data = 3;
+}
+
+message Image {
+  optional bytes data = 1;
+  optional uint32 width = 2;
+  optional uint32 height = 3;
+}
+
+message Pose {
+  required Vector3 position = 1;
+  required Vector3 rotation = 2;
+}
+
+message Velocity {
+  required Vector3 linear = 1;
+  required Vector3 angular = 2;
+}
+
 message PlatypusCommand {
   optional Pose pose = 1;
   optional Velocity velocity = 2;
@@ -12,38 +58,5 @@ message PlatypusResponse {
   optional Mission mission = 3;
   optional Image image = 4;
   repeated Sensor sensors = 5;
-}
-
-message Mission {
-  optional WaypointMission waypoint_mission = 1;
-  optional RegionMission region_mission = 2;
-}
-
-message WaypointMission {
-  repeated Vector3 waypoints = 1;
-  optional string type = 2;
-}
-
-message Sensor {
-  optional string type = 1;
-  optional uint32 channel = 2; 
-  repeated double data = 3;
-}
-
-message Pose {
-  required Vector3 position = 1;
-  required Vector3 rotation = 2;
-}
-
-message Velocity {
-  required Vector linear = 1;
-  required Vector angular = 2;
-}
-
-message Vector3 {
-  required double x = 1;
-  required double y = 2;
-  required double z = 3;
-  optional double w = 4;
 }
 

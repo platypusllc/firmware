@@ -5,4 +5,4 @@
 #
 java -jar wire-compiler-1.2.0.jar \
     --proto_path=. \
-    --java_out=out google/protobuf/descriptor.proto
+    --java_out=../src/main/java ./platypus.proto
