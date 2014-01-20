@@ -4,14 +4,6 @@
 
 package com.platypus.android.server;
 
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.OutputStreamWriter;
-
 import android.app.IntentService;
 import android.app.Notification;
 import android.app.PendingIntent;
@@ -25,7 +17,19 @@ import android.hardware.usb.UsbAccessory;
 import android.hardware.usb.UsbManager;
 import android.os.ParcelFileDescriptor;
 import android.preference.PreferenceManager;
+import android.util.JsonReader;
+import android.util.JsonWriter;
 import android.util.Log;
+
+import com.platypus.android.server.transport.UdpTransport;
+import com.platypus.android.server.transport.WebSocketTransport;
+import com.platypus.protobuf.PlatypusCommand;
+
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
 
 /**
  * Implements a Platypus Vehicle Server.
@@ -39,6 +43,7 @@ public class ServerService extends IntentService {
     private UsbManager usbManager_;
     private UsbAccessory usbAccessory_;
     private ParcelFileDescriptor usbDescriptor_;
+    private JsonWriter usbWriter_;
 
     private SharedPreferences prefs_;
 
@@ -51,7 +56,7 @@ public class ServerService extends IntentService {
      */
     @Override
     public void onCreate() {
-        
+
         // Defer to superclass
         super.onCreate();
 
@@ -64,9 +69,14 @@ public class ServerService extends IntentService {
         // TODO: set initial values for these system settings
 
         // Create an intent filter to listen for device disconnections
-        IntentFilter filter = new IntentFilter(
-                UsbManager.ACTION_USB_ACCESSORY_DETACHED);
+        IntentFilter filter = new IntentFilter(UsbManager.ACTION_USB_ACCESSORY_DETACHED);
         registerReceiver(usbReceiver_, filter);
+        
+        // Create a UDP server socket
+        new UdpTransport(11311, serverReceiver_);
+        
+        // Create a TCP server WebSocket
+        new WebSocketTransport(11411, serverReceiver_);
     }
 
     /*
@@ -75,7 +85,7 @@ public class ServerService extends IntentService {
      */
     @Override
     protected void onHandleIntent(Intent intent) {
-        
+
         // Immediately register the server as a Foreground Service. This
         // prevents android from attempting to kill the service unless it is
         // critically low on resources.
@@ -101,20 +111,21 @@ public class ServerService extends IntentService {
         }
 
         // Get input and output streams
-        BufferedReader reader = new BufferedReader(new InputStreamReader(
+        JsonReader usbReader = new JsonReader(new InputStreamReader(
                 new FileInputStream(usbDescriptor_.getFileDescriptor())));
-        BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(
+        usbWriter_ = new JsonWriter(new OutputStreamWriter(
                 new FileOutputStream(usbDescriptor_.getFileDescriptor())));
 
         // Start a loop to receive data from accessory.
         try {
             while (true) {
-                String response = reader.readLine();
-                // TODO: handle this response
-                // handleCommand(response);
+                // Handle this response
+                usbReader.beginObject();
+                onAccessoryReceive(usbReader);
+                usbReader.endObject();
             }
         } catch (IOException e) {
-
+            Log.d(TAG, "Accessory connection closed.", e);
         }
 
         // TODO: is this actually necessary? The only way to get here is to
@@ -142,17 +153,37 @@ public class ServerService extends IntentService {
         } catch (IOException e) {
             Log.w(TAG, "Failed to close accessory cleanly.", e);
         }
-        
+
         // Disconnect intent filter to listen for device disconnections
         unregisterReceiver(usbReceiver_);
 
         // Unregister the shared preferences
         prefs_.unregisterOnSharedPreferenceChangeListener(prefListener_);
-        
+
         // Defer to superclass
         super.onDestroy();
     }
-    
+
+    /**
+     * Handle responses from the USB accessory.
+     * 
+     * @param response Parsed JSON object containing response from USB
+     *            accessory.
+     */
+    public void onAccessoryReceive(JsonReader reader) throws IOException {
+        while (reader.hasNext()) {
+            String name = reader.nextName();
+
+            if ("Sensor".equalsIgnoreCase(name)) {
+                // TODO: respond with something
+            } else if ("Motor".equalsIgnoreCase(name)) {
+                // TODO: respond with something
+            } else {
+                Log.w(TAG, "Unknown field '" + name + "'.");
+            }
+        }
+    }
+
     /**
      * Listens for changes in the server preferences, and immediately applies
      * them to the server.
@@ -177,6 +208,12 @@ public class ServerService extends IntentService {
         }
     };
 
+    Transport.Receiver serverReceiver_ = new Transport.Receiver() {
+        public void receive(PlatypusCommand command, Transport transport) {
+            // TODO Auto-generated method stub
+        }
+    };
+    
     /**
      * Listen for disconnection events for accessory and close connection.
      */
