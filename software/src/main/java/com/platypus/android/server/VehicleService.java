@@ -24,33 +24,48 @@ import android.util.Log;
 import com.platypus.android.server.transport.UdpTransport;
 import com.platypus.android.server.transport.WebSocketTransport;
 import com.platypus.protobuf.PlatypusCommand;
+import com.platypus.protobuf.PlatypusResponse;
 
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
+import java.util.List;
 
 /**
  * Implements a Platypus Vehicle Server.
  * 
  * @author pkv
  */
-public class ServerService extends IntentService {
-    private static final String TAG = ServerService.class.getName();
+public class VehicleService extends IntentService {
+    private static final String TAG = VehicleService.class.getName();
     private static final int ONGOING_NOTIFICATION_ID = 35332;
 
-    private UsbManager usbManager_;
-    private UsbAccessory usbAccessory_;
-    private ParcelFileDescriptor usbDescriptor_;
-    private JsonWriter usbWriter_;
+    private UsbManager mUsbManager;
+    private UsbAccessory mUsbAccessory;
+    private ParcelFileDescriptor mUsbDescriptor;
+    private JsonWriter mUsbWriter;
 
-    private SharedPreferences prefs_;
-
-    public ServerService() {
+    private SharedPreferences mPrefs;
+    private List<Transport> mTransports;
+    
+    public VehicleService() {
         super("Platypus Server");
     }
 
+    /**
+     * Broadcasts a response to all clients of this vehicle.
+     * 
+     * @param response
+     */
+    public void broadcast(PlatypusResponse response) {
+        // TODO: change this interface to serialize this message only once
+        for (Transport transport : mTransports) {
+            transport.send(response);
+        }
+    }
+    
     /**
      * Called by the system when the service is first created.
      */
@@ -61,16 +76,16 @@ public class ServerService extends IntentService {
         super.onCreate();
 
         // Get USB Manager to handle USB accessories.
-        usbManager_ = (UsbManager) getSystemService(Context.USB_SERVICE);
+        mUsbManager = (UsbManager) getSystemService(Context.USB_SERVICE);
 
         // Listen for shared preference changes
-        prefs_ = PreferenceManager.getDefaultSharedPreferences(this);
-        prefs_.registerOnSharedPreferenceChangeListener(prefListener_);
+        mPrefs = PreferenceManager.getDefaultSharedPreferences(this);
+        mPrefs.registerOnSharedPreferenceChangeListener(prefListener_);
         // TODO: set initial values for these system settings
 
         // Create an intent filter to listen for device disconnections
         IntentFilter filter = new IntentFilter(UsbManager.ACTION_USB_ACCESSORY_DETACHED);
-        registerReceiver(usbReceiver_, filter);
+        registerReceiver(usbStatusReceiver_, filter);
         
         // Create a UDP server socket
         new UdpTransport(11311, serverReceiver_);
@@ -102,9 +117,9 @@ public class ServerService extends IntentService {
         // Connect to control board.
         // (Assume that we can only be launched by the LauncherActivity which
         // provides a handle to the accessory.)
-        usbAccessory_ = (UsbAccessory) intent.getParcelableExtra(UsbManager.EXTRA_ACCESSORY);
-        usbDescriptor_ = usbManager_.openAccessory(usbAccessory_);
-        if (usbDescriptor_ == null) {
+        mUsbAccessory = (UsbAccessory) intent.getParcelableExtra(UsbManager.EXTRA_ACCESSORY);
+        mUsbDescriptor = mUsbManager.openAccessory(mUsbAccessory);
+        if (mUsbDescriptor == null) {
             // If the accessory fails to connect, terminate service.
             Log.e(TAG, "Failed to open accessory.");
             return;
@@ -112,9 +127,9 @@ public class ServerService extends IntentService {
 
         // Get input and output streams
         JsonReader usbReader = new JsonReader(new InputStreamReader(
-                new FileInputStream(usbDescriptor_.getFileDescriptor())));
-        usbWriter_ = new JsonWriter(new OutputStreamWriter(
-                new FileOutputStream(usbDescriptor_.getFileDescriptor())));
+                new FileInputStream(mUsbDescriptor.getFileDescriptor())));
+        mUsbWriter = new JsonWriter(new OutputStreamWriter(
+                new FileOutputStream(mUsbDescriptor.getFileDescriptor())));
 
         // Start a loop to receive data from accessory.
         try {
@@ -132,7 +147,7 @@ public class ServerService extends IntentService {
         // close the descriptor
         // Shutdown the connection to the accessory.
         try {
-            usbDescriptor_.close();
+            mUsbDescriptor.close();
         } catch (IOException e) {
             Log.w(TAG, "Failed to close accessory cleanly.", e);
         }
@@ -149,16 +164,16 @@ public class ServerService extends IntentService {
 
         // If for any reason the device is not shutdown, do it now.
         try {
-            usbDescriptor_.close();
+            mUsbDescriptor.close();
         } catch (IOException e) {
             Log.w(TAG, "Failed to close accessory cleanly.", e);
         }
 
         // Disconnect intent filter to listen for device disconnections
-        unregisterReceiver(usbReceiver_);
+        unregisterReceiver(usbStatusReceiver_);
 
         // Unregister the shared preferences
-        prefs_.unregisterOnSharedPreferenceChangeListener(prefListener_);
+        mPrefs.unregisterOnSharedPreferenceChangeListener(prefListener_);
 
         // Defer to superclass
         super.onDestroy();
@@ -217,7 +232,7 @@ public class ServerService extends IntentService {
     /**
      * Listen for disconnection events for accessory and close connection.
      */
-    BroadcastReceiver usbReceiver_ = new BroadcastReceiver() {
+    BroadcastReceiver usbStatusReceiver_ = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
 
@@ -226,11 +241,11 @@ public class ServerService extends IntentService {
                     .getParcelableExtra(UsbManager.EXTRA_ACCESSORY);
 
             // Check if this accessory matches the one we have open.
-            if (usbAccessory_.equals(accessory)) {
+            if (mUsbAccessory.equals(accessory)) {
                 try {
                     // Close the descriptor for our accessory.
                     // (This triggers server shutdown.)
-                    usbDescriptor_.close();
+                    mUsbDescriptor.close();
                     Log.e(TAG, "Closing accessory.");
                 } catch (IOException e) {
                     Log.w(TAG, "Failed to close accessory cleanly.", e);

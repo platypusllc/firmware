@@ -53,7 +53,7 @@ public class LauncherActivity extends Activity {
             Toast.makeText(this, "Platypus Control Board detected.",
                     Toast.LENGTH_SHORT).show();
 
-            Intent intent = new Intent(this, ServerService.class);
+            Intent intent = new Intent(this, VehicleService.class);
             intent.fillIn(getIntent(), 0);
             startService(intent);
 
@@ -110,7 +110,7 @@ public class LauncherActivity extends Activity {
                     if (intent.getBooleanExtra(UsbManager.EXTRA_PERMISSION_GRANTED, false)) {
                         if (accessory != null) {
                             Intent server_intent = new Intent(LauncherActivity.this,
-                                    ServerService.class);
+                                    VehicleService.class);
                             server_intent.fillIn(intent, 0);
                             startService(server_intent);
                             Log.d(TAG, "Exiting vehicle service launcher.");
