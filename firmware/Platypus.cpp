@@ -4,10 +4,15 @@ using namespace platypus;
 
 LED::LED() 
 : r_(0), g_(0), b_(0)
-{
+{  
   pinMode(board::LED.R, OUTPUT);
+  digitalWrite(board::LED.R, HIGH);
+  
   pinMode(board::LED.G, OUTPUT);
+  digitalWrite(board::LED.G, HIGH);
+  
   pinMode(board::LED.B, OUTPUT);
+  digitalWrite(board::LED.B, HIGH);
 }
 
 LED::~LED()
@@ -61,8 +66,8 @@ Motor::Motor(int channel)
 : enable_(board::MOTOR[channel].ENABLE), enabled_(false), velocity_(0)
 {
   servo_.attach(board::MOTOR[channel].SERVO);
-  digitalWrite(enable_, LOW);
   pinMode(enable_, OUTPUT);
+  digitalWrite(enable_, LOW);
 }
 
 Motor::~Motor()

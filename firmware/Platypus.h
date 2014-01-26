@@ -54,7 +54,7 @@ namespace platypus
   public:
     VaporPro(int channel) : Motor(channel) {}
     void arm();
-  }; 
+  };
 }
 
 #endif //PLATYPUS_H
