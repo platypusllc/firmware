@@ -2,7 +2,7 @@ package com.platypus.android.server.transport;
 
 import android.util.Log;
 
-import com.platypus.android.server.Transport;
+import com.platypus.android.server.VehicleTransport;
 import com.platypus.protobuf.PlatypusCommand;
 import com.platypus.protobuf.PlatypusResponse;
 import com.squareup.wire.Wire;
@@ -16,7 +16,7 @@ import java.net.InetSocketAddress;
 import java.util.Map;
 import java.util.TreeMap;
 
-public class WebSocketTransport extends WebSocketServer implements Transport {
+public class WebSocketTransport extends WebSocketServer implements VehicleTransport {
     
     private static final String TAG = WebSocketTransport.class.getName();
     private static final Wire WIRE = new Wire();
@@ -83,7 +83,7 @@ public class WebSocketTransport extends WebSocketServer implements Transport {
         }
     }
 
-    private static class WebSocketInternalTransport implements Transport {
+    private static class WebSocketInternalTransport implements VehicleTransport {
         private WebSocket socket_;
 
         public WebSocketInternalTransport(WebSocket socket) {

@@ -5,7 +5,7 @@ import android.util.Log;
 
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
-import com.platypus.android.server.Transport;
+import com.platypus.android.server.VehicleTransport;
 import com.platypus.protobuf.PlatypusCommand;
 import com.platypus.protobuf.PlatypusResponse;
 import com.squareup.wire.Wire;
@@ -17,7 +17,7 @@ import java.net.SocketAddress;
 import java.net.SocketException;
 import java.util.concurrent.TimeUnit;
 
-public class UdpTransport implements Transport {
+public class UdpTransport implements VehicleTransport {
 
     private static final String TAG = UdpTransport.class.getName();
     private static final Wire WIRE = new Wire();
@@ -92,7 +92,7 @@ public class UdpTransport implements Transport {
         }
     };
 
-    private class UdpInternalTransport implements Transport {
+    private class UdpInternalTransport implements VehicleTransport {
         private SocketAddress address_;
 
         public UdpInternalTransport(SocketAddress address) {

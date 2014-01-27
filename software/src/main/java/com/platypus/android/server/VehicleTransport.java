@@ -13,10 +13,11 @@ import com.platypus.protobuf.PlatypusResponse;
  * @author pkv
  *
  */
-public interface Transport  {
+public interface VehicleTransport  {
     public void send(PlatypusResponse response);
+    // TODO: should this have an onReceive in the interface?
     
     public interface Receiver {
-        public void receive(PlatypusCommand command, Transport transport);
+        public void receive(PlatypusCommand command, VehicleTransport transport);
     }
 }

@@ -19,6 +19,6 @@ public interface VehicleModule {
     public void start(VehicleService vehicle);
     public void stop();
     
-    public boolean onTransportReceive(PlatypusCommand command);
-    public boolean onAccessoryReceive(JsonReader response);
+    public boolean onTransportReceive(PlatypusCommand command, VehicleTransport sender);
+    public boolean onAccessoryReceive(String name, JsonReader response);
 }
