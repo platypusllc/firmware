@@ -39,12 +39,19 @@ jsmntok_t json_tokens[NUM_JSON_TOKENS];
 platypus::LED rgb_led;
 platypus::VaporPro motor(0);
 
+/**
+ * Returns a JSON error message to the connected USB device and the
+ * serial debugging console.
+ */
 void reportJsonError(jsmnerr_t error)
 {
   char *error_message;
   
   // Fill in the appropriate JSON error description.
   switch(error) {
+    case JSMN_SUCCESS:
+      // If we were successful, there is nothing to report.
+      return;
     case JSMN_ERROR_NOMEM:
       error_message = "Insufficient memory.";
       break;
@@ -75,6 +82,36 @@ void reportJsonError(jsmnerr_t error)
   Serial.println(output_buffer);
 }
 
+/**
+ * Copies a JSON string token into a provided char* buffer.
+ */
+jsmnerr_t json_string(const jsmntok_t &token, const char *json_str, char *output_str, size_t output_len)
+{
+  if (token.type != JSMN_STRING) return JSMN_ERROR_INVAL;
+  
+  size_t len = min(token.end - token.start, output_len - 1);
+  strncpy(output_str, &json_str[token.start], len);
+  output_str[len] = '\0';
+  
+  return JSMN_SUCCESS;
+}
+
+/**
+ * Extracts a floating point value from a JSON token.
+ */
+jsmnerr_t json_float(const jsmntok_t &token, const char *json_str, float &output_float)
+{
+  if (token.type != JSMN_PRIMITIVE) return JSMN_ERROR_INVAL;
+  
+  const size_t len = token.end - token.start;
+  char float_buffer[len];
+  strncpy(float_buffer, &json_str[token.start], len);
+  float_buffer[len] = '\0';
+  
+  output_float = atof(float_buffer);
+  return JSMN_SUCCESS;
+}
+
 void setup() 
 {
   // Initialize debugging serial console.
@@ -92,9 +129,6 @@ void loop()
 {
   // Number of bytes received from USB.
   uint32_t bytes_read = 0;
-  
-  // Signed char pointer to head of buffer.
-  char *input_buffer_ptr = (char *)input_buffer;
   
   // Result of JSON parsing.
   jsmnerr_t json_result;
@@ -136,7 +170,68 @@ void loop()
     return;
   }
   
-  // TODO: read these inputs and do things.
+  // Get the first token and make sure it is a JSON object.
+  jsmntok_t *token = json_tokens;
+  if (token->type != JSMN_OBJECT) 
+  {
+    reportJsonError(JSMN_ERROR_INVAL);
+    return;
+  }
+  
+  // Read each field of the JSON object and act accordingly.
+  size_t num_entries = token->size;
+  for (size_t entry_idx = 0; entry_idx < num_entries; entry_idx++)
+  {
+    // Get the name field for this entry.
+    token++;
+    char entry_name[64];
+    if (json_string(*token, input_buffer, entry_name, 64)) {
+      reportJsonError(JSMN_ERROR_INVAL);
+      return;
+    }
+    
+    // The following token should always be the entry object.
+    token++;
+    if (token->type != JSMN_OBJECT) {
+      reportJsonError(JSMN_ERROR_INVAL);
+      return;      
+    }
+    
+    // Based on the name token, parse the entry object parameters.
+    size_t num_params = token->size;
+    if (!strncmp("motor", entry_name, 6))
+    {
+      for (size_t param_idx = 0; param_idx < num_params; param_idx++)
+      {
+        // Get the name field for this parameter.
+        token++;
+        char param_name[64];
+        if (json_string(*token, input_buffer, param_name, 64)) {
+          reportJsonError(JSMN_ERROR_INVAL);
+          return;
+        }
+        
+        // TODO: parse something based on this
+        token++;
+      }
+    }
+    else if (!strncmp("sensor", entry_name, 6))
+    {
+      for (size_t param_idx = 0; param_idx < num_params; param_idx++)
+      {
+        // Get the name field for this parameter.
+        token++;
+        char param_name[64];
+        if (json_string(*token, input_buffer, param_name, 64)) {
+          reportJsonError(JSMN_ERROR_INVAL);
+          return;
+        }
+        
+        // TODO: parse something based on this
+        token++;
+      }
+    }
+  }
   
   // Send back response.
   //adk.write(bytes_read, input_buffer);
