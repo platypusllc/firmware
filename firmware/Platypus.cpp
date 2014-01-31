@@ -131,7 +131,7 @@ float Motor::current()
 bool Motor::set(char *param, char *value)
 {
   // Set motor velocity.
-  if (strncmp("v", param, 2))
+  if (!strncmp("v", param, 2))
   {
     float v = atof(value);
     velocity(v);
@@ -181,14 +181,14 @@ AnalogSensor::AnalogSensor(int channel)
 bool AnalogSensor::set(char* param, char* value)
 {
   // Set analog scale.
-  if (strncmp("scale", param, 6))
+  if (!strncmp("scale", param, 6))
   {
     float s = atof(value);
     scale(s);
     return true;
   }
   // Set analog offset.
-  else if (strncmp("offset", param, 7))
+  else if (!strncmp("offset", param, 7))
   {
     float o = atof(value);
     offset(o);
