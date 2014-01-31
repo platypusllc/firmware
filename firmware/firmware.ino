@@ -48,7 +48,7 @@ platypus::Motor *motor[NUM_MOTORS] = {
 const size_t NUM_SENSORS = 4;
 platypus::Sensor *sensor[NUM_SENSORS] = { 
   new platypus::AnalogSensor(0),
-  new platypus::ES2(1), 
+  new platypus::ES2(1),
   new platypus::AnalogSensor(2),
   new platypus::AnalogSensor(3)
 };
@@ -196,85 +196,58 @@ void loop()
       reportJsonError(JSMN_ERROR_INVAL);
       return;      
     }
+
+    // Attempt to decode the configurable object for this entry.
+    platypus::Configurable *entry_object;
     
-    // If the entry begins with 'm', parse the motor parameters.
+    // If it is a motor, it must take the form 'm1'.
     if (!strncmp("m", entry_name, 1))
     {
-      // Get the index of the motor this is referencing, e.g. 'm1'.
       size_t motor_idx = entry_name[1] - '0';
       if (motor_idx >= NUM_MOTORS) {
         reportJsonError(JSMN_ERROR_INVAL);
         return;
       }
-      
-      // Iterate through each parameter.
-      size_t num_params = token->size;
-      for (size_t param_idx = 0; param_idx < num_params; param_idx++)
-      {
-        // Get the name field for this parameter.
-        token++;
-        char param_name[64];
-        if (json_string(*token, input_buffer, param_name, 64)) {
-          reportJsonError(JSMN_ERROR_INVAL);
-          return;
-        }
-        
-        // Get the value field for this parameter.
-        token++;
-        char param_value[64];
-        if (json_string(*token, input_buffer, param_value, 64)) {
-          reportJsonError(JSMN_ERROR_INVAL);
-          return;
-        }
-        
-        // Set motor velocity
-        if (strncmp("v", param_name, 1))
-        {
-          float velocity = atof(param_value);
-          motor[motor_idx]->velocity(velocity);
-        }
-      }
+      entry_object = motor[motor_idx];
     }
-    // If the entry begins with 'm', parse the sensor parameters.
-    else if (!strncmp("s", entry_name, 1))
+    // If it is a motor, it must take the form 's1'.
+    if (!strncmp("s", entry_name, 1))
     {
-      // Get the index of the sensor this is referencing, e.g. 's1'.
       size_t sensor_idx = entry_name[1] - '0';
       if (sensor_idx >= NUM_SENSORS) {
         reportJsonError(JSMN_ERROR_INVAL);
         return;
       }
-      
-      // Iterate through each parameter.
-      size_t num_params = token->size;
-      for (size_t param_idx = 0; param_idx < num_params; param_idx++)
-      {
-        // Get the name field for this parameter.
-        token++;
-        char param_name[64];
-        if (json_string(*token, input_buffer, param_name, 64)) {
-          reportJsonError(JSMN_ERROR_INVAL);
-          return;
-        }
-        
-        // Get the value field for this parameter.
-        token++;
-        char param_value[64];
-        if (json_string(*token, input_buffer, param_value, 64)) {
-          reportJsonError(JSMN_ERROR_INVAL);
-          return;
-        }
-        
-        // Pass this parameter to the appropriate sensor.
-        sensor[sensor_idx]->set(param_name, param_value);
-      }
+      entry_object = sensor[sensor_idx];
     }
+    // Report parse error if unable to identify this entry.
     else {
       reportJsonError(JSMN_ERROR_INVAL);
-      return; 
+      return;
+    }
+    
+    // Iterate through each parameter.
+    size_t num_params = token->size;
+    for (size_t param_idx = 0; param_idx < num_params; param_idx++)
+    {
+      // Get the name field for this parameter.
+      token++;
+      char param_name[64];
+      if (json_string(*token, input_buffer, param_name, 64)) {
+        reportJsonError(JSMN_ERROR_INVAL);
+        return;
+      }
+      
+      // Get the value field for this parameter.
+      token++;
+      char param_value[64];
+      if (json_string(*token, input_buffer, param_value, 64)) {
+        reportJsonError(JSMN_ERROR_INVAL);
+        return;
+      }
+      
+      // Pass this parameter to the entry object.
+      entry_object->set(param_name, param_value);
     }
   }
-  
-  // Send back response.
-  //adk.write(bytes_read, input_buffer);
 }

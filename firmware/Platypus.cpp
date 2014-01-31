@@ -122,6 +122,22 @@ float Motor::current()
  // TODO: fill me in. 
 }
 
+bool Motor::set(char *param, char *value)
+{
+  // Set motor velocity.
+  if (strncmp("v", param, 2))
+  {
+    float v = atof(value);
+    velocity(v);
+    return true;
+  }
+  // Return false for unknown command.
+  else 
+  {
+    return false; 
+  }
+}
+
 Sensor::Sensor(int channel)
 {
   // TODO: fill me in
@@ -129,7 +145,12 @@ Sensor::Sensor(int channel)
 
 Sensor::~Sensor()
 {
-  // TODO: fill me in  
+  // TODO: fill me in
+}
+
+bool Sensor::set(char* param, char* value)
+{
+  return false;  
 }
 
 void VaporPro::arm()
@@ -148,12 +169,58 @@ void VaporPro::arm()
   delay(8500);
 }
 
-void AnalogSensor::set(char* param, char* value)
+AnalogSensor::AnalogSensor(int channel)
+: Sensor(channel), scale_(1.0f), offset_(0.0f) {}
+
+bool AnalogSensor::set(char* param, char* value)
 {
-  // TODO: fill me in
+  // Set analog scale.
+  if (strncmp("scale", param, 6))
+  {
+    float s = atof(value);
+    scale(s);
+    return true;
+  }
+  // Set analog offset.
+  else if (strncmp("offset", param, 7))
+  {
+    float o = atof(value);
+    offset(o);
+    return true;
+  }
+  // Return false for unknown command.
+  else 
+  {
+    return false; 
+  }
 }
 
-void ES2::set(char* param, char* value)
+void AnalogSensor::scale(float scale)
 {
-  // TODO: fill me in  
+  scale_ = scale;  
+}
+
+float AnalogSensor::scale()
+{
+  return scale_; 
+}
+
+void AnalogSensor::offset(float offset)
+{
+  offset = offset_; 
+}
+
+float AnalogSensor::offset()
+{
+  return offset_; 
+}
+
+char* AnalogSensor::name()
+{
+  return "analog";
+}
+
+char* ES2::name()
+{
+  return "es2";
 }

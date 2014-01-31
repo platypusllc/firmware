@@ -6,7 +6,13 @@
 #include <Servo.h>
 
 namespace platypus 
-{
+{    
+  class Configurable
+  {
+  public:     
+    virtual bool set(char *param, char *value);
+  };
+
   class Led 
   { 
   public:
@@ -27,13 +33,14 @@ namespace platypus
     int r_, g_, b_;
   };
   
-  class Motor 
+  class Motor : public Configurable
   { 
   public:
     Motor(int channel);
     virtual ~Motor();
 
     virtual void arm() = 0;
+    virtual bool set(char *param, char *value);
     
     void velocity(float velocity);
     float velocity();
@@ -53,13 +60,14 @@ namespace platypus
     float velocity_;
   };
   
-  class Sensor
+  class Sensor : public Configurable
   {
   public:
     Sensor(int channel);
     virtual ~Sensor();
     
-    virtual void set(char* param, char* value) = 0;
+    virtual bool set(char* param, char* value);
+    virtual char *name() = 0;
     
   private:
     board::Sensor_t sensor_;
@@ -73,14 +81,26 @@ namespace platypus
   
   class AnalogSensor : public Sensor {
   public:
-    AnalogSensor(int channel) : Sensor(channel) {}
-    void set(char* param, char* value);
+    AnalogSensor(int channel);
+
+    bool set(char* param, char* value);
+    char *name();
+    
+    void scale(float scale);
+    float scale();
+    
+    void offset(float offset);
+    float offset();
+    
+  private:
+    float scale_;
+    float offset_;
   };
   
   class ES2 : public Sensor {
   public:
     ES2(int channel) : Sensor(channel) {}
-    void set(char* param, char* value);
+    char *name();
   };
 }
 
