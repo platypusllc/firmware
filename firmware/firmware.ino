@@ -204,7 +204,7 @@ void loop()
     if (!strncmp("m", entry_name, 1))
     {
       size_t motor_idx = entry_name[1] - '0';
-      if (motor_idx >= NUM_MOTORS) {
+      if (motor_idx >= NUM_MOTORS || entry_name[2] != '\0') {
         reportJsonError(JSMN_ERROR_INVAL);
         return;
       }
@@ -214,7 +214,7 @@ void loop()
     if (!strncmp("s", entry_name, 1))
     {
       size_t sensor_idx = entry_name[1] - '0';
-      if (sensor_idx >= NUM_SENSORS) {
+      if (sensor_idx >= NUM_SENSORS || entry_name[2] != '\0') {
         reportJsonError(JSMN_ERROR_INVAL);
         return;
       }
