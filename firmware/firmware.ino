@@ -4,6 +4,7 @@
 // Arduino headers used in Platypus.h
 // (informs the IDE to link these libraries)
 #include <Servo.h>
+#include <Scheduler.h>
 
 // JSON parsing library
 #include "jsmn.h"
@@ -121,6 +122,10 @@ void setup()
   
   // Initialize the JSON parser.
   jsmn_init(&json_parser);
+  
+  // Create a task that decays motor velocity.
+  // TODO: move this into Motor class.
+  Scheduler.startLoop(motorDecayLoop);
 }
 
 void loop() 
@@ -251,3 +256,16 @@ void loop()
     }
   }
 }
+
+void motorDecayLoop()
+{
+  // Wait for a fixed time period.
+  delay(100);
+  
+  // Decay all motors exponentially towards zero speed.
+  for (size_t motor_idx = 0; motor_idx < NUM_MOTORS; ++motor_idx) {
+    motor[motor_idx]->velocity(motor[motor_idx]->velocity() * 0.9);
+  }
+}
+
+

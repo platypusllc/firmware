@@ -4,9 +4,12 @@
 // TODO: Move these to subdirectory or something!
 #include "Board.h"
 #include <Servo.h>
+#include <Scheduler.h>
 
 namespace platypus 
-{    
+{  
+  void Initialize();
+  
   class Configurable
   {
   public:     
