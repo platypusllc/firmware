@@ -55,6 +55,21 @@ platypus::Sensor *sensor[NUM_SENSORS] = {
 };
 
 /**
+ * Wrapper for ADK send command that copies data to debug port.
+ * Requires a null-terminated char* pointer.
+ */
+void send(char *str) 
+{ 
+  // Write string to USB. 
+  adk.write(strlen(str), (uint8_t*)str);
+  adk.write(3, (uint8_t*)"\r\n");
+  
+  // Copy string to debugging console.
+  Serial.print("-> ");
+  Serial.println(str); 
+}
+
+/**
  * Returns a JSON error message to the connected USB device and the
  * serial debugging console.
  */
@@ -88,13 +103,7 @@ void reportJsonError(jsmnerr_t error)
            "\"args\": \"%s\""
            "}",
            error_message, input_buffer);
-  
-  // Report error over USB. 
-  adk.write(strlen(output_buffer), (uint8_t*)output_buffer);
-  
-  // TODO: if performance issue, remove this line.
-  // Report error to debugging console.
-  Serial.println(output_buffer);
+  send(output_buffer);
 }
 
 /**
@@ -126,6 +135,14 @@ void setup()
   // Create a task that decays motor velocity.
   // TODO: move this into Motor class.
   Scheduler.startLoop(motorDecayLoop);
+  
+  // Print header indicating that board successfully initialized
+  Serial.println("------------------------------");
+  Serial.println(companyName);
+  Serial.println(url);
+  Serial.println(accessoryName);
+  Serial.println(versionNumber);
+  Serial.println("------------------------------");
 }
 
 void loop() 
@@ -143,7 +160,8 @@ void loop()
   if (!adk.isReady())
   {
     // Set LED to red when USB is not connected.
-    rgb_led.set(1,0,0);
+    rgb_led.R(1);
+    rgb_led.G(0);
     
     // Turn off motors.
     for (size_t motor_idx = 0; motor_idx < NUM_MOTORS; ++motor_idx) {
@@ -151,18 +169,24 @@ void loop()
     }
     
     // Wait for USB connection again.
+    yield();
     return;
   }
   
   // Set LED to green when USB is connected.
-  rgb_led.set(0,1,0); 
+  rgb_led.R(0);
+  rgb_led.G(1);
     
   // Read next command from USB.
   adk.read(&bytes_read, INPUT_BUFFER_SIZE, (uint8_t*)input_buffer);
-  if (bytes_read <= 0) return;
+  if (bytes_read <= 0) 
+  {
+    yield();
+    return;
+  }
   
-  // TODO: remove this debug print
-  Serial.print("RCV: ");
+  // Copy incoming message to debug console.
+  Serial.print("<- ");
   Serial.println(input_buffer);
     
   // Parse command as JSON string
@@ -269,8 +293,8 @@ void motorDecayLoop()
   
   // TODO: move this to another location (e.g. Motor)
   // Send motor status update over USB
-  char motor_update[64];
-  snprintf(motor_update, 64,
+  char motor_update[128];
+  snprintf(motor_update, 128,
     "{"
       "\"m0\":{"
         "\"v\":%f,"
@@ -284,7 +308,7 @@ void motorDecayLoop()
     motor[0]->velocity(), motor[0]->current(),
     motor[1]->velocity(), motor[1]->current()
   );
-  adk.write(strlen(motor_update), (uint8_t *)motor_update);
+  send(motor_update);
 }
 
 
