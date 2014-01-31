@@ -96,10 +96,15 @@ float Motor::velocity()
   return velocity_;
 }
 
-void Motor::enable(bool isOn)
+void Motor::enable(bool enabled)
 {
-  enabled_ = isOn;
+  enabled_ = enabled;
   digitalWrite(enable_, enabled_);
+  
+  if (!enabled_)
+  {
+    velocity(0.0); 
+  }
 }
 
 bool Motor::enabled()
@@ -119,7 +124,8 @@ void Motor::disable()
     
 float Motor::current()
 {
- // TODO: fill me in. 
+  // TODO: fill me in. 
+  return 0.0;
 }
 
 bool Motor::set(char *param, char *value)

@@ -8,8 +8,6 @@
 
 namespace platypus 
 {  
-  void Initialize();
-  
   class Configurable
   {
   public:     
@@ -48,7 +46,7 @@ namespace platypus
     void velocity(float velocity);
     float velocity();
     
-    void enable(bool isOn);
+    void enable(bool enabled);
     bool enabled();
     
     void enable();

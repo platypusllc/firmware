@@ -266,6 +266,25 @@ void motorDecayLoop()
   for (size_t motor_idx = 0; motor_idx < NUM_MOTORS; ++motor_idx) {
     motor[motor_idx]->velocity(motor[motor_idx]->velocity() * 0.9);
   }
+  
+  // TODO: move this to another location (e.g. Motor)
+  // Send motor status update over USB
+  char motor_update[64];
+  snprintf(motor_update, 64,
+    "{"
+      "\"m0\":{"
+        "\"v\":%f,"
+        "\"c\":%f"
+      "},"
+      "\"m1\":{"
+        "\"v\":%f,"
+        "\"c\":%f"
+      "}"
+    "}",
+    motor[0]->velocity(), motor[0]->current(),
+    motor[1]->velocity(), motor[1]->current()
+  );
+  adk.write(strlen(motor_update), (uint8_t *)motor_update);
 }
 
 
