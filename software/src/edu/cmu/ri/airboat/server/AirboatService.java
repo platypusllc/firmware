@@ -1,7 +1,13 @@
 package edu.cmu.ri.airboat.server;
 
 
+import java.io.BufferedReader;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
+import java.io.PrintWriter;
 import java.net.InetSocketAddress;
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -12,6 +18,8 @@ import javax.measure.unit.SI;
 import org.jscience.geography.coordinates.LatLong;
 import org.jscience.geography.coordinates.UTM;
 import org.jscience.geography.coordinates.crs.ReferenceEllipsoid;
+import org.json.JSONException;
+import org.json.JSONObject;
 
 import robotutils.Pose3D;
 import robotutils.Quaternion;
@@ -19,6 +27,7 @@ import android.app.Notification;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.Service;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
@@ -26,6 +35,8 @@ import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
+import android.hardware.usb.UsbAccessory;
+import android.hardware.usb.UsbManager;
 import android.location.Criteria;
 import android.location.Location;
 import android.location.LocationListener;
@@ -36,11 +47,11 @@ import android.os.Binder;
 import android.os.Bundle;
 import android.os.Debug;
 import android.os.IBinder;
+import android.os.ParcelFileDescriptor;
 import android.os.PowerManager;
 import android.os.PowerManager.WakeLock;
 import android.os.StrictMode;
 import android.util.Log;
-import at.abraxas.amarino.AmarinoIntent;
 
 import com.google.code.microlog4android.LoggerFactory;
 import com.google.code.microlog4android.appender.FileAppender;
@@ -54,7 +65,7 @@ import edu.cmu.ri.crw.data.UtmPose;
 import edu.cmu.ri.crw.udp.UdpVehicleService;
 
 /**
- * Android Service to register sensor and Amarino handlers for Android.
+ * Android Service to register sensor and Amarino handlers for Android.s
  * Contains a RosVehicleServer and a VehicleServer object.
  * 
  * @author pkv
@@ -79,11 +90,15 @@ public class AirboatService extends Service {
 	// Binder object that receives interactions from clients.
     private final IBinder _binder = new AirboatBinder();
     
+    // Reference to USB accessory
+    private UsbManager mUsbManager;
+    private UsbAccessory mUsbAccessory;
+    private ParcelFileDescriptor mUsbDescriptor;
+    
 	// Flag indicating run status (Android has no way to query if a service is running)
 	public static boolean isRunning = false;
 
 	// Member parameters 
-	private String _arduinoAddr;
 	private InetSocketAddress _udpRegistryAddr;
 	
 	// Objects implementing actual functionality
@@ -162,7 +177,7 @@ public class AirboatService extends Service {
 		public void onSensorChanged(SensorEvent event) {
 			// TODO Auto-generated method stub
 			/* Convert phone coordinates to world coordinates. use magnetometer and accelerometer to get orientation
-			 * Simple rotation is 90¼ clockwise about positive y axis. Thus, transformation is:
+			 * Simple rotation is 90ï¿½ clockwise about positive y axis. Thus, transformation is:
 			// /  M[ 0]   M[ 1]   M[ 2]  \ / values[0] \ = gyroValues[0]
 			// |  M[ 3]   M[ 4]   M[ 5]  | | values[1] | = gyroValues[1]
 			// \  M[ 6]   M[ 7]   M[ 8]  / \ values[2] / = gyroValues[2]
@@ -288,7 +303,6 @@ public class AirboatService extends Service {
 		// Hook up to necessary Android sensors
         SensorManager sm; 
         sm = (SensorManager)getSystemService(SENSOR_SERVICE);
-        //sm.registerListener(magneticListener, compass, SensorManager.SENSOR_DELAY_NORMAL);
         Sensor gyro = sm.getDefaultSensor(Sensor.TYPE_GYROSCOPE);
         sm.registerListener(gyroListener, gyro, SensorManager.SENSOR_DELAY_NORMAL);
         Sensor rotation_vector = sm.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR);
@@ -302,27 +316,55 @@ public class AirboatService extends Service {
         String provider = gps.getBestProvider(c, false);
         gps.requestLocationUpdates(provider, GPS_UPDATE_RATE, 0, locationListener);
 		
-        // Get necessary connection parameters
-		_arduinoAddr = intent.getStringExtra(BD_ADDR);
-		
-        // Create a filter that listens to Amarino connection events
-        IntentFilter amarinoFilter = new IntentFilter();
-        amarinoFilter.addAction(AmarinoIntent.ACTION_CONNECTED_DEVICES);
-        amarinoFilter.addAction(AmarinoIntent.ACTION_CONNECTED);
-        amarinoFilter.addAction(AmarinoIntent.ACTION_DISCONNECTED);
-        sendBroadcast(new Intent(AmarinoIntent.ACTION_GET_CONNECTED_DEVICES));
+        // Create an intent filter to listen for device disconnections
+        IntentFilter filter = new IntentFilter(UsbManager.ACTION_USB_ACCESSORY_DETACHED);
+        registerReceiver(_usbStatusReceiver, filter);
         
+        // Connect to control board.
+        // (Assume that we can only be launched by the LauncherActivity which
+        // provides a handle to the accessory.)
+        mUsbAccessory = (UsbAccessory) intent.getParcelableExtra(UsbManager.EXTRA_ACCESSORY);
+        mUsbDescriptor = mUsbManager.openAccessory(mUsbAccessory);
+        if (mUsbDescriptor == null) {
+            // If the accessory fails to connect, terminate service.
+            Log.e(TAG, "Failed to open accessory.");
+            stopSelf();
+            return Service.START_STICKY;
+        }
+        
+        // Create writer for output over USB
+        PrintWriter usbWriter = new PrintWriter(new OutputStreamWriter(
+                new FileOutputStream(mUsbDescriptor.getFileDescriptor())));
+        final BufferedReader usbReader = new BufferedReader(new InputStreamReader(
+                new FileInputStream(mUsbDescriptor.getFileDescriptor())));
+		
         // Create a filter to listen for obstacle avoidance instructions
         IntentFilter obstacleFilter = new IntentFilter();
         obstacleFilter.addAction(AirboatImpl.OBSTACLE);
 		
 		// Create the data object
-		_airboatImpl = new AirboatImpl(this, _arduinoAddr);
-		registerReceiver(_airboatImpl.dataCallback, new IntentFilter(AmarinoIntent.ACTION_RECEIVED));
-		registerReceiver(_airboatImpl.connectionCallback, amarinoFilter);
-		registerReceiver(_airboatImpl.avoidObstacle, obstacleFilter);
-		//Log.e("Osman", "Registered the Listener");
-		
+		_airboatImpl = new AirboatImpl(this, usbWriter);
+		new Thread(new Runnable() {
+			@Override
+			public void run() {
+				// Start a loop to receive data from accessory.
+		        try {
+		            while (true) {
+		                // Handle this response
+		            	String line = usbReader.readLine();
+		            	try {
+		            		_airboatImpl.onCommand(new JSONObject(line));
+		            	} catch (JSONException e) {
+		            		Log.w(TAG, "Failed to parse response '" + line + "'.", e);
+		            	}
+		            }
+		        } catch (IOException e) {
+		            Log.d(TAG, "Accessory connection closed.", e);
+		        }
+		        
+		        try { usbReader.close(); } catch (IOException e) {}
+			}
+		});
 		
 		// Start up UDP vehicle service in the background
 		new Thread(new Runnable() {
@@ -433,10 +475,12 @@ public class AirboatService extends Service {
 		}
 		
 		// Release locks on wifi and CPU
-		if (_wakeLock != null)
+		if (_wakeLock != null) {
 			_wakeLock.release();
-		if (_wifiLock != null)
+		}
+		if (_wifiLock != null) {
 			_wifiLock.release();
+		}
 		
 		// Disconnect from the Android sensors
         SensorManager sm; 
@@ -451,9 +495,7 @@ public class AirboatService extends Service {
         
 		// Disconnect the data object from this service
 		if (_airboatImpl != null) {
-			unregisterReceiver(_airboatImpl.dataCallback);
-			unregisterReceiver(_airboatImpl.connectionCallback);
-			unregisterReceiver(_airboatImpl.avoidObstacle);
+			try { mUsbDescriptor.close(); }  catch (IOException e) {}
 			_airboatImpl.setConnected(false);
 			_airboatImpl.shutdown();
 			_airboatImpl = null;
@@ -498,4 +540,30 @@ public class AirboatService extends Service {
 		
 		notificationManager.notify(SERVICE_ID, notification);
 	}
+	
+	/**
+     * Listen for disconnection events for accessory and close connection.
+     */
+    BroadcastReceiver _usbStatusReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+
+            // Retrieve the device that was just disconnected.
+            UsbAccessory accessory = (UsbAccessory) intent
+                    .getParcelableExtra(UsbManager.EXTRA_ACCESSORY);
+
+            // Check if this accessory matches the one we have open.
+            if (mUsbAccessory.equals(accessory)) {
+                try {
+                    // Close the descriptor for our accessory.
+                    // (This triggers server shutdown.)
+                    mUsbDescriptor.close();
+                    stopSelf();
+                    Log.e(TAG, "Closing accessory.");
+                } catch (IOException e) {
+                    Log.w(TAG, "Failed to close accessory cleanly.", e);
+                }
+            }
+        }
+    };
 }
