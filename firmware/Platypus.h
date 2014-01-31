@@ -7,11 +7,11 @@
 
 namespace platypus 
 {
-  class LED 
+  class Led 
   { 
   public:
-    LED();
-    ~LED();
+    Led();
+    virtual ~Led();
     void set(int red, int green, int blue);
     void R(int red);
     int R();
@@ -21,6 +21,9 @@ namespace platypus
     int B();
     
   private:
+    Led(const Led&);
+    Led& operator=(const Led&);
+    
     int r_, g_, b_;
   };
   
@@ -50,10 +53,34 @@ namespace platypus
     float velocity_;
   };
   
+  class Sensor
+  {
+  public:
+    Sensor(int channel);
+    virtual ~Sensor();
+    
+    virtual void set(char* param, char* value) = 0;
+    
+  private:
+    board::Sensor_t sensor_;
+  };
+  
   class VaporPro : public Motor {
   public:
     VaporPro(int channel) : Motor(channel) {}
     void arm();
+  };
+  
+  class AnalogSensor : public Sensor {
+  public:
+    AnalogSensor(int channel) : Sensor(channel) {}
+    void set(char* param, char* value);
+  };
+  
+  class ES2 : public Sensor {
+  public:
+    ES2(int channel) : Sensor(channel) {}
+    void set(char* param, char* value);
   };
 }
 

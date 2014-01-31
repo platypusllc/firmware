@@ -2,7 +2,7 @@
 
 using namespace platypus;
 
-LED::LED() 
+Led::Led() 
 : r_(0), g_(0), b_(0)
 {  
   pinMode(board::LED.R, OUTPUT);
@@ -15,49 +15,49 @@ LED::LED()
   digitalWrite(board::LED.B, HIGH);
 }
 
-LED::~LED()
+Led::~Led()
 {
   pinMode(board::LED.R, INPUT);
   pinMode(board::LED.G, INPUT);
   pinMode(board::LED.B, INPUT);
 }
 
-void LED::set(int red, int green, int blue)
+void Led::set(int red, int green, int blue)
 {
   R(red);
   G(green);
   B(blue);
 }
 
-void LED::R(int red)
+void Led::R(int red)
 {
  r_ = red;
  digitalWrite(board::LED.R, !r_);
 }
 
-int LED::R()
+int Led::R()
 {
  return r_;
 }
 
-void LED::G(int green)
+void Led::G(int green)
 {
  g_ = green; 
  digitalWrite(board::LED.G, !g_);
 }
 
-int LED::G()
+int Led::G()
 {
  return g_;
 }
 
-void LED::B(int blue)
+void Led::B(int blue)
 {
  b_ = blue; 
  digitalWrite(board::LED.B, !b_);
 }
 
-int LED::B()
+int Led::B()
 {
  return b_;
 }
@@ -122,7 +122,17 @@ float Motor::current()
  // TODO: fill me in. 
 }
 
-void VaporPro::arm() 
+Sensor::Sensor(int channel)
+{
+  // TODO: fill me in
+}
+
+Sensor::~Sensor()
+{
+  // TODO: fill me in  
+}
+
+void VaporPro::arm()
 {
   disable();
   delay(500);
@@ -138,3 +148,12 @@ void VaporPro::arm()
   delay(8500);
 }
 
+void AnalogSensor::set(char* param, char* value)
+{
+  // TODO: fill me in
+}
+
+void ES2::set(char* param, char* value)
+{
+  // TODO: fill me in  
+}

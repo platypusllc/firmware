@@ -35,9 +35,23 @@ const size_t NUM_JSON_TOKENS = 32;
 jsmn_parser json_parser;
 jsmntok_t json_tokens[NUM_JSON_TOKENS];
 
-// TODO: move this to platypus header in wrapper object
-platypus::LED rgb_led;
-platypus::VaporPro motor(0);
+// Define the systems on this board
+// TODO: move this board.h?
+platypus::Led rgb_led;
+
+const size_t NUM_MOTORS = 2;
+platypus::Motor *motor[NUM_MOTORS] = { 
+  new platypus::VaporPro(0), 
+  new platypus::VaporPro(1) 
+};
+
+const size_t NUM_SENSORS = 4;
+platypus::Sensor *sensor[NUM_SENSORS] = { 
+  new platypus::AnalogSensor(0),
+  new platypus::ES2(1), 
+  new platypus::AnalogSensor(2),
+  new platypus::AnalogSensor(3)
+};
 
 /**
  * Returns a JSON error message to the connected USB device and the
@@ -96,22 +110,6 @@ jsmnerr_t json_string(const jsmntok_t &token, const char *json_str, char *output
   return JSMN_SUCCESS;
 }
 
-/**
- * Extracts a floating point value from a JSON token.
- */
-jsmnerr_t json_float(const jsmntok_t &token, const char *json_str, float &output_float)
-{
-  if (token.type != JSMN_PRIMITIVE) return JSMN_ERROR_INVAL;
-  
-  const size_t len = token.end - token.start;
-  char float_buffer[len];
-  strncpy(float_buffer, &json_str[token.start], len);
-  float_buffer[len] = '\0';
-  
-  output_float = atof(float_buffer);
-  return JSMN_SUCCESS;
-}
-
 void setup() 
 {
   // Initialize debugging serial console.
@@ -139,17 +137,19 @@ void loop()
   // Shutdown system if not connected to USB.
   if (!adk.isReady())
   {
-    // Set LED to red.
+    // Set LED to red when USB is not connected.
     rgb_led.set(1,0,0);
     
     // Turn off motors.
-    motor.disable();
+    for (size_t motor_idx = 0; motor_idx < NUM_MOTORS; ++motor_idx) {
+      motor[motor_idx]->disable();
+    }
     
     // Wait for USB connection again.
     return;
   }
   
-  // Set LED to green.
+  // Set LED to green when USB is connected.
   rgb_led.set(0,1,0); 
     
   // Read next command from USB.
@@ -197,10 +197,18 @@ void loop()
       return;      
     }
     
-    // Based on the name token, parse the entry object parameters.
-    size_t num_params = token->size;
-    if (!strncmp("motor", entry_name, 6))
+    // If the entry begins with 'm', parse the motor parameters.
+    if (!strncmp("m", entry_name, 1))
     {
+      // Get the index of the motor this is referencing, e.g. 'm1'.
+      size_t motor_idx = entry_name[1] - '0';
+      if (motor_idx >= NUM_MOTORS) {
+        reportJsonError(JSMN_ERROR_INVAL);
+        return;
+      }
+      
+      // Iterate through each parameter.
+      size_t num_params = token->size;
       for (size_t param_idx = 0; param_idx < num_params; param_idx++)
       {
         // Get the name field for this parameter.
@@ -211,12 +219,34 @@ void loop()
           return;
         }
         
-        // TODO: parse something based on this
+        // Get the value field for this parameter.
         token++;
+        char param_value[64];
+        if (json_string(*token, input_buffer, param_value, 64)) {
+          reportJsonError(JSMN_ERROR_INVAL);
+          return;
+        }
+        
+        // Set motor velocity
+        if (strncmp("v", param_name, 1))
+        {
+          float velocity = atof(param_value);
+          motor[motor_idx]->velocity(velocity);
+        }
       }
     }
-    else if (!strncmp("sensor", entry_name, 6))
+    // If the entry begins with 'm', parse the sensor parameters.
+    else if (!strncmp("s", entry_name, 1))
     {
+      // Get the index of the sensor this is referencing, e.g. 's1'.
+      size_t sensor_idx = entry_name[1] - '0';
+      if (sensor_idx >= NUM_SENSORS) {
+        reportJsonError(JSMN_ERROR_INVAL);
+        return;
+      }
+      
+      // Iterate through each parameter.
+      size_t num_params = token->size;
       for (size_t param_idx = 0; param_idx < num_params; param_idx++)
       {
         // Get the name field for this parameter.
@@ -227,9 +257,21 @@ void loop()
           return;
         }
         
-        // TODO: parse something based on this
+        // Get the value field for this parameter.
         token++;
+        char param_value[64];
+        if (json_string(*token, input_buffer, param_value, 64)) {
+          reportJsonError(JSMN_ERROR_INVAL);
+          return;
+        }
+        
+        // Pass this parameter to the appropriate sensor.
+        sensor[sensor_idx]->set(param_name, param_value);
       }
+    }
+    else {
+      reportJsonError(JSMN_ERROR_INVAL);
+      return; 
     }
   }
   
