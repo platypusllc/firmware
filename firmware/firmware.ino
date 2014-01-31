@@ -71,16 +71,6 @@ void send(const char *str)
  */
 void reportError(const char *error_message, const char *buffer)
 {
-  // Replace double quote characters in buffer with single quote.
-  size_t buffer_len = strlen(buffer);
-  for (size_t buffer_idx = 0; buffer_idx < buffer_len; ++buffer_idx)
-  {
-    if (buffer[buffer_idx] = '"')
-    {
-      buffer[buffer_idx] = '\'';
-    }
-  }
-  
   // Construct a JSON error message.
   snprintf(output_buffer, OUTPUT_BUFFER_SIZE, 
            "{"
@@ -336,10 +326,14 @@ void loop()
  */
 void motorDecayLoop()
 {
+  // Only run while connected via USB.
+  if (!adk.isReady()) {
+    yield();
+    return;
+  }
+  
   // Wait for a fixed time period.
-  rgb_led.B(0);
-  delay(1000);
-  rgb_led.B(1);
+  delay(100);
   
   // Decay all motors exponentially towards zero speed.
   for (size_t motor_idx = 0; motor_idx < NUM_MOTORS; ++motor_idx) {
