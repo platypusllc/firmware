@@ -12,7 +12,7 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.graphics.PixelFormat;
+import android.graphics.ImageFormat;
 import android.hardware.Camera;
 import android.os.AsyncTask;
 import android.os.Bundle;
@@ -149,7 +149,7 @@ public class AirboatCameraActivity extends Activity implements SurfaceHolder.Cal
 			// Create a filename with the current date/time
 			Date date = new Date();
 			date.getDate();
-			SimpleDateFormat sdf = new SimpleDateFormat ("yyyyMMdd_hhmmss");
+			SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMdd_hhmmss");
             String filename = sdf.format(date) + ".jpg";
             
             // TODO: improve external file storage path handling (don't use Environment.getExternalStorageDirectory())
@@ -192,7 +192,6 @@ public class AirboatCameraActivity extends Activity implements SurfaceHolder.Cal
 		_surfaceView = (SurfaceView) findViewById(R.id.surface_camera);
 		_surfaceHolder = _surfaceView.getHolder();
 		_surfaceHolder.addCallback(this);
-		_surfaceHolder.setType(SurfaceHolder.SURFACE_TYPE_PUSH_BUFFERS);
 		
 		_quality = getIntent().getIntExtra(QUALITY_EXTRA, 85);
 		_width = getIntent().getIntExtra(WIDTH_EXTRA, 1600);
@@ -220,7 +219,7 @@ public class AirboatCameraActivity extends Activity implements SurfaceHolder.Cal
 			
 			// Set desired camera parameters
 			Camera.Parameters p = _camera.getParameters();
-			p.setPictureFormat(PixelFormat.JPEG);
+			p.setPictureFormat(ImageFormat.JPEG);
 			p.setPictureSize(_width, _height);
 			p.setJpegQuality(_quality);
 			_camera.setParameters(p);
