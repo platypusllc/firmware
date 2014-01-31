@@ -224,6 +224,9 @@ public class AirboatService extends Service {
 		StrictMode.ThreadPolicy policy = new StrictMode.ThreadPolicy.Builder().permitAll().build();
 		StrictMode.setThreadPolicy(policy);
 		
+        // Get USB Manager to handle USB accessories.
+        mUsbManager = (UsbManager) getSystemService(Context.USB_SERVICE);
+		
 		// TODO: optimize this to allocate resources up here and handle multiple start commands
 	}
 
@@ -262,13 +265,13 @@ public class AirboatService extends Service {
 			Log.e(TAG, "Started with null intent.");
 			return Service.START_STICKY;
 		}
-			
-		// Ignore startup requests that don't include a device name
-		if (!intent.hasExtra(BD_ADDR)) {
-			Log.e(TAG, "Started with no bluetooth address.");
+
+		// Ignore startup requests without an accessory.
+		if (!intent.hasExtra(UsbManager.EXTRA_ACCESSORY)) {
+			Log.e(TAG, "Attempted to start without accessory.");
 			return Service.START_STICKY;
 		}
-			
+		
 		// Ensure that we do not reinitialize if not necessary
 		if (_airboatImpl != null || _udpService != null) {
 			Log.w(TAG, "Attempted to start while running.");
@@ -558,11 +561,12 @@ public class AirboatService extends Service {
                     // Close the descriptor for our accessory.
                     // (This triggers server shutdown.)
                     mUsbDescriptor.close();
-                    stopSelf();
                     Log.e(TAG, "Closing accessory.");
                 } catch (IOException e) {
                     Log.w(TAG, "Failed to close accessory cleanly.", e);
                 }
+                
+                stopSelf();
             }
         }
     };

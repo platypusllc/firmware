@@ -148,9 +148,9 @@ public class AirboatActivity extends Activity {
 				
 				// Create an intent to properly start the vehicle server
 				Intent intent = new Intent(AirboatActivity.this, LauncherActivity.class);
-    			intent.putExtra(AirboatService.UDP_REGISTRY_ADDR, masterAddress.getText().toString());
-    			
-				// Save the current BD addr and master URI
+				intent.putExtra(AirboatService.UDP_REGISTRY_ADDR, masterAddress.getText().toString());
+								
+				// Save the current preferences to the phone
 				SharedPreferences prefs = getSharedPreferences(PREFS_PRIVATE, Context.MODE_PRIVATE);
 				Editor prefsPrivateEditor = prefs.edit();
 				prefsPrivateEditor.putString(KEY_MASTER_URI, masterAddress.getText().toString());
@@ -159,10 +159,10 @@ public class AirboatActivity extends Activity {
 				// Depending on whether the service is running, start or stop
     			if (!connectToggle.isChecked()) {
     				Log.i(logTag, "Starting background service.");
-    				startService(intent);
+    				startActivity(intent);
     			} else {
     				Log.i(logTag, "Stopping background service.");
-    				stopService(intent);
+    				stopService(new Intent(AirboatActivity.this, AirboatService.class));
     			}
 			}
     	});
