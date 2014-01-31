@@ -90,7 +90,7 @@ void reportJsonError(jsmnerr_t error)
            error_message, input_buffer);
   
   // Report error over USB. 
-  adk.write(strnlen(output_buffer, OUTPUT_BUFFER_SIZE), (uint8_t*)output_buffer);
+  adk.write(strlen(output_buffer), (uint8_t*)output_buffer);
   
   // TODO: if performance issue, remove this line.
   // Report error to debugging console.
