@@ -271,6 +271,10 @@ void setup()
   Serial.println(accessoryName);
   Serial.println(versionNumber);
   Serial.println("------------------------------");
+  
+  // Turn LED off
+  // TODO: Investigate how this gets turned on in the first place
+  rgb_led.set(0, 0, 0);
 }
 
 void loop() 
@@ -389,4 +393,5 @@ void serialDebugLoop()
     handleCommand(debug_buffer); 
   }
 }
+
 
