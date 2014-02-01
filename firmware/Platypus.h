@@ -79,6 +79,12 @@ namespace platypus
     VaporPro(int channel) : Motor(channel) {}
     void arm();
   };
+
+  class HobbyKingBoat : public Motor {
+  public:
+    HobbyKingBoat(int channel) : Motor(channel) {}
+    void arm();
+  };
   
   class AnalogSensor : public Sensor {
   public:

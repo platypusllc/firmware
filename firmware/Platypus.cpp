@@ -175,6 +175,22 @@ void VaporPro::arm()
   delay(8500);
 }
 
+void HobbyKingBoat::arm()
+{
+  disable();
+  delay(500);
+  
+  velocity(1.0);
+  enable();
+  delay(2000);
+
+  velocity(-1.0);
+  delay(2000);
+
+  velocity(0.0);
+  delay(2000);
+}
+
 AnalogSensor::AnalogSensor(int channel)
 : Sensor(channel), scale_(1.0f), offset_(0.0f) {}
 

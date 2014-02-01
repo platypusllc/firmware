@@ -30,7 +30,7 @@ char input_buffer[INPUT_BUFFER_SIZE+1];
 char debug_buffer[INPUT_BUFFER_SIZE+1];
 
 const size_t OUTPUT_BUFFER_SIZE = 576;
-char output_buffer[OUTPUT_BUFFER_SIZE+1];
+char output_buffer[OUTPUT_BUFFER_SIZE+3];
 
 // Define the systems on this board
 // TODO: move this board.h?
@@ -54,11 +54,17 @@ platypus::Sensor *sensor[NUM_SENSORS] = {
  * Wrapper for ADK send command that copies data to debug port.
  * Requires a null-terminated char* pointer.
  */
-void send(const char *str) 
+void send(char *str) 
 { 
-  // Write string to USB. 
-  adk.write(strlen(str), (uint8_t*)str);
-  adk.write(3, (uint8_t*)"\r\n");
+  // Add newline termination
+  // TODO: Make sure we don't buffer overflow
+  size_t len = strlen(str);
+  str[len++] = '\r';
+  str[len++] = '\n';
+  str[len] = '\0';
+  
+  // Write string to USB.
+  adk.write(len, (uint8_t*)str);
   
   // Copy string to debugging console.
   Serial.print("-> ");
@@ -301,6 +307,14 @@ void loop()
     yield();
     return;
   }
+  
+  // Rearm motors if necessary
+  for (size_t motor_idx = 0; motor_idx < NUM_MOTORS; ++motor_idx) {
+    if (!motor[motor_idx]->enabled()) {
+      motor[motor_idx]->arm();
+    }
+  }
+
   
   // Set LED to green when USB is connected.
   rgb_led.R(0);
