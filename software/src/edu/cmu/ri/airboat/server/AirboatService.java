@@ -190,8 +190,6 @@ public class AirboatService extends Service {
 			
 			if (_airboatImpl != null)
 				_airboatImpl.setPhoneGyro(gyroValues);
-    		//Log.w("this app", "gyroValues with RV: " + Float.toString(gyroValues[0]) + "," + Float.toString(gyroValues[1]) + "," + Float.toString(gyroValues[2]));
-    		//Log.e("this app", "event Values: " + Float.toString(event.values[0]) + "," + Float.toString(event.values[1]) + "," + Float.toString(event.values[2]));
 		}
 		@Override
 		public void onAccuracyChanged(Sensor sensor, int accuracy) {}
@@ -238,7 +236,6 @@ public class AirboatService extends Service {
 		return _airboatImpl;
 	}
 
-	
 	/** 
      * Constructs a default filename from the current date and time.
      * @return the default filename for the current time.
@@ -354,12 +351,14 @@ public class AirboatService extends Service {
 		        try {
 		            while (true) {
 		                // Handle this response
-		            	String line = usbReader.readLine();
-		            	try {
-		            		_airboatImpl.onCommand(new JSONObject(line));
+		            	char buffer[] = new char[128];
+		            	int len = usbReader.read(buffer);
+		            	Log.e(TAG, "Line: " + len + ": " + new String(buffer)); // TODO: remove this
+		            	/*try {
+		            		_airboatImpl.onCommand(new JSONObject(buffer));
 		            	} catch (JSONException e) {
-		            		Log.w(TAG, "Failed to parse response '" + line + "'.", e);
-		            	}
+		            		Log.w(TAG, "Failed to parse response '" + buffer + "'.", e);
+		            	}*/
 		            }
 		        } catch (IOException e) {
 		            Log.d(TAG, "Accessory connection closed.", e);

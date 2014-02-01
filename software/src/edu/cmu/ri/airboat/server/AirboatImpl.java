@@ -157,14 +157,18 @@ public class AirboatImpl extends AbstractVehicleServer {
 			// Send velocities as a JSON command			
 			try {
 				velocity0.put("v", (float) (_velocities.dx() - _velocities.drz()));
-				velocity1.put("v", (float) (_velocities.dx() - _velocities.drz()));
+				velocity1.put("v", (float) (_velocities.dx() + _velocities.drz()));
 				
 				command.put("m0", velocity0);
-				command.put("m0", velocity1);
+				command.put("m1", velocity1);
 				
 				_usbWriter.println(command.toString());
+				_usbWriter.flush();
+				
 				logger.info("VEL: " + command.toString());
-			} catch (JSONException e) {}
+			} catch (JSONException e) {
+				Log.w(logTag, "Failed to serialize command.", e); // TODO: remove this.
+			}
 		}
 	};
 
@@ -281,6 +285,7 @@ public class AirboatImpl extends AbstractVehicleServer {
 		// Call command to fire sampler
 		synchronized (_usbWriter) {
 			_usbWriter.println("{\"S0\":{ \"sample\": true }");
+			_usbWriter.flush();
 		}
 		Log.i(logTag, "Triggering sampler.");
 		logger.info("SMP: NOW");
