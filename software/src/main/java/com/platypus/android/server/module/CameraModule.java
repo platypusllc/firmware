@@ -11,6 +11,7 @@ import android.util.JsonReader;
 import android.util.Log;
 import android.view.SurfaceView;
 
+import com.platypus.android.server.VehicleTransport;
 import com.platypus.android.server.VehicleModule;
 import com.platypus.android.server.VehicleService;
 import com.platypus.protobuf.Image;
@@ -28,6 +29,7 @@ import java.util.List;
  * @author pkv
  *
  */
+// TODO: Add mechanism to set framerate using manual addPreviewCallback with TimerTask
 public class CameraModule implements VehicleModule {
     private static String TAG = CameraModule.class.getName();
 
@@ -48,7 +50,7 @@ public class CameraModule implements VehicleModule {
         // Set up camera parameters as needed
         Camera.Parameters params = mCamera.getParameters();
         {
-            // TODO: adjust parameters here
+            params.setJpegQuality(70);
         }
         mCamera.setParameters(params);
         
@@ -138,7 +140,7 @@ public class CameraModule implements VehicleModule {
     /* (non-Javadoc)
      * @see com.platypus.android.server.VehicleModule#onTransportReceive(com.platypus.protobuf.PlatypusCommand)
      */
-    public boolean onTransportReceive(PlatypusCommand command) {
+    public boolean onTransportReceive(PlatypusCommand command, VehicleTransport sender) {
         // TODO: Get camera settings from here
         return false;
     }
@@ -146,7 +148,7 @@ public class CameraModule implements VehicleModule {
     /* (non-Javadoc)
      * @see com.platypus.android.server.VehicleModule#onAccessoryReceive(android.util.JsonReader)
      */
-    public boolean onAccessoryReceive(JsonReader response) {
+    public boolean onAccessoryReceive(String name, JsonReader response) {
         // This module does not interact with the accessory.
         return false;
     }

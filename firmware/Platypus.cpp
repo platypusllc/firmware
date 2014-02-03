@@ -2,57 +2,62 @@
 
 using namespace platypus;
 
-LED::LED() 
+Led::Led() 
 : r_(0), g_(0), b_(0)
-{
+{  
   pinMode(board::LED.R, OUTPUT);
+  digitalWrite(board::LED.R, HIGH);
+  
   pinMode(board::LED.G, OUTPUT);
+  digitalWrite(board::LED.G, HIGH);
+  
   pinMode(board::LED.B, OUTPUT);
+  digitalWrite(board::LED.B, HIGH);
 }
 
-LED::~LED()
+Led::~Led()
 {
   pinMode(board::LED.R, INPUT);
   pinMode(board::LED.G, INPUT);
   pinMode(board::LED.B, INPUT);
 }
 
-void LED::set(int red, int green, int blue)
+void Led::set(int red, int green, int blue)
 {
   R(red);
   G(green);
   B(blue);
 }
 
-void LED::R(int red)
+void Led::R(int red)
 {
  r_ = red;
  digitalWrite(board::LED.R, !r_);
 }
 
-int LED::R()
+int Led::R()
 {
  return r_;
 }
 
-void LED::G(int green)
+void Led::G(int green)
 {
  g_ = green; 
  digitalWrite(board::LED.G, !g_);
 }
 
-int LED::G()
+int Led::G()
 {
  return g_;
 }
 
-void LED::B(int blue)
+void Led::B(int blue)
 {
  b_ = blue; 
  digitalWrite(board::LED.B, !b_);
 }
 
-int LED::B()
+int Led::B()
 {
  return b_;
 }
@@ -61,8 +66,8 @@ Motor::Motor(int channel)
 : enable_(board::MOTOR[channel].ENABLE), enabled_(false), velocity_(0)
 {
   servo_.attach(board::MOTOR[channel].SERVO);
-  digitalWrite(enable_, LOW);
   pinMode(enable_, OUTPUT);
+  digitalWrite(enable_, LOW);
 }
 
 Motor::~Motor()
@@ -91,10 +96,15 @@ float Motor::velocity()
   return velocity_;
 }
 
-void Motor::enable(bool isOn)
+void Motor::enable(bool enabled)
 {
-  enabled_ = isOn;
+  enabled_ = enabled;
   digitalWrite(enable_, enabled_);
+  
+  if (!enabled_)
+  {
+    velocity(0.0); 
+  }
 }
 
 bool Motor::enabled()
@@ -114,10 +124,42 @@ void Motor::disable()
     
 float Motor::current()
 {
- // TODO: fill me in. 
+  // TODO: fill me in. 
+  return 0.0;
 }
 
-void VaporPro::arm() 
+bool Motor::set(char *param, char *value)
+{
+  // Set motor velocity.
+  if (!strncmp("v", param, 2))
+  {
+    float v = atof(value);
+    velocity(v);
+    return true;
+  }
+  // Return false for unknown command.
+  else 
+  {
+    return false; 
+  }
+}
+
+Sensor::Sensor(int channel)
+{
+  // TODO: fill me in
+}
+
+Sensor::~Sensor()
+{
+  // TODO: fill me in
+}
+
+bool Sensor::set(char* param, char* value)
+{
+  return false;  
+}
+
+void VaporPro::arm()
 {
   disable();
   delay(500);
@@ -133,3 +175,74 @@ void VaporPro::arm()
   delay(8500);
 }
 
+void HobbyKingBoat::arm()
+{
+  disable();
+  delay(500);
+  
+  velocity(1.0);
+  enable();
+  delay(2000);
+
+  velocity(-1.0);
+  delay(2000);
+
+  velocity(0.0);
+  delay(2000);
+}
+
+AnalogSensor::AnalogSensor(int channel)
+: Sensor(channel), scale_(1.0f), offset_(0.0f) {}
+
+bool AnalogSensor::set(char* param, char* value)
+{
+  // Set analog scale.
+  if (!strncmp("scale", param, 6))
+  {
+    float s = atof(value);
+    scale(s);
+    return true;
+  }
+  // Set analog offset.
+  else if (!strncmp("offset", param, 7))
+  {
+    float o = atof(value);
+    offset(o);
+    return true;
+  }
+  // Return false for unknown command.
+  else 
+  {
+    return false; 
+  }
+}
+
+void AnalogSensor::scale(float scale)
+{
+  scale_ = scale;  
+}
+
+float AnalogSensor::scale()
+{
+  return scale_; 
+}
+
+void AnalogSensor::offset(float offset)
+{
+  offset = offset_; 
+}
+
+float AnalogSensor::offset()
+{
+  return offset_; 
+}
+
+char* AnalogSensor::name()
+{
+  return "analog";
+}
+
+char* ES2::name()
+{
+  return "es2";
+}

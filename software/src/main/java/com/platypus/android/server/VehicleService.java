@@ -21,6 +21,7 @@ import android.util.JsonReader;
 import android.util.JsonWriter;
 import android.util.Log;
 
+import com.platypus.android.server.module.CameraModule;
 import com.platypus.android.server.transport.UdpTransport;
 import com.platypus.android.server.transport.WebSocketTransport;
 import com.platypus.protobuf.PlatypusCommand;
@@ -48,7 +49,8 @@ public class VehicleService extends IntentService {
     private JsonWriter mUsbWriter;
 
     private SharedPreferences mPrefs;
-    private List<Transport> mTransports;
+    private List<VehicleTransport> mTransports;
+    private List<VehicleModule> mModules;
     
     public VehicleService() {
         super("Platypus Server");
@@ -61,7 +63,7 @@ public class VehicleService extends IntentService {
      */
     public void broadcast(PlatypusResponse response) {
         // TODO: change this interface to serialize this message only once
-        for (Transport transport : mTransports) {
+        for (VehicleTransport transport : mTransports) {
             transport.send(response);
         }
     }
@@ -88,10 +90,13 @@ public class VehicleService extends IntentService {
         registerReceiver(usbStatusReceiver_, filter);
         
         // Create a UDP server socket
-        new UdpTransport(11311, serverReceiver_);
+        mTransports.add(new UdpTransport(11311, serverReceiver_));
         
         // Create a TCP server WebSocket
-        new WebSocketTransport(11411, serverReceiver_);
+        mTransports.add(new WebSocketTransport(11411, serverReceiver_));
+        
+        // Create the camera module
+        mModules.add(new CameraModule());
     }
 
     /*
@@ -131,6 +136,11 @@ public class VehicleService extends IntentService {
         mUsbWriter = new JsonWriter(new OutputStreamWriter(
                 new FileOutputStream(mUsbDescriptor.getFileDescriptor())));
 
+        // Start all vehicle modules
+        for (VehicleModule module : mModules) {
+            module.start(this);
+        }
+        
         // Start a loop to receive data from accessory.
         try {
             while (true) {
@@ -141,6 +151,11 @@ public class VehicleService extends IntentService {
             }
         } catch (IOException e) {
             Log.d(TAG, "Accessory connection closed.", e);
+        }
+        
+        // Stop all vehicle modules
+        for (VehicleModule module : mModules) {
+            module.stop();
         }
 
         // TODO: is this actually necessary? The only way to get here is to
@@ -189,12 +204,12 @@ public class VehicleService extends IntentService {
         while (reader.hasNext()) {
             String name = reader.nextName();
 
-            if ("Sensor".equalsIgnoreCase(name)) {
-                // TODO: respond with something
-            } else if ("Motor".equalsIgnoreCase(name)) {
-                // TODO: respond with something
-            } else {
-                Log.w(TAG, "Unknown field '" + name + "'.");
+            synchronized (mModules) {
+                for (VehicleModule module : mModules) {
+                    if (module.onAccessoryReceive(name, reader)) {
+                        break;
+                    }
+                }
             }
         }
     }
@@ -223,9 +238,13 @@ public class VehicleService extends IntentService {
         }
     };
 
-    Transport.Receiver serverReceiver_ = new Transport.Receiver() {
-        public void receive(PlatypusCommand command, Transport transport) {
-            // TODO Auto-generated method stub
+    VehicleTransport.Receiver serverReceiver_ = new VehicleTransport.Receiver() {
+        public void receive(PlatypusCommand command, VehicleTransport transport) {
+            synchronized (mModules) {
+                for (VehicleModule module : mModules) {
+                    module.onTransportReceive(command, transport);
+                }
+            }
         }
     };
     
