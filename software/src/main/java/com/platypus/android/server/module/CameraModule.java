@@ -3,6 +3,9 @@
  */
 package com.platypus.android.server.module;
 
+import java.io.IOException;
+import java.util.List;
+
 import android.graphics.ImageFormat;
 import android.hardware.Camera;
 import android.hardware.Camera.PreviewCallback;
@@ -11,16 +14,11 @@ import android.util.JsonReader;
 import android.util.Log;
 import android.view.SurfaceView;
 
-import com.platypus.android.server.VehicleTransport;
 import com.platypus.android.server.VehicleModule;
 import com.platypus.android.server.VehicleService;
 import com.platypus.protobuf.Image;
-import com.platypus.protobuf.PlatypusCommand;
 import com.platypus.protobuf.PlatypusResponse;
 import com.squareup.wire.ByteString;
-
-import java.io.IOException;
-import java.util.List;
 
 /**
  * Connects to the phone camera and handles configuration and streaming of 
@@ -132,19 +130,10 @@ public class CameraModule implements VehicleModule {
                     .build();
             
             // Send the image to service
-            // TODO: don't send this to everyone!
-            mService.broadcast(response);
+            // TODO: send this to MADARA
         }
     };
     
-    /* (non-Javadoc)
-     * @see com.platypus.android.server.VehicleModule#onTransportReceive(com.platypus.protobuf.PlatypusCommand)
-     */
-    public boolean onTransportReceive(PlatypusCommand command, VehicleTransport sender) {
-        // TODO: Get camera settings from here
-        return false;
-    }
-
     /* (non-Javadoc)
      * @see com.platypus.android.server.VehicleModule#onAccessoryReceive(android.util.JsonReader)
      */

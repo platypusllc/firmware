@@ -4,6 +4,14 @@
 
 package com.platypus.android.server;
 
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
+import java.util.List;
+import java.util.UUID;
+
 import android.app.IntentService;
 import android.app.Notification;
 import android.app.PendingIntent;
@@ -21,18 +29,10 @@ import android.util.JsonReader;
 import android.util.JsonWriter;
 import android.util.Log;
 
+import com.madara.KnowledgeBase;
+import com.madara.transport.TransportSettings;
+import com.madara.transport.TransportType;
 import com.platypus.android.server.module.CameraModule;
-import com.platypus.android.server.transport.UdpTransport;
-import com.platypus.android.server.transport.WebSocketTransport;
-import com.platypus.protobuf.PlatypusCommand;
-import com.platypus.protobuf.PlatypusResponse;
-
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.OutputStreamWriter;
-import java.util.List;
 
 /**
  * Implements a Platypus Vehicle Server.
@@ -46,26 +46,15 @@ public class VehicleService extends IntentService {
     private UsbManager mUsbManager;
     private UsbAccessory mUsbAccessory;
     private ParcelFileDescriptor mUsbDescriptor;
-    private JsonWriter mUsbWriter;
+    protected JsonWriter mUsbWriter;
 
     private SharedPreferences mPrefs;
-    private List<VehicleTransport> mTransports;
     private List<VehicleModule> mModules;
+
+    protected KnowledgeBase mKnowledge;
     
     public VehicleService() {
         super("Platypus Server");
-    }
-
-    /**
-     * Broadcasts a response to all clients of this vehicle.
-     * 
-     * @param response
-     */
-    public void broadcast(PlatypusResponse response) {
-        // TODO: change this interface to serialize this message only once
-        for (VehicleTransport transport : mTransports) {
-            transport.send(response);
-        }
     }
     
     /**
@@ -83,17 +72,23 @@ public class VehicleService extends IntentService {
         // Listen for shared preference changes
         mPrefs = PreferenceManager.getDefaultSharedPreferences(this);
         mPrefs.registerOnSharedPreferenceChangeListener(prefListener_);
-        // TODO: set initial values for these system settings
 
         // Create an intent filter to listen for device disconnections
         IntentFilter filter = new IntentFilter(UsbManager.ACTION_USB_ACCESSORY_DETACHED);
         registerReceiver(usbStatusReceiver_, filter);
         
-        // Create a UDP server socket
-        mTransports.add(new UdpTransport(11311, serverReceiver_));
-        
-        // Create a TCP server WebSocket
-        mTransports.add(new WebSocketTransport(11411, serverReceiver_));
+        // MADARA configuration and setup.
+        {
+			// Create transport settings for a multicast transport
+			TransportSettings settings = new TransportSettings();
+			settings.setHosts(new String[]{mPrefs.getString(
+					"MULTICAST_ADDRESS", "239.255.0.1:4150")});
+			settings.setType(TransportType.MULTICAST_TRANSPORT);
+
+			// Create a knowledge base with the multicast transport settings
+			mKnowledge = new KnowledgeBase(mPrefs.getString("NAME", "Lutra"
+					+ UUID.randomUUID()), settings);
+        }
         
         // Create the camera module
         mModules.add(new CameraModule());
@@ -177,6 +172,12 @@ public class VehicleService extends IntentService {
     @Override
     public void onDestroy() {
 
+    	// MADARA shutdown.
+    	{
+            mKnowledge.free();
+            mKnowledge = null;
+    	}
+    	
         // If for any reason the device is not shutdown, do it now.
         try {
             mUsbDescriptor.close();
@@ -234,16 +235,6 @@ public class VehicleService extends IntentService {
                 // TODO: Update based on new preferences
             } else {
                 Log.d(TAG, "Unknown preference '" + key + "' changed.");
-            }
-        }
-    };
-
-    VehicleTransport.Receiver serverReceiver_ = new VehicleTransport.Receiver() {
-        public void receive(PlatypusCommand command, VehicleTransport transport) {
-            synchronized (mModules) {
-                for (VehicleModule module : mModules) {
-                    module.onTransportReceive(command, transport);
-                }
             }
         }
     };
