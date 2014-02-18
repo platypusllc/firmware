@@ -62,5 +62,8 @@ namespace board
   const int HALF_DUPLEX01 = 38;
   const int HALF_DUPLEX23 = 39;
   const int LOOPBACK = 40;
+  
+  const int PWR_INT = 44;
+  const int PWR_KILL = 46;
 }
 #endif //BOARD_H

@@ -258,6 +258,10 @@ void handleCommand(const char *buffer)
 
 void setup() 
 {
+  // Latch power shutdown line high to keep board from turning off.
+  pinMode(board::PWR_KILL, OUTPUT);
+  digitalWrite(board::PWR_KILL, HIGH);
+  
   // Initialize debugging serial console.
   Serial.begin(115200);
   
