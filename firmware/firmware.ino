@@ -38,8 +38,8 @@ platypus::Led rgb_led;
 
 const size_t NUM_MOTORS = 2;
 platypus::Motor *motor[NUM_MOTORS] = { 
-  new platypus::VaporPro(0), 
-  new platypus::VaporPro(1) 
+  new platypus::HobbyKingBoat(0), 
+  new platypus::HobbyKingBoat(1) 
 };
 
 const size_t NUM_SENSORS = 4;
@@ -64,7 +64,7 @@ void send(char *str)
   str[len] = '\0';
   
   // Write string to USB.
-  adk.write(len, (uint8_t*)str);
+  if (adk.isReady()) adk.write(len, (uint8_t*)str);
   
   // Copy string to debugging console.
   Serial.print("-> ");
@@ -285,6 +285,7 @@ void setup()
   // Turn LED off
   // TODO: Investigate how this gets turned on in the first place
   rgb_led.set(0, 0, 0);
+  delay(1000);
 }
 
 void loop() 
@@ -293,6 +294,8 @@ void loop()
   uint32_t bytes_read = 0;
   
   // Attempt to create USB connection.
+  rgb_led.R(1);
+  rgb_led.G(1);  
   Usb.Task();
   
   // Shutdown system if not connected to USB.
@@ -318,7 +321,6 @@ void loop()
       motor[motor_idx]->arm();
     }
   }
-
   
   // Set LED to green when USB is connected.
   rgb_led.R(0);
