@@ -1,22 +1,19 @@
 package edu.cmu.ri.airboat.server;
 
-import java.io.PrintWriter;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Timer;
-import java.util.TimerTask;
-import java.util.concurrent.atomic.AtomicBoolean;
-
-import org.json.JSONException;
-import org.json.JSONObject;
-
-import robotutils.Pose3D;
 import android.content.Context;
 import android.util.Log;
 
 import com.google.code.microlog4android.LoggerFactory;
+
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import java.io.PrintWriter;
+import java.util.Arrays;
+import java.util.Iterator;
+import java.util.Timer;
+import java.util.TimerTask;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import edu.cmu.ri.crw.AbstractVehicleServer;
 import edu.cmu.ri.crw.VehicleController;
@@ -26,6 +23,7 @@ import edu.cmu.ri.crw.data.SensorData;
 import edu.cmu.ri.crw.data.Twist;
 import edu.cmu.ri.crw.data.Utm;
 import edu.cmu.ri.crw.data.UtmPose;
+import robotutils.Pose3D;
 
 /**
  * Contains the actual implementation of vehicle functionality, accessible as a
@@ -44,7 +42,7 @@ public class AirboatImpl extends AbstractVehicleServer {
 	private static final String logTag = AirboatImpl.class.getName();
 	public static final int UPDATE_INTERVAL_MS = 200;
 	public static final int NUM_SENSORS = 4;
-	public static final AirboatController DEFAULT_CONTROLLER = AirboatController.POINT_AND_SHOOT;
+	public static final VehicleController DEFAULT_CONTROLLER = AirboatController.STOP.controller;
 
 	protected final SensorType[] _sensorTypes = new SensorType[NUM_SENSORS];
 	protected UtmPose[] _waypoints = new UtmPose[0];
@@ -65,9 +63,6 @@ public class AirboatImpl extends AbstractVehicleServer {
 	public static final double[] NAN_GAINS = new double[] { Double.NaN,
 			Double.NaN, Double.NaN };
 
-	// Set timeout for asynchronous Amarino calls
-	public static final int RESPONSE_TIMEOUT_MS = 250; // was 200 earlier
-
 	// Status information
 	final AtomicBoolean _isConnected = new AtomicBoolean(true);
 	final AtomicBoolean _isAutonomous = new AtomicBoolean(false);
@@ -75,8 +70,7 @@ public class AirboatImpl extends AbstractVehicleServer {
 	// Internal data structures for Amarino callbacks
 	final Context _context;
 	final PrintWriter _usbWriter;
-	final List<String> _partialCommand = new ArrayList<String>(10);
-	public static final double[] DEFAULT_TWIST = {0, 0, 0, 0, 0, 0}; 
+	public static final double[] DEFAULT_TWIST = {0, 0, 0, 0, 0, 0};
 
 	/**
 	 * Inertial state vector, currently containing a 6D pose estimate:
@@ -113,8 +107,8 @@ public class AirboatImpl extends AbstractVehicleServer {
 	 * 
 	 * @param context
 	 *            the application context to use
-	 * @param addr
-	 *            the bluetooth address of the vehicle controller
+	 * @param usbWriter
+	 *            the USB device for the vehicle controller
 	 */
 
 	protected AirboatImpl(Context context, PrintWriter usbWriter) {
@@ -128,12 +122,8 @@ public class AirboatImpl extends AbstractVehicleServer {
 	/**
 	 * Internal update function called at regular intervals to process command
 	 * and control events.
-	 * 
-	 * @param dt
-	 *            the elapsed time since the last update call (in seconds)
 	 */
 	private TimerTask _updateTask = new TimerTask() {
-		// long _lastUpdateMs = 0;
 
 		@Override
 		public void run() {
@@ -204,6 +194,7 @@ public class AirboatImpl extends AbstractVehicleServer {
 	{
 		return _gyroPhone.clone();
 	}
+
 	/**
 	 * Function that maps a value between one range to a representative value in another range. Use for modifying servo commands
 	 * to send to Arduino   
@@ -220,7 +211,7 @@ public class AirboatImpl extends AbstractVehicleServer {
 	}
 	
 	/**
-	 * @see AirboatCommand#isConnected()
+	 * @see edu.cmu.ri.crw.VehicleServer#isConnected()
 	 */
 	public boolean isConnected() {
 		return _isConnected.get();
@@ -251,10 +242,10 @@ public class AirboatImpl extends AbstractVehicleServer {
 				JSONObject value = cmd.getJSONObject(name);
 				
 				if (name.startsWith("m")) {
-					int motor = name.charAt(1);
+					int motor = name.charAt(1) - 48;
 					logger.info("MOTOR" + motor + ": " + value.getDouble("v"));
 				} else if (name.startsWith("s")) {
-					int sensor = name.charAt(1);
+					int sensor = name.charAt(1) - 48;
 					logger.info("SENSOR" + sensor + ": " + value.toString());
 					
 					// Hacks to send sensor information
@@ -428,14 +419,12 @@ public class AirboatImpl extends AbstractVehicleServer {
 		}
 		else
 		{
-
-
 			// Create a waypoint navigation task
 			TimerTask newNavigationTask = new TimerTask() {
 				final double dt = (double) UPDATE_INTERVAL_MS / 1000.0;
 
 				// Retrieve the appropriate controller in initializer
-				VehicleController vc = AirboatController.STOP.controller;
+				VehicleController vc = DEFAULT_CONTROLLER;
 				{
 					try {
 						vc = (controller == null) ? vc : AirboatController.valueOf(controller).controller;
@@ -451,7 +440,6 @@ public class AirboatImpl extends AbstractVehicleServer {
 						if (!_isAutonomous.get()) {
 							// If we are not autonomous, do nothing
 							sendWaypointUpdate(WaypointState.PAUSED);
-							return;
 						} else if (_waypoints.length == 0) {
 							// If we are finished with waypoints, stop in place
 							sendWaypointUpdate(WaypointState.DONE);
