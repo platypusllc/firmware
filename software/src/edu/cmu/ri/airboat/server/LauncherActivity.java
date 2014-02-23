@@ -18,7 +18,7 @@ import android.widget.Toast;
  * received by services directly. Instead, this activity is launched, which does
  * nothing but use the USB connection event to start the vehicle server.
  * 
- * @see https://github.com/follower/android-background-service-usb-accessory
+ * @see <a href="https://github.com/follower/android-background-service-usb-accessory">Android Background Service - USB accessory</a>
  * @author pkv
  */
 public class LauncherActivity extends Activity {
@@ -88,8 +88,7 @@ public class LauncherActivity extends Activity {
             if (ACTION_USB_PERMISSION.equals(action)) {
                 synchronized (this) {
                     // Get the accessory to which we are responding.
-                    UsbAccessory accessory = (UsbAccessory) intent
-                            .getParcelableExtra(UsbManager.EXTRA_ACCESSORY);
+                    UsbAccessory accessory = intent.getParcelableExtra(UsbManager.EXTRA_ACCESSORY);
 
                     // Permission was granted, if the device exists: open it.
                     if (intent.getBooleanExtra(UsbManager.EXTRA_PERMISSION_GRANTED, false)) {

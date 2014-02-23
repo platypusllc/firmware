@@ -47,7 +47,6 @@ public class AirboatActivity extends Activity {
 	
 	public static final String PREFS_PRIVATE = "PREFS_PRIVATE";
 	public static final String KEY_MASTER_URI = "KEY_MASTER_URI";
-	public static final String KEY_BT_ADDR = "KEY_BT_ADDR";
 	public static final String KEY_FAILSAFE_ADDR = "KEY_FAILSAFE_ADDR";
 	public static final String OBSTACLE_DATA = "OBSTACLE_DATA";
 
@@ -81,7 +80,7 @@ public class AirboatActivity extends Activity {
 				
 				@Override
 				protected Integer doInBackground(Void... urls) {
-					int textBkgnd = 0xAAAA0000;
+					int textBackground = 0xAAAA0000;
 					
 					_isUpdated.set(true);
 					_isUpdating.set(true);
@@ -92,10 +91,10 @@ public class AirboatActivity extends Activity {
 						InetSocketAddress addr = CrwNetworkUtils.toInetSocketAddress(text);
 						
 						if (addr != null && addr.getAddress().isReachable(500))
-							textBkgnd = 0xAA00AA00;
+							textBackground = 0xAA00AA00;
 				    } catch (IOException e) {}
 				    
-				    return textBkgnd;
+				    return textBackground;
 				}
 
 				@Override
