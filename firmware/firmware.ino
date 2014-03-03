@@ -1,4 +1,5 @@
 #include "Platypus.h"
+#include "Components.h"
 #include <adk.h>
 
 // Arduino headers used in Platypus.h
