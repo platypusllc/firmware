@@ -38,18 +38,10 @@ char output_buffer[OUTPUT_BUFFER_SIZE+3];
 platypus::Led rgb_led;
 
 const size_t NUM_MOTORS = 2;
-platypus::Motor *motor[NUM_MOTORS] = { 
-  new platypus::HobbyKingBoat(0), 
-  new platypus::HobbyKingBoat(1) 
-};
+platypus::Motor *motor[NUM_MOTORS];
 
 const size_t NUM_SENSORS = 4;
-platypus::Sensor *sensor[NUM_SENSORS] = { 
-  new platypus::AnalogSensor(0),
-  new platypus::ES2(1),
-  new platypus::AnalogSensor(2),
-  new platypus::AnalogSensor(3)
-};
+platypus::Sensor *sensor[NUM_SENSORS];
 
 /**
  * Wrapper for ADK send command that copies data to debug port.
@@ -263,6 +255,16 @@ void setup()
   pinMode(board::PWR_KILL, OUTPUT);
   digitalWrite(board::PWR_KILL, HIGH);
   
+  // Initialize sensors
+  sensor[0] = new platypus::AnalogSensor(0);
+  sensor[1] = new platypus::Hdf5(1);
+  sensor[2] = new platypus::AnalogSensor(2);
+  sensor[3] = new platypus::AnalogSensor(3);
+  
+  // Initialize motors
+  motor[0] = new platypus::HobbyKingBoat(0); 
+  motor[1] = new platypus::HobbyKingBoat(1);
+
   // Initialize debugging serial console.
   Serial.begin(115200);
   

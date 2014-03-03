@@ -90,7 +90,25 @@ char* ES2::name()
 Hdf5::Hdf5(int channel)
 : Sensor(channel) 
 {
+  // Enable +12V output
+  pinMode(board::SENSOR[channel].PWR_ENABLE, OUTPUT);
+  digitalWrite(board::SENSOR[channel].PWR_ENABLE, HIGH);
   
+  // Enable RSxxx receiver
+  pinMode(board::SENSOR[channel].RX_DISABLE, OUTPUT);
+  digitalWrite(board::SENSOR[channel].RX_DISABLE, LOW);
+
+  // Enable RSxxx transmitter
+  pinMode(board::SENSOR[channel].TX_ENABLE, OUTPUT);
+  digitalWrite(board::SENSOR[channel].TX_ENABLE, HIGH);
+
+  // Enable RS485 termination resistor
+  pinMode(board::SENSOR[channel].RS485_TE, OUTPUT);
+  digitalWrite(board::SENSOR[channel].RS485_TE, HIGH);
+
+  // Select RS485 (deselect RS232)
+  pinMode(board::SENSOR[channel].RS485_232, OUTPUT);
+  digitalWrite(board::SENSOR[channel].RS485_232, HIGH);
 }
 
 char* Hdf5::name()
