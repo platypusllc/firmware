@@ -61,6 +61,7 @@ void send(char *str)
   
   // Copy string to debugging console.
   Serial.print("-> ");
+  Serial.print(str);
 }
 
 /**
