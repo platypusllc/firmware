@@ -102,16 +102,64 @@ Hdf5::Hdf5(int channel)
   pinMode(board::SENSOR[channel].TX_ENABLE, OUTPUT);
   digitalWrite(board::SENSOR[channel].TX_ENABLE, HIGH);
 
-  // Enable RS485 termination resistor
+  // Disable RS485 termination resistor?
+  // TODO: Clean this up.
   pinMode(board::SENSOR[channel].RS485_TE, OUTPUT);
-  digitalWrite(board::SENSOR[channel].RS485_TE, HIGH);
+  digitalWrite(board::SENSOR[channel].RS485_TE, LOW);
 
   // Select RS485 (deselect RS232)
   pinMode(board::SENSOR[channel].RS485_232, OUTPUT);
   digitalWrite(board::SENSOR[channel].RS485_232, HIGH);
+  
+  // Set RX_NEG pin as input to not interfere with RX_POS input.
+  pinMode(board::SENSOR[channel].GPIO[board::RX_NEG], INPUT);
+  digitalWrite(board::SENSOR[channel].GPIO[board::RX_NEG], LOW);
+
+  // Set TX_NEG pin as input to not interfere with TX_POS output.
+  pinMode(board::SENSOR[channel].GPIO[board::TX_NEG], INPUT);
+  digitalWrite(board::SENSOR[channel].GPIO[board::TX_NEG], LOW);
+  
+  // Start up serial port
+  SERIAL_PORTS[channel]->begin(115200);
 }
 
 char* Hdf5::name()
 {
   return "hdf5";
+}
+
+void Hdf5::onSerial()
+{
+  // TODO: Remove this debug instructio
+  Serial.write('#');
+  Serial.write(SERIAL_PORTS[1]->read());
+  Serial.println(); 
+}
+
+Winch::Winch(int channel)
+: Sensor(channel) 
+{
+  // Enable +12V output
+  pinMode(board::SENSOR[channel].PWR_ENABLE, OUTPUT);
+  digitalWrite(board::SENSOR[channel].PWR_ENABLE, HIGH);
+    
+  // Start up serial port
+  SERIAL_PORTS[channel]->begin(38400);
+}
+
+char* Winch::name()
+{
+  return "winch";
+}
+
+void Winch::send(uint8_t address, uint8_t command, uint8_t data)
+{
+  // Compute 7-bit checksum as per Roboclaw datasheet.
+  uint8_t checksum = (address + command + data) & 0x7F;
+  
+  // TODO: don't hard code this
+  Serial2.write(address);
+  Serial2.write(command);
+  Serial2.write(data);
+  Serial2.write(checksum);
 }

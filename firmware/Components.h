@@ -45,6 +45,14 @@ namespace platypus
   public:
     Hdf5(int channel);
     char *name();
+    void onSerial();
+  };
+  
+  class Winch : public Sensor {
+  public:
+    Winch(int channel);
+    char *name();
+    void send(uint8_t address, uint8_t command, uint8_t data);
   };
 }
 

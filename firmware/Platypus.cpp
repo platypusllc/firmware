@@ -2,6 +2,44 @@
 
 using namespace platypus;
 
+USARTClass *platypus::SERIAL_PORTS[4] = {
+  NULL,
+  &Serial1,
+  &Serial2,
+  &Serial3,
+};
+
+SerialHandler_t platypus::SERIAL_HANDLERS[4] = {
+  {NULL, NULL},
+  {NULL, NULL},
+  {NULL, NULL},
+  {NULL, NULL}
+};
+
+void serialEvent1() 
+{
+  if (SERIAL_HANDLERS[1].handler != NULL) 
+  {
+    (*SERIAL_HANDLERS[1].handler)(SERIAL_HANDLERS[1].data);
+  }
+}
+
+void serialEvent2() 
+{
+  if (SERIAL_HANDLERS[2].handler != NULL) 
+  {
+    (*SERIAL_HANDLERS[2].handler)(SERIAL_HANDLERS[2].data);
+  }
+}
+
+void serialEvent3() 
+{ 
+  if (SERIAL_HANDLERS[3].handler != NULL) 
+  {
+    (*SERIAL_HANDLERS[3].handler)(SERIAL_HANDLERS[3].data);
+  }
+}
+
 Led::Led()
   : r_(0), g_(0), b_(0)
 {
@@ -183,6 +221,10 @@ Sensor::Sensor(int channel)
   // Disable 12V output
   pinMode(board::SENSOR[channel].PWR_ENABLE, OUTPUT);
   digitalWrite(board::SENSOR[channel].PWR_ENABLE, LOW);
+  
+  // Register serial event handler
+  SerialHandler_t handler = {Sensor::onSerial_, this}; 
+  SERIAL_HANDLERS[channel] = handler;
 }
 
 Sensor::~Sensor()
@@ -195,3 +237,14 @@ bool Sensor::set(char* param, char* value)
   return false;
 }
 
+void Sensor::onSerial() 
+{
+  // Default to doing nothing on serial events. 
+}
+
+void Sensor::onSerial_(void *data)
+{
+  // Resolve self-reference and call member function.
+  Sensor *self = (Sensor*)data;
+  self->onSerial();
+}

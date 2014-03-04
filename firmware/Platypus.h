@@ -8,6 +8,18 @@
 
 namespace platypus 
 {  
+  // Callbacks structure for serial events
+  typedef struct {
+    void (*handler)(void *arg);
+    void *data;
+  } SerialHandler_t;
+  
+  // Callbacks for serial events
+  extern SerialHandler_t SERIAL_HANDLERS[4];
+  
+  // Array of available serial ports
+  extern USARTClass *SERIAL_PORTS[4];
+  
   class Configurable
   {
   public:     
@@ -69,9 +81,11 @@ namespace platypus
     
     virtual bool set(char* param, char* value);
     virtual char *name() = 0;
+    virtual void onSerial();
     
   private:
     board::Sensor_t sensor_;
+    static void onSerial_(void *data);
   };
 }
 
