@@ -40,6 +40,14 @@ void serialEvent3()
   }
 }
 
+uint32_t platypus::swap(uint32_t bytes)
+{
+  return ((bytes << 24) & 0xFF000000)
+         | ((bytes <<  8) & 0x00FF0000)
+         | ((bytes >>  8) & 0x0000FF00)
+         | ((bytes >> 24) & 0x000000FF);
+}
+
 Led::Led()
   : r_(0), g_(0), b_(0)
 {

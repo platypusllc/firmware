@@ -58,7 +58,34 @@ namespace platypus
   public:
     Winch(int channel);
     char *name();
+
+    bool read(uint8_t address, uint8_t command, uint8_t *response, unsigned int response_len);
+
     void send(uint8_t address, uint8_t command, uint8_t data);
+    void send(uint8_t address, uint8_t command, uint8_t *data, unsigned int data_len);
+    
+    typedef struct {
+      uint32_t accel;
+      uint32_t speed;
+      uint32_t decel;
+      int32_t position;
+      unsigned char is_buffered;
+    } PositionCommand;
+    
+    typedef struct {
+      uint32_t P;
+      uint32_t I;
+      uint32_t D;
+      uint32_t MaxI;
+      uint32_t Deadzone;
+      uint32_t MinPos;
+      uint32_t MaxPos;
+    } PidCommand;
+    
+    typedef struct {
+      uint32_t ticks;
+      uint8_t status;
+    } QuadratureResponse;
   };
 }
 

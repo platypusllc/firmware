@@ -27,6 +27,9 @@ namespace platypus
   // Array of available serial ports
   extern USARTClass *SERIAL_PORTS[4];
   
+  // Helper function to do endian conversion
+  uint32_t swap(uint32_t bytes);
+  
   class Configurable
   {
   public:     

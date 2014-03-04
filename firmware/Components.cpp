@@ -163,12 +163,62 @@ char* Winch::name()
   return "winch";
 }
 
+void Winch::send(uint8_t address, uint8_t command, uint8_t *data, unsigned int data_len)
+{  
+  // Compute 7-bit checksum as per Roboclaw datasheet.
+  uint8_t checksum = (address + command);
+  for (unsigned int i = 0; i < data_len; ++i)
+  {
+    checksum += data[i];
+  }
+  checksum &= 0x7F;
+
+  // Send command to motor controller
+  SERIAL_PORTS[channel_]->write(address);
+  SERIAL_PORTS[channel_]->write(command);
+  SERIAL_PORTS[channel_]->write(data, data_len);
+  SERIAL_PORTS[channel_]->write(checksum);
+}
+
+bool Winch::read(uint8_t address, uint8_t command, uint8_t *response, unsigned int response_len)
+{
+  uint8_t checksum = 0;
+  
+  // Clear any existing data in serial buffer
+  SERIAL_PORTS[channel_]->read();
+    
+  // Send read to motor controller
+  SERIAL_PORTS[channel_]->write(address);
+  SERIAL_PORTS[channel_]->write(command);
+
+  // Read into specified response buffer
+  for (unsigned int i = 0; i < response_len; ++i) {
+    // Serial "timeout"
+    // TODO : make this more elegant
+    for (unsigned int j = 0; j < 250 && !SERIAL_PORTS[channel_]->available(); ++j) delay(1);
+    char c = SERIAL_PORTS[channel_]->read();
+    response[i] = c;
+    checksum += c;
+  }
+
+  // Read and compare checksum
+  checksum &= 0x7F;
+  // TODO : make this more elegant
+  for (unsigned int j = 0; j < 250 && !SERIAL_PORTS[channel_]->available(); ++j) delay(1);
+  char c = SERIAL_PORTS[channel_]->read();
+  Serial.print(checksum);
+  Serial.print(" != ");
+  Serial.print(c & 0x7F);
+
+  return false; //(SERIAL_PORTS[channel_]->read() == checksum);
+}
+
 void Winch::send(uint8_t address, uint8_t command, uint8_t data)
 {
   // Compute 7-bit checksum as per Roboclaw datasheet.
   uint8_t checksum = (address + command + data) & 0x7F;
   
-  // TODO: don't hard code this
+  // Send command to motor controller
   SERIAL_PORTS[channel_]->write(address);
   SERIAL_PORTS[channel_]->write(command);
   SERIAL_PORTS[channel_]->write(data);
