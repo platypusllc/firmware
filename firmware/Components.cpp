@@ -93,7 +93,7 @@ Hdf5::Hdf5(int channel)
   // Enable +12V output
   pinMode(board::SENSOR[channel].PWR_ENABLE, OUTPUT);
   digitalWrite(board::SENSOR[channel].PWR_ENABLE, HIGH);
-  
+
   // Enable RSxxx receiver
   pinMode(board::SENSOR[channel].RX_DISABLE, OUTPUT);
   digitalWrite(board::SENSOR[channel].RX_DISABLE, LOW);
@@ -102,25 +102,16 @@ Hdf5::Hdf5(int channel)
   pinMode(board::SENSOR[channel].TX_ENABLE, OUTPUT);
   digitalWrite(board::SENSOR[channel].TX_ENABLE, HIGH);
 
-  // Disable RS485 termination resistor?
-  // TODO: Clean this up.
+  // Enable RS485 termination resistor
   pinMode(board::SENSOR[channel].RS485_TE, OUTPUT);
-  digitalWrite(board::SENSOR[channel].RS485_TE, LOW);
+  digitalWrite(board::SENSOR[channel].RS485_TE, HIGH);
 
   // Select RS485 (deselect RS232)
   pinMode(board::SENSOR[channel].RS485_232, OUTPUT);
   digitalWrite(board::SENSOR[channel].RS485_232, HIGH);
   
-  // Set RX_NEG pin as input to not interfere with RX_POS input.
-  pinMode(board::SENSOR[channel].GPIO[board::RX_NEG], INPUT);
-  digitalWrite(board::SENSOR[channel].GPIO[board::RX_NEG], LOW);
-
-  // Set TX_NEG pin as input to not interfere with TX_POS output.
-  pinMode(board::SENSOR[channel].GPIO[board::TX_NEG], INPUT);
-  digitalWrite(board::SENSOR[channel].GPIO[board::TX_NEG], LOW);
-  
   // Start up serial port
-  SERIAL_PORTS[channel]->begin(115200);
+  SERIAL_PORTS[channel]->begin(4800);
 }
 
 char* Hdf5::name()
@@ -130,10 +121,8 @@ char* Hdf5::name()
 
 void Hdf5::onSerial()
 {
-  // TODO: Remove this debug instructio
-  Serial.write('#');
-  Serial.write(SERIAL_PORTS[1]->read());
-  Serial.println(); 
+  Serial.write(SERIAL_PORTS[channel_]->read());
+  Serial.println();
 }
 
 Winch::Winch(int channel)
@@ -158,8 +147,8 @@ void Winch::send(uint8_t address, uint8_t command, uint8_t data)
   uint8_t checksum = (address + command + data) & 0x7F;
   
   // TODO: don't hard code this
-  Serial2.write(address);
-  Serial2.write(command);
-  Serial2.write(data);
-  Serial2.write(checksum);
+  SERIAL_PORTS[channel_]->write(address);
+  SERIAL_PORTS[channel_]->write(command);
+  SERIAL_PORTS[channel_]->write(data);
+  SERIAL_PORTS[channel_]->write(checksum);
 }

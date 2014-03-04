@@ -82,9 +82,12 @@ namespace platypus
     virtual bool set(char* param, char* value);
     virtual char *name() = 0;
     virtual void onSerial();
+
+  protected:
+    // TODO: Change from channel to struct reference?
+    const int channel_;
     
   private:
-    board::Sensor_t sensor_;
     static void onSerial_(void *data);
   };
 }
