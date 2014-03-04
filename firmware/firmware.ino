@@ -61,7 +61,6 @@ void send(char *str)
   
   // Copy string to debugging console.
   Serial.print("-> ");
-  Serial.println(str); 
 }
 
 /**
@@ -258,9 +257,8 @@ void setup()
   // Initialize sensors
   sensor[0] = new platypus::AnalogSensor(0);
   sensor[1] = new platypus::Hdf5(1);
-  sensor[2] = new platypus::AnalogSensor(2);
+  sensor[2] = new platypus::Winch(2);
   sensor[3] = new platypus::AnalogSensor(3);
-  //sensor[2] = new platypus::Winch(2);
   
   // Initialize motors
   motor[0] = new platypus::HobbyKingBoat(0); 
@@ -277,6 +275,7 @@ void setup()
   // Create secondary tasks for system.
 //  Scheduler.startLoop(motorDecayLoop);
   Scheduler.startLoop(serialDebugLoop);
+  Scheduler.startLoop(testLoop);
   
   // Print header indicating that board successfully initialized
   Serial.println("------------------------------");
@@ -296,25 +295,8 @@ void loop()
 {
   // Number of bytes received from USB.
   uint32_t bytes_read = 0;
-    
-//  if (Serial1.available())
-//    Serial.write(Serial1.read());
-  return;
-    
-  // Attempt to create USB connection.
-  rgb_led.R(1);
-  rgb_led.G(0);
-  ((platypus::Winch*)sensor[2])->send(128,6,96);
-  delay(1000);
-  rgb_led.R(0);
-  rgb_led.G(1);
-  ((platypus::Winch*)sensor[2])->send(128,6,32);
-  delay(1000);
-  rgb_led.R(1);
-  rgb_led.G(1);
-  ((platypus::Winch*)sensor[2])->send(128,6,64);
-  delay(1000);
   
+  yield();
   return;
   
   Usb.Task();
@@ -436,6 +418,23 @@ void serialDebugLoop()
     // Attempt to parse command.
     handleCommand(debug_buffer); 
   }
+}
+
+void testLoop()
+{
+  // Attempt to create USB connection.
+  rgb_led.R(1);
+  rgb_led.G(0);
+  ((platypus::Winch*)sensor[2])->send(128,6,96);
+  delay(1000);
+  rgb_led.R(0);
+  rgb_led.G(1);
+  ((platypus::Winch*)sensor[2])->send(128,6,32);
+  delay(1000);
+  rgb_led.R(1);
+  rgb_led.G(1);
+  ((platypus::Winch*)sensor[2])->send(128,6,64);
+  delay(1000); 
 }
 
 

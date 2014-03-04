@@ -6,6 +6,13 @@
 #include <Servo.h>
 #include <Scheduler.h>
 
+// TODO: move all ADK stuff into this class
+/**
+ * Wrapper for ADK send command that copies data to debug port.
+ * Requires a null-terminated char* pointer.
+ */
+extern void send(char *str);
+
 namespace platypus 
 {  
   // Callbacks structure for serial events

@@ -5,6 +5,8 @@
 
 namespace platypus 
 {
+  const int DEFAULT_BUFFER_SIZE = 128;
+  
   class VaporPro : public Motor {
   public:
     VaporPro(int channel) : Motor(channel) {}
@@ -46,6 +48,10 @@ namespace platypus
     Hdf5(int channel);
     char *name();
     void onSerial();
+    
+  private:
+    char recv_buffer_[DEFAULT_BUFFER_SIZE];
+    unsigned int recv_index_;
   };
   
   class Winch : public Sensor {

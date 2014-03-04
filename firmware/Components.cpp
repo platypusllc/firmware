@@ -88,7 +88,7 @@ char* ES2::name()
 }
 
 Hdf5::Hdf5(int channel)
-: Sensor(channel) 
+: Sensor(channel), recv_index_(0)
 {
   // Enable +12V output
   pinMode(board::SENSOR[channel].PWR_ENABLE, OUTPUT);
@@ -121,8 +121,30 @@ char* Hdf5::name()
 
 void Hdf5::onSerial()
 {
-  Serial.write(SERIAL_PORTS[channel_]->read());
-  Serial.println();
+  char c = SERIAL_PORTS[channel_]->read();
+  if (c != '\r' && c != '\n' && recv_index_ < DEFAULT_BUFFER_SIZE)
+  {
+    recv_buffer_[recv_index_] = c;
+    ++recv_index_;
+  }
+  else if (recv_index_ > 0)
+  { 
+    recv_buffer_[recv_index_] = '\0';
+    
+    char output_str[DEFAULT_BUFFER_SIZE+3];
+    snprintf(output_str, DEFAULT_BUFFER_SIZE,
+      "{"
+       "\"s%u\":{"
+         "\"nmea\":\"%s\""
+       "}"
+      "}",
+      channel_,
+      recv_buffer_
+    );  
+    send(output_str);
+    
+    recv_index_ = 0;
+  }
 }
 
 Winch::Winch(int channel)
