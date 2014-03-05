@@ -254,6 +254,7 @@ public class AirboatImpl extends AbstractVehicleServer {
 						if (type.equalsIgnoreCase("es2")) {
 							SensorData reading = new SensorData();
 							reading.channel = sensor;
+                            reading.type = SensorType.TE;
 							reading.data = new double[] {
 									value.getDouble("T"), 
 									value.getDouble("C")
@@ -266,14 +267,23 @@ public class AirboatImpl extends AbstractVehicleServer {
                                     double depth = Double.parseDouble(nmea.split(",")[3]);
 
                                     SensorData reading = new SensorData();
+                                    reading.type = SensorType.DEPTH;
                                     reading.channel = sensor;
                                     reading.data = new double[] { depth };
-                                    
+
                                     sendSensor(sensor, reading);
                                 } catch(Exception e) {
                                     Log.w(logTag, "Failed to parse depth reading: " + nmea);
                                 }
                             }
+                        } else if (type.equalsIgnoreCase("winch")) {
+                            SensorData reading = new SensorData();
+                            reading.channel = sensor;
+                            reading.type = SensorType.UNKNOWN;
+                            reading.data = new double[] {
+                                    value.getDouble("depth")
+                            };
+                            sendSensor(sensor, reading);
                         }
                     }
 				} else {
