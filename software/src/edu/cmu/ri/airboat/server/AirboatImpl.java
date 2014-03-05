@@ -251,7 +251,7 @@ public class AirboatImpl extends AbstractVehicleServer {
 					// Hacks to send sensor information
 					if (value.has("type")) {
 						String type = value.getString("type");
-						if (type.equalsIgnoreCase("ES2")) {
+						if (type.equalsIgnoreCase("es2")) {
 							SensorData reading = new SensorData();
 							reading.channel = sensor;
 							reading.data = new double[] {
@@ -259,8 +259,23 @@ public class AirboatImpl extends AbstractVehicleServer {
 									value.getDouble("C")
 								};
 							sendSensor(sensor, reading);
-						}
-					}
+					    } else if (type.equalsIgnoreCase("hdf5")) {
+                            String nmea = value.getString("nmea");
+                            if (nmea.startsWith("$SDDBT")) {
+                                try {
+                                    double depth = Double.parseDouble(nmea.split(",")[3]);
+
+                                    SensorData reading = new SensorData();
+                                    reading.channel = sensor;
+                                    reading.data = new double[] { depth };
+                                    
+                                    sendSensor(sensor, reading);
+                                } catch(Exception e) {
+                                    Log.w(logTag, "Failed to parse depth reading: " + nmea);
+                                }
+                            }
+                        }
+                    }
 				} else {
 					Log.w(logTag, "Received unknown param '" + cmd + "'.");
 				}
