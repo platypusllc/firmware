@@ -351,7 +351,7 @@ void loop()
 }
 
 /**
- * Decays motor velocity exponentially in case of communications loss.
+ * Periodically sends motor velocity updates.
  */
 void motorUpdateLoop()
 {
@@ -384,6 +384,20 @@ void motorUpdateLoop()
     "}",
     motor[0]->velocity(), motor[0]->current(),
     motor[1]->velocity(), motor[1]->current()
+  );
+  send(output_buffer);
+  
+  // TODO: Remove this hack
+  // Send encoder status update over USB
+  long pos = ((platypus::Winch*)sensor[2])->position();
+  snprintf(output_buffer, OUTPUT_BUFFER_SIZE,
+    "{"
+      "\"s2\":{"
+        "\"type\":\"winch\","
+        "\"P\":%ld,"
+      "}"
+    "}",
+    pos
   );
   send(output_buffer);
 }
