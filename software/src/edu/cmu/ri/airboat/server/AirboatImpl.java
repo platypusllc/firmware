@@ -1,6 +1,7 @@
 package edu.cmu.ri.airboat.server;
 
 import android.content.Context;
+import android.util.JsonWriter;
 import android.util.Log;
 
 import com.google.code.microlog4android.LoggerFactory;
@@ -8,7 +9,9 @@ import com.google.code.microlog4android.LoggerFactory;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.io.IOException;
 import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.Timer;
@@ -181,11 +184,39 @@ public class AirboatImpl extends AbstractVehicleServer {
 	 */
 	@Override
 	public void setGains(int axis, double[] k) {
-		if (axis == 5)
+		if (axis == 5) {
 			r_PID = k.clone();
-		else if (axis == 0)
+            logger.info("SETGAINS: " + axis + " " + Arrays.toString(k));
+        } else if (axis == 0) {
 			t_PID = k.clone();
-		logger.info("SETGAINS: " + axis + " " + Arrays.toString(k));
+            logger.info("SETGAINS: " + axis + " " + Arrays.toString(k));
+        }
+        // TODO: Get rid of this, it is a hack.
+        // Special case to handle winch commands...
+        else if (axis == 3) {
+            logger.info("WINCH: " + Arrays.toString(k));
+            // Call command to adjust winch
+            synchronized (_usbWriter) {
+                StringWriter str = new StringWriter();
+                JsonWriter json = new JsonWriter(str);
+                try {
+                    json.beginObject();
+                    {
+                        json.name("S2").beginObject();
+                        {
+                            json.name("P").value(k[0]);
+                            json.name("V").value(k[1]);
+                        }
+                        json.endObject();
+                    }
+                    json.endObject();
+                    _usbWriter.println(str.toString());
+                    _usbWriter.flush();
+                } catch (IOException e) {
+                    Log.w(logTag, "Unable to construct JSON string from winch command: " + Arrays.toString(k));
+                }
+            }
+        }
 	}
 	/**
 	 * Returns the current gyro readings
