@@ -274,9 +274,10 @@ void setup()
   output_buffer[OUTPUT_BUFFER_SIZE] = '\0';
   
   // Create secondary tasks for system.
-//  Scheduler.startLoop(motorDecayLoop);
-  Scheduler.startLoop(serialDebugLoop);
-  Scheduler.startLoop(testLoop);
+  Scheduler.startLoop(motorUpdateLoop);
+  Scheduler.startLoop(serialConsoleLoop);
+//  Scheduler.startLoop(winchTestLoop);
+//  Scheduler.startLoop(hd5SimLoop);
   
   // Print header indicating that board successfully initialized
   Serial.println("------------------------------");
@@ -297,9 +298,7 @@ void loop()
   // Number of bytes received from USB.
   uint32_t bytes_read = 0;
   
-  yield();
-  return;
-  
+  // Do USB bookkeeping.
   Usb.Task();
   
   // Shutdown system if not connected to USB.
@@ -324,7 +323,6 @@ void loop()
     if (!motor[motor_idx]->enabled()) {
       Serial.print("Arming motor ");
       Serial.println(motor_idx);
-      
       motor[motor_idx]->arm();
     }
   }
@@ -355,7 +353,7 @@ void loop()
 /**
  * Decays motor velocity exponentially in case of communications loss.
  */
-void motorDecayLoop()
+void motorUpdateLoop()
 {
   // Only run while connected via USB.
   if (!adk.isReady()) {
@@ -367,9 +365,9 @@ void motorDecayLoop()
   delay(100);
   
   // Decay all motors exponentially towards zero speed.
-  for (size_t motor_idx = 0; motor_idx < NUM_MOTORS; ++motor_idx) {
-    motor[motor_idx]->velocity(motor[motor_idx]->velocity() * 0.9);
-  }
+  //for (size_t motor_idx = 0; motor_idx < NUM_MOTORS; ++motor_idx) {
+  //  motor[motor_idx]->velocity(motor[motor_idx]->velocity() * 0.8);
+  //}
   
   // TODO: move this to another location (e.g. Motor)
   // Send motor status update over USB
@@ -393,7 +391,7 @@ void motorDecayLoop()
 /**
  * Reads from serial debugging console and attempts to execute commands.
  */
-void serialDebugLoop()
+void serialConsoleLoop()
 {
   // Index to last character in debug buffer.
   static size_t debug_buffer_idx = 0;
@@ -421,21 +419,103 @@ void serialDebugLoop()
   }
 }
 
-void testLoop()
+void winchTestLoop()
+{ 
+  // Test encoders
+  Serial.println("SET ENC");
+  ((platypus::Winch*)sensor[2])->reset();
+  delay(100);
+  
+  Serial.println("GET ENC");
+  long pos = ((platypus::Winch*)sensor[2])->position();
+  Serial.println(pos);
+  delay(100);
+  return;
+
+  // Test PID
+  Serial.println("SET PID");
+  platypus::Winch::PidCommand pid = {
+    platypus::swap(100),
+    platypus::swap(0),
+    platypus::swap(0),
+    platypus::swap(0),
+    platypus::swap(0),
+    platypus::swap(0),
+    platypus::swap(0),
+  };
+  //((platypus::Winch*)sensor[2])->write(128, 61, (uint8_t*)&pid, sizeof(pid));
+  delay(100);
+
+  Serial.println("GET PID");
+  bool valid = ((platypus::Winch*)sensor[2])->read(128, 63, (uint8_t*)&pid, sizeof(pid));
+  Serial.print("P: ");
+  Serial.print(valid);
+  Serial.print(":");
+  Serial.println(platypus::swap(pid.P));
+  return;
+  
+  // Test position
+  Serial.println("SET POS");
+  ((platypus::Winch*)sensor[2])->position(10000);
+  delay(2000);
+
+  // Test velocity command
+  ((platypus::Winch*)sensor[2])->write(128,6,50); // Backwards
+  delay(1000);
+  ((platypus::Winch*)sensor[2])->write(128,6,64); // STOP
+  delay(1000);
+  ((platypus::Winch*)sensor[2])->write(128,6,80); // Forwards
+  delay(1000);
+  ((platypus::Winch*)sensor[2])->write(128,6,64); // STOP
+  delay(1000);
+}
+
+const unsigned int NUM_HD5_STRINGS = 20;
+const char *hd5_strings[] = {
+  "$GPAPB,,,,,,,,,,,,,,,N*26",
+  "$SDHDG,,,,,*70",
+  "$GPRMB,,,,,*70",
+  "$GPAPB,,,,,,,,,,,,,,,N*26",
+  "$SDHDG,,,,,*70",
+  "$GPRMB,,,,,,,,,,,,,,N*04",
+  "$SDHDG,,,,,*70",
+  "$GPXTE,,,,,N,N*5E",
+  "$SDHDG,,,,,*70",
+  "$SDDBT,8.3,f,2.5,M,1.3,F*08",
+  "$SDHDG,,,,,*70",
+  "$SDMTW,21.4,C*03",
+  "$SDHDG,,,,,*70",
+  "$GPGGA,,,,,,0,00,,,M,,M,,*66",
+  "$SDHDG,,,,,*70",
+  "$GPGLL,,,,,,V,N*64",
+  "$SDHDG,,,,,*70",
+  "$GPVTG,,T,,M,,N,,K,N*2C",
+  "$SDHDG,,,,,*70",
+  "$SDHDG,,,,,*70"
+};
+
+static unsigned int hd5_sim_index = 0;
+void hd5SimLoop()
 {
-  // Attempt to create USB connection.
-  rgb_led.R(1);
-  rgb_led.G(0);
-  ((platypus::Winch*)sensor[2])->send(128,6,96);
-  delay(1000);
-  rgb_led.R(0);
-  rgb_led.G(1);
-  ((platypus::Winch*)sensor[2])->send(128,6,32);
-  delay(1000);
-  rgb_led.R(1);
-  rgb_led.G(1);
-  ((platypus::Winch*)sensor[2])->send(128,6,64);
-  delay(1000); 
+  char output_str[128+3];
+  snprintf(output_str, 128,
+    "{"
+     "\"s%u\":{"
+       "\"type\":\"hdf5\","
+       "\"nmea\":\"%s\""
+     "}"
+    "}",
+    1,
+    hd5_strings[hd5_sim_index]
+  );  
+  send(output_str);
+  delay(100);
+  
+  hd5_sim_index++;
+  if (hd5_sim_index >= NUM_HD5_STRINGS)
+  {
+    hd5_sim_index = 0;
+  }
 }
 
 
