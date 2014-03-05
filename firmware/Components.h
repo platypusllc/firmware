@@ -58,12 +58,18 @@ namespace platypus
   public:
     Winch(int channel);
     char *name();
+    bool set(char* param, char* value);
+    
+    void reset();
+    void position(int32_t pos, int32_t vel = 1000);
+    int32_t position();
 
     bool read(uint8_t address, uint8_t command, uint8_t *response, unsigned int response_len);
 
-    void send(uint8_t address, uint8_t command, uint8_t data);
-    void send(uint8_t address, uint8_t command, uint8_t *data, unsigned int data_len);
+    void write(uint8_t address, uint8_t command, uint8_t data);
+    void write(uint8_t address, uint8_t command, uint8_t *data, unsigned int data_len);
     
+#pragma pack(push, 1) // Store current byte packing and set to 1.
     typedef struct {
       uint32_t accel;
       uint32_t speed;
@@ -86,6 +92,8 @@ namespace platypus
       uint32_t ticks;
       uint8_t status;
     } QuadratureResponse;
+#pragma pack(pop) // Return to default byte packing.
+
   };
 }
 

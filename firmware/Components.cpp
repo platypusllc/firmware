@@ -2,6 +2,8 @@
 
 using namespace platypus;
 
+#define WAIT_FOR_CONDITION(condition, timeout_ms) for (unsigned int j = 0; j < (timeout_ms) && !(condition); ++j) delay(1);
+
 void VaporPro::arm()
 {
   disable();
@@ -135,6 +137,7 @@ void Hdf5::onSerial()
     snprintf(output_str, DEFAULT_BUFFER_SIZE,
       "{"
        "\"s%u\":{"
+         "\"type\":\"hdf5\","
          "\"nmea\":\"%s\""
        "}"
       "}",
@@ -163,7 +166,61 @@ char* Winch::name()
   return "winch";
 }
 
-void Winch::send(uint8_t address, uint8_t command, uint8_t *data, unsigned int data_len)
+bool Winch::set(char* param, char* value)
+{
+  // Set winch position
+  if (!strncmp("P", param, 2))
+  {
+    int32_t pos = atol(value);
+    position(pos);
+    return true;
+  }
+  else if (!strncmp("reset", param, 6))
+  {
+    reset();
+    return true;
+  }
+  // Return false for unknown command.
+  else
+  {
+    return false;
+  }
+}
+
+void Winch::reset()
+{
+  write(128, 20, NULL, 0); 
+}
+
+void Winch::position(int32_t pos, int32_t vel)
+{
+  PositionCommand command = {
+    platypus::swap(abs(vel)/3+1),
+    platypus::swap(vel),
+    platypus::swap(abs(vel)/3+1),
+    platypus::swap(pos),
+    true
+  };
+  write(128, 65, (uint8_t*)&command, sizeof(command));
+}
+
+int32_t Winch::position()
+{
+  QuadratureResponse response;
+  bool valid = false;
+  
+  for (unsigned int i = 0; i < 2; ++i) {
+    valid = read(128, 16, (uint8_t*)&response, sizeof(response));
+    if (valid)
+    {
+      swap(response.ticks);
+      return response.ticks;
+    }
+  }
+  return 0.0;
+}
+
+void Winch::write(uint8_t address, uint8_t command, uint8_t *data, unsigned int data_len)
 {  
   // Compute 7-bit checksum as per Roboclaw datasheet.
   uint8_t checksum = (address + command);
@@ -183,42 +240,37 @@ void Winch::send(uint8_t address, uint8_t command, uint8_t *data, unsigned int d
 bool Winch::read(uint8_t address, uint8_t command, uint8_t *response, unsigned int response_len)
 {
   uint8_t checksum = 0;
+  checksum += address;
+  checksum += command;
   
-  // Clear any existing data in serial buffer
+  // Clear any existing data in serial buffer.
   SERIAL_PORTS[channel_]->read();
     
-  // Send read to motor controller
+  // Send read command to motor controller.
   SERIAL_PORTS[channel_]->write(address);
   SERIAL_PORTS[channel_]->write(command);
 
-  // Read into specified response buffer
+  // Read into specified response buffer.
   for (unsigned int i = 0; i < response_len; ++i) {
-    // Serial "timeout"
-    // TODO : make this more elegant
-    for (unsigned int j = 0; j < 250 && !SERIAL_PORTS[channel_]->available(); ++j) delay(1);
+    WAIT_FOR_CONDITION(SERIAL_PORTS[channel_]->available(), 250);
     char c = SERIAL_PORTS[channel_]->read();
     response[i] = c;
     checksum += c;
   }
 
-  // Read and compare checksum
+  // Read and compare checksum.
   checksum &= 0x7F;
-  // TODO : make this more elegant
-  for (unsigned int j = 0; j < 250 && !SERIAL_PORTS[channel_]->available(); ++j) delay(1);
+  WAIT_FOR_CONDITION(SERIAL_PORTS[channel_]->available(), 250);
   char c = SERIAL_PORTS[channel_]->read();
-  Serial.print(checksum);
-  Serial.print(" != ");
-  Serial.print(c & 0x7F);
-
-  return false; //(SERIAL_PORTS[channel_]->read() == checksum);
+  return (c == checksum);
 }
 
-void Winch::send(uint8_t address, uint8_t command, uint8_t data)
+void Winch::write(uint8_t address, uint8_t command, uint8_t data)
 {
   // Compute 7-bit checksum as per Roboclaw datasheet.
   uint8_t checksum = (address + command + data) & 0x7F;
   
-  // Send command to motor controller
+  // Send command to motor controller.
   SERIAL_PORTS[channel_]->write(address);
   SERIAL_PORTS[channel_]->write(command);
   SERIAL_PORTS[channel_]->write(data);
