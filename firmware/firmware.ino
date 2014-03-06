@@ -311,6 +311,8 @@ void loop()
   // Rearm motors if necessary
   for (size_t motor_idx = 0; motor_idx < NUM_MOTORS; ++motor_idx) {
     if (!motor[motor_idx]->enabled()) {
+      Serial.print("# Arming motor ");
+      Serial.println(motor_idx);
       motor[motor_idx]->arm();
     }
   }
