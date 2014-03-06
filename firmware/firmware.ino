@@ -356,9 +356,9 @@ void motorDecayLoop()
   delay(100);
   
   // Decay all motors exponentially towards zero speed.
-  for (size_t motor_idx = 0; motor_idx < NUM_MOTORS; ++motor_idx) {
-    motor[motor_idx]->velocity(motor[motor_idx]->velocity() * 0.9);
-  }
+  // for (size_t motor_idx = 0; motor_idx < NUM_MOTORS; ++motor_idx) {
+  //   motor[motor_idx]->velocity(motor[motor_idx]->velocity() * 0.9);
+  // }
   
   // TODO: move this to another location (e.g. Motor)
   // Send motor status update over USB
