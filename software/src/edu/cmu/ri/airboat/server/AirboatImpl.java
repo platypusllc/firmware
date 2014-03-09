@@ -60,6 +60,9 @@ public class AirboatImpl extends AbstractVehicleServer {
 	private final Timer _navigationTimer = new Timer();
 	private final Timer _captureTimer = new Timer();
 
+    // TODO: Remove this variable, it is totally arbitrary
+    private double winch_depth_ = Double.NaN;
+
 	/**
 	 * Defines the PID gains that will be returned if there is an error.
 	 */
@@ -175,8 +178,10 @@ public class AirboatImpl extends AbstractVehicleServer {
 			return r_PID.clone();
 		else if (axis == 0)
 			return t_PID.clone();
-		else
-			return NAN_GAINS;
+		else if (axis == 3)
+            return new double[]{ winch_depth_, 0.0, 0.0 };
+        else
+            return NAN_GAINS;
 	}
 
 	/**
@@ -202,10 +207,9 @@ public class AirboatImpl extends AbstractVehicleServer {
                 try {
                     json.beginObject();
                     {
-                        json.name("S2").beginObject();
+                        json.name("s2").beginObject();
                         {
-                            json.name("P").value(k[0]);
-                            json.name("V").value(k[1]);
+                            json.name("depth").value(k[0]);
                         }
                         json.endObject();
                     }
@@ -287,8 +291,8 @@ public class AirboatImpl extends AbstractVehicleServer {
 							reading.channel = sensor;
                             reading.type = SensorType.TE;
 							reading.data = new double[] {
-									value.getDouble("T"), 
-									value.getDouble("C")
+									value.getDouble("t"),
+									value.getDouble("c")
 								};
 							sendSensor(sensor, reading);
 					    } else if (type.equalsIgnoreCase("hdf5")) {
@@ -315,13 +319,16 @@ public class AirboatImpl extends AbstractVehicleServer {
                                     value.getDouble("depth")
                             };
                             sendSensor(sensor, reading);
+
+                            // TODO: Remove this hack to store winch depth
+                            winch_depth_ = reading.data[0];
                         }
                     }
 				} else {
 					Log.w(logTag, "Received unknown param '" + cmd + "'.");
 				}
 			} catch (JSONException e) {
-				Log.w(logTag, "Malformed JSON command '" + cmd + "'.");
+				Log.w(logTag, "Malformed JSON command '" + cmd + "'.", e);
 			}
 		}
 	}
@@ -331,7 +338,7 @@ public class AirboatImpl extends AbstractVehicleServer {
 	public synchronized byte[] captureImage(int width, int height) {
 		// Call command to fire sampler
 		synchronized (_usbWriter) {
-			_usbWriter.println("{\"S0\":{ \"sample\": true }");
+			_usbWriter.println("{\"s0\":{ \"sample\": true }");
 			_usbWriter.flush();
 		}
 		Log.i(logTag, "Triggering sampler.");
