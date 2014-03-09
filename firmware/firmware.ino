@@ -394,7 +394,7 @@ void motorUpdateLoop()
     "{"
       "\"s2\":{"
         "\"type\":\"winch\","
-        "\"P\":%ld,"
+        "\"depth\":%ld"
       "}"
     "}",
     pos

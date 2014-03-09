@@ -169,7 +169,7 @@ char* Winch::name()
 bool Winch::set(char* param, char* value)
 {
   // Set winch position
-  if (!strncmp("P", param, 2))
+  if (!strncmp("depth", param, 6))
   {
     int32_t pos = atol(value);
     position(pos);
