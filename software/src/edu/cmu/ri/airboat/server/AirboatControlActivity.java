@@ -46,9 +46,9 @@ public class AirboatControlActivity extends Activity {
 	
 	// Ranges for thrust and rudder signals
 	public static final double THRUST_MIN =  0.0;
-	public static final double THRUST_MAX =  1.0;
-	public static final double RUDDER_MIN =  1.0; // Reversed to match +Z rotation.
-	public static final double RUDDER_MAX = -1.0;
+	public static final double THRUST_MAX =  0.12;
+	public static final double RUDDER_MIN =  0.12; // Reversed to match +Z rotation.
+	public static final double RUDDER_MAX = -0.12;
 	
 	// Contains a reference to the airboat service, or null if service is not running 
 	private AirboatService _airboatService = null;

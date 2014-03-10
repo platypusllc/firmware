@@ -99,9 +99,10 @@ public class AirboatImpl extends AbstractVehicleServer {
 	 * Hard-coded constants used in Yunde's controller and for new implementation of Arduino code.
 	 * CONSTANTS FORMAT: range_min, range_max, servo_min, servo_max
 	 */
-	double[] r_PID = {2, 0, 3}; // Kp, Ki, Kd
-	double [] t_PID = {5, 5, 5};
-	public static final double CONST_THRUST = 0.5;
+	double[] r_PID = {.2, 0, .3}; // Kp, Ki, Kd
+	double [] t_PID = {.5, .5, .5};
+    public static final double SAFE_THRUST = 0.12;
+    public static final double CONST_THRUST = SAFE_THRUST;
 
 	/**
 	 * Creates a new instance of the vehicle implementation. This function
@@ -149,8 +150,13 @@ public class AirboatImpl extends AbstractVehicleServer {
 			
 			// Send velocities as a JSON command			
 			try {
-				velocity0.put("v", (float) (_velocities.dx() - _velocities.drz()));
-				velocity1.put("v", (float) (_velocities.dx() + _velocities.drz()));
+                // Until ESCs are able to reverse, set the lower limit to 0.0
+                // Until ESC reboot is fixed, set the upper limit to SAFE_THRUST
+                double constrainedV0 = Math.min((Math.max(0.0, _velocities.dx() - _velocities.drz())), AirboatImpl.SAFE_THRUST);
+                double constrainedV1 = Math.min((Math.max(0.0, _velocities.dx() + _velocities.drz())), AirboatImpl.SAFE_THRUST);
+
+				velocity0.put("v", (float) constrainedV0);
+				velocity1.put("v", (float) constrainedV1);
 				
 				command.put("m0", velocity0);
 				command.put("m1", velocity1);
