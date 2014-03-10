@@ -33,6 +33,19 @@ void HobbyKingBoat::arm()
   delay(3000);
 }
 
+void Seaking::arm()
+{
+  disable();
+  delay(500);
+
+  velocity(1.0);
+  enable();
+  delay(3000);
+
+  velocity(0.0);
+  delay(2000);
+}
+
 AnalogSensor::AnalogSensor(int channel)
   : Sensor(channel), scale_(1.0f), offset_(0.0f) {}
 

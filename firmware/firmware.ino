@@ -262,8 +262,8 @@ void setup()
   sensor[3] = new platypus::AnalogSensor(3);
   
   // Initialize motors
-  motor[0] = new platypus::HobbyKingBoat(0); 
-  motor[1] = new platypus::HobbyKingBoat(1);
+  motor[0] = new platypus::Seaking(0); 
+  motor[1] = new platypus::Seaking(1);
 
   // Initialize debugging serial console.
   Serial.begin(115200);
