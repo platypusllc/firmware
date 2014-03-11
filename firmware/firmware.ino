@@ -315,7 +315,7 @@ void setup()
 void loop() 
 {
   // Keep track of how many reads we haven't made so far.
-  size_t response_counter;
+  uint8_t response_counter;
   
   // Number of bytes received from USB.
   uint32_t bytes_read = 0;
@@ -386,42 +386,59 @@ void motorUpdateLoop()
   // Wait for a fixed time period.
   delay(100);
   
+  // Set the LED for current system state
+  switch (system_state)
+  {
+  case DISCONNECTED:
+    // Red blink
+    rgb_led.set((millis() >> 8) & 1, 0, 0);
+    break;
+  case CONNECTED:
+    // Green blink
+    rgb_led.set(0, (millis() >> 8) & 1, 0);
+    break;
+  case RUNNING:
+    // Solid green
+    rgb_led.set(0, 1, 0);
+    break;
+  }
+  
   // Handle the motors appropriately for each system state.
   switch (system_state)
   {
-    case DISCONNECTED:
-      // Turn off motors.
-      for (size_t motor_idx = 0; motor_idx < NUM_MOTORS; ++motor_idx) 
+  case DISCONNECTED:
+    // Turn off motors.
+    for (size_t motor_idx = 0; motor_idx < NUM_MOTORS; ++motor_idx) 
+    {
+      if (motor[motor_idx]->enabled())
       {
-        if (motor[motor_idx]->enabled())
-        {
-          Serial.print("Disabling motor [");
-          Serial.print(motor_idx);
-          Serial.println("]");
-          motor[motor_idx]->disable();
-        }
+        Serial.print("Disabling motor [");
+        Serial.print(motor_idx);
+        Serial.println("]");
+        motor[motor_idx]->disable();
       }
-      break;
-    case CONNECTED:
-      // Decay all motors exponentially towards zero speed.
-      for (size_t motor_idx = 0; motor_idx < NUM_MOTORS; ++motor_idx) 
+    }
+    break;
+  case CONNECTED:
+    // Decay all motors exponentially towards zero speed.
+    for (size_t motor_idx = 0; motor_idx < NUM_MOTORS; ++motor_idx) 
+    {
+      motor[motor_idx]->velocity(motor[motor_idx]->velocity() * 0.8);
+    }
+    // NOTE: WE DO NOT BREAK OUT OF THE SWITCH HERE!
+  case RUNNING:
+    // Rearm motors if necessary.
+    for (size_t motor_idx = 0; motor_idx < NUM_MOTORS; ++motor_idx) 
+    {
+      if (!motor[motor_idx]->enabled()) 
       {
-        motor[motor_idx]->velocity(motor[motor_idx]->velocity() * 0.8);
+        Serial.print("Arming motor [");
+        Serial.print(motor_idx);
+        Serial.println("]");
+        motor[motor_idx]->arm();
       }
-      // NOTE: WE DO NOT BREAK OUT OF SWITCH HERE!
-    case RUNNING:
-      // Rearm motors if necessary.
-      for (size_t motor_idx = 0; motor_idx < NUM_MOTORS; ++motor_idx) 
-      {
-        if (!motor[motor_idx]->enabled()) 
-        {
-          Serial.print("Arming motor [");
-          Serial.print(motor_idx);
-          Serial.println("]");
-          motor[motor_idx]->arm();
-        }
-      }
-      break;
+    }
+    break;
   }
   
   // Send system status updates while connected to server.
