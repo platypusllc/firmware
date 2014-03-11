@@ -45,9 +45,9 @@ enum SystemState
 };
 SystemState system_state = DISCONNECTED;
 
-// Number of empty reads before we consider the Android
+// Time betweeen commands before we consider the Android
 // server to be unresponsive.
-const size_t RESPONSE_TIMEOUT = 255;
+const size_t RESPONSE_TIMEOUT_MS = 500;
 
 // Define the systems on this board
 // TODO: move this board.h?
@@ -295,6 +295,7 @@ void setup()
   // Create secondary tasks for system.
   Scheduler.startLoop(motorUpdateLoop);
   Scheduler.startLoop(serialConsoleLoop);
+  Scheduler.startLoop(winchUpdateLoop);
 //  Scheduler.startLoop(winchTestLoop);
 //  Scheduler.startLoop(hd5SimLoop);
   
@@ -315,7 +316,7 @@ void setup()
 void loop() 
 {
   // Keep track of how many reads we haven't made so far.
-  uint8_t response_counter;
+  static unsigned long last_command_time = 0;
   
   // Number of bytes received from USB.
   uint32_t bytes_read = 0;
@@ -327,7 +328,11 @@ void loop()
   if (!adk.isReady())
   {
     // If not connected to USB, we are 'DISCONNECTED'.
-    system_state = DISCONNECTED;
+    if (system_state != DISCONNECTED)
+    {
+      Serial.println("STATE: DISCONNECTED");
+      system_state = DISCONNECTED;
+    }
     
     // Wait for USB connection again.
     yield();
@@ -338,20 +343,25 @@ void loop()
     // If connected to USB, we are now 'CONNECTED'!
     if (system_state == DISCONNECTED)
     {
+      Serial.println("STATE: CONNECTED");
       system_state = CONNECTED; 
     }
   }
         
   // Attempt to read command from USB.
   adk.read(&bytes_read, INPUT_BUFFER_SIZE, (uint8_t*)input_buffer);
+  unsigned long current_command_time = millis();
   if (bytes_read <= 0) 
   {
     // If we haven't received a response in a long time, maybe 
     // we are 'CONNECTED' but the server is not running.
-    ++response_counter;
-    if (response_counter > RESPONSE_TIMEOUT)
+    if (current_command_time - last_command_time >= RESPONSE_TIMEOUT_MS)
     {
-      system_state = CONNECTED; 
+      if (system_state == RUNNING)
+      {
+        Serial.println("STATE: CONNECTED");
+        system_state = CONNECTED; 
+      }
     }
     
     // Wait for more USB data again.
@@ -363,8 +373,12 @@ void loop()
     // If we received a command, the server must be 'RUNNING'.
     if (system_state == CONNECTED) 
     {
+      Serial.println("STATE: RUNNING");
       system_state = RUNNING; 
     }
+    
+    // Update the timestamp of last received command.
+    last_command_time = current_command_time;
   }
   
   // Properly null-terminate the buffer.
@@ -441,7 +455,7 @@ void motorUpdateLoop()
     break;
   }
   
-  // Send system status updates while connected to server.
+  // Send status updates while connected to server.
   if (system_state == RUNNING)
   {
     // TODO: move this to another location (e.g. Motor)
@@ -461,7 +475,20 @@ void motorUpdateLoop()
       motor[1]->velocity(), motor[1]->current()
     );
     send(output_buffer);
-    
+  }
+}
+
+/**
+ * Periodically sends winch position updates.
+ */
+void winchUpdateLoop()
+{
+  // Wait for a fixed time period.
+  delay(300);
+  
+  // Send status updates while connected to server.
+  if (system_state == RUNNING)
+  {  
     // TODO: Remove this hack
     // Send encoder status update over USB
     long pos = ((platypus::Winch*)sensor[2])->position();
