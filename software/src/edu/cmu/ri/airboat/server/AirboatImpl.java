@@ -209,7 +209,8 @@ public class AirboatImpl extends AbstractVehicleServer {
                     {
                         json.name("s2").beginObject();
                         {
-                            json.name("depth").value(k[0]);
+                            json.name("p").value(k[0]);
+                            json.name("v").value(k[1]);
                         }
                         json.endObject();
                     }
