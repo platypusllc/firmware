@@ -33,6 +33,22 @@ char debug_buffer[INPUT_BUFFER_SIZE+1];
 const size_t OUTPUT_BUFFER_SIZE = 576;
 char output_buffer[OUTPUT_BUFFER_SIZE+3];
 
+// System state enumeration
+enum SystemState
+{
+  /** There is no ADK USB device currently plugged in. */
+  DISCONNECTED,
+  /** There is an ADK USB device detected, but it is unresponsive. */
+  CONNECTED,
+  /** There is a Platypus Server currently communicating. */
+  RUNNING  
+};
+SystemState system_state = DISCONNECTED;
+
+// Number of empty reads before we consider the Android
+// server to be unresponsive.
+const size_t RESPONSE_TIMEOUT = 255;
+
 // Define the systems on this board
 // TODO: move this board.h?
 platypus::Led rgb_led;
@@ -268,6 +284,9 @@ void setup()
   // Initialize debugging serial console.
   Serial.begin(115200);
   
+  // Start the system in the disconnected state
+  system_state = DISCONNECTED;
+  
   // Make the ADK buffers into null terminated string.
   debug_buffer[INPUT_BUFFER_SIZE] = '\0';
   input_buffer[INPUT_BUFFER_SIZE] = '\0';
@@ -295,48 +314,57 @@ void setup()
 
 void loop() 
 {
+  // Keep track of how many reads we haven't made so far.
+  size_t response_counter;
+  
   // Number of bytes received from USB.
   uint32_t bytes_read = 0;
   
   // Do USB bookkeeping.
   Usb.Task();
   
-  // Shutdown system if not connected to USB.
+  // Report system as shutdown if not connected to USB.
   if (!adk.isReady())
   {
-    // Set LED to red when USB is not connected.
-    rgb_led.R(1);
-    rgb_led.G(0);
-    
-    // Turn off motors.
-    for (size_t motor_idx = 0; motor_idx < NUM_MOTORS; ++motor_idx) {
-      motor[motor_idx]->disable();
-    }
+    // If not connected to USB, we are 'DISCONNECTED'.
+    system_state = DISCONNECTED;
     
     // Wait for USB connection again.
     yield();
     return;
-  }
-  
-  // Rearm motors if necessary
-  for (size_t motor_idx = 0; motor_idx < NUM_MOTORS; ++motor_idx) {
-    if (!motor[motor_idx]->enabled()) {
-      Serial.print("Arming motor ");
-      Serial.println(motor_idx);
-      motor[motor_idx]->arm();
+  } 
+  else 
+  {  
+    // If connected to USB, we are now 'CONNECTED'!
+    if (system_state == DISCONNECTED)
+    {
+      system_state = CONNECTED; 
     }
   }
-  
-  // Set LED to green when USB is connected.
-  rgb_led.R(0);
-  rgb_led.G(1);
-    
-  // Read next command from USB.
+        
+  // Attempt to read command from USB.
   adk.read(&bytes_read, INPUT_BUFFER_SIZE, (uint8_t*)input_buffer);
   if (bytes_read <= 0) 
   {
+    // If we haven't received a response in a long time, maybe 
+    // we are 'CONNECTED' but the server is not running.
+    ++response_counter;
+    if (response_counter > RESPONSE_TIMEOUT)
+    {
+      system_state = CONNECTED; 
+    }
+    
+    // Wait for more USB data again.
     yield();
     return;
+  } 
+  else 
+  {
+    // If we received a command, the server must be 'RUNNING'.
+    if (system_state == CONNECTED) 
+    {
+      system_state = RUNNING; 
+    }
   }
   
   // Properly null-terminate the buffer.
@@ -355,51 +383,82 @@ void loop()
  */
 void motorUpdateLoop()
 {
-  // Only run while connected via USB.
-  if (!adk.isReady()) {
-    yield();
-    return;
-  }
-  
   // Wait for a fixed time period.
   delay(100);
   
-  // Decay all motors exponentially towards zero speed.
-  //for (size_t motor_idx = 0; motor_idx < NUM_MOTORS; ++motor_idx) {
-  //  motor[motor_idx]->velocity(motor[motor_idx]->velocity() * 0.8);
-  //}
+  // Handle the motors appropriately for each system state.
+  switch (system_state)
+  {
+    case DISCONNECTED:
+      // Turn off motors.
+      for (size_t motor_idx = 0; motor_idx < NUM_MOTORS; ++motor_idx) 
+      {
+        if (motor[motor_idx]->enabled())
+        {
+          Serial.print("Disabling motor [");
+          Serial.print(motor_idx);
+          Serial.println("]");
+          motor[motor_idx]->disable();
+        }
+      }
+      break;
+    case CONNECTED:
+      // Decay all motors exponentially towards zero speed.
+      for (size_t motor_idx = 0; motor_idx < NUM_MOTORS; ++motor_idx) 
+      {
+        motor[motor_idx]->velocity(motor[motor_idx]->velocity() * 0.8);
+      }
+      // NOTE: WE DO NOT BREAK OUT OF SWITCH HERE!
+    case RUNNING:
+      // Rearm motors if necessary.
+      for (size_t motor_idx = 0; motor_idx < NUM_MOTORS; ++motor_idx) 
+      {
+        if (!motor[motor_idx]->enabled()) 
+        {
+          Serial.print("Arming motor [");
+          Serial.print(motor_idx);
+          Serial.println("]");
+          motor[motor_idx]->arm();
+        }
+      }
+      break;
+  }
   
-  // TODO: move this to another location (e.g. Motor)
-  // Send motor status update over USB
-  snprintf(output_buffer, OUTPUT_BUFFER_SIZE,
-    "{"
-      "\"m0\":{"
-        "\"v\":%f,"
-        "\"c\":%f"
-      "},"
-      "\"m1\":{"
-        "\"v\":%f,"
-        "\"c\":%f"
-      "}"
-    "}",
-    motor[0]->velocity(), motor[0]->current(),
-    motor[1]->velocity(), motor[1]->current()
-  );
-  send(output_buffer);
-  
-  // TODO: Remove this hack
-  // Send encoder status update over USB
-  long pos = ((platypus::Winch*)sensor[2])->position();
-  snprintf(output_buffer, OUTPUT_BUFFER_SIZE,
-    "{"
-      "\"s2\":{"
-        "\"type\":\"winch\","
-        "\"depth\":%ld"
-      "}"
-    "}",
-    pos
-  );
-  send(output_buffer);
+  // Send system status updates while connected to server.
+  if (system_state == RUNNING)
+  {
+    // TODO: move this to another location (e.g. Motor)
+    // Send motor status update over USB
+    snprintf(output_buffer, OUTPUT_BUFFER_SIZE,
+      "{"
+        "\"m0\":{"
+          "\"v\":%f,"
+          "\"c\":%f"
+        "},"
+        "\"m1\":{"
+          "\"v\":%f,"
+          "\"c\":%f"
+        "}"
+      "}",
+      motor[0]->velocity(), motor[0]->current(),
+      motor[1]->velocity(), motor[1]->current()
+    );
+    send(output_buffer);
+    
+    // TODO: Remove this hack
+    // Send encoder status update over USB
+    long pos = ((platypus::Winch*)sensor[2])->position();
+    snprintf(output_buffer, OUTPUT_BUFFER_SIZE,
+      "{"
+        "\"s2\":{"
+          "\"type\":\"winch\","
+          "\"depth\":%ld"
+        "}"
+      "}",
+      pos
+    );
+    send(output_buffer);
+  }
 }
 
 /**
