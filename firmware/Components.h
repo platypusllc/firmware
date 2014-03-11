@@ -67,8 +67,11 @@ namespace platypus
     bool set(char* param, char* value);
     
     void reset();
-    void position(int32_t pos, int32_t vel = 1000);
-    int32_t position();
+
+    void velocity(int32_t pos);
+
+    void position(uint32_t pos);
+    uint32_t position();
 
     bool read(uint8_t address, uint8_t command, uint8_t *response, unsigned int response_len);
 
@@ -78,10 +81,9 @@ namespace platypus
 #pragma pack(push, 1) // Store current byte packing and set to 1.
     typedef struct {
       uint32_t accel;
-      uint32_t speed;
-      uint32_t decel;
-      int32_t position;
-      unsigned char is_buffered;
+      int32_t speed;
+      uint32_t position;
+      uint8_t is_buffered;
     } PositionCommand;
     
     typedef struct {
@@ -100,6 +102,7 @@ namespace platypus
     } QuadratureResponse;
 #pragma pack(pop) // Return to default byte packing.
 
+    PositionCommand command_;
   };
 }
 

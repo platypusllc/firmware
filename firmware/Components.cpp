@@ -166,6 +166,12 @@ void Hdf5::onSerial()
 Winch::Winch(int channel)
 : Sensor(channel) 
 {
+  // Initialize default command
+  command_.position = 0;
+  command_.speed = 0;
+  command_.accel = 10000;
+  command_.is_buffered = 1;
+  
   // Enable +12V output
   pinMode(board::SENSOR[channel].PWR_ENABLE, OUTPUT);
   digitalWrite(board::SENSOR[channel].PWR_ENABLE, HIGH);
@@ -184,9 +190,15 @@ bool Winch::set(char* param, char* value)
   // Set winch position
   if (!strncmp("depth", param, 6))
   {
-    int32_t pos = atol(value);
+    uint32_t pos = atol(value);
     position(pos);
     return true;
+  }
+  else if (!strncmp("speed", param, 6))
+  {
+    int32_t vel = atol(value);
+    velocity(vel);
+    return true;    
   }
   else if (!strncmp("reset", param, 6))
   {
@@ -205,24 +217,24 @@ void Winch::reset()
   write(128, 20, NULL, 0); 
 }
 
-void Winch::position(int32_t pos, int32_t vel)
+void Winch::position(uint32_t pos)
 {
-  PositionCommand command = {
-    platypus::swap(abs(vel)/3+1),
-    platypus::swap(vel),
-    platypus::swap(abs(vel)/3+1),
-    platypus::swap(pos),
-    true
-  };
-  write(128, 65, (uint8_t*)&command, sizeof(command));
+  command_.position = platypus::swap(pos);
+  write(128, 44, (uint8_t*)&command_, sizeof(command_));
 }
 
-int32_t Winch::position()
+void Winch::velocity(int32_t vel)
+{
+  command_.speed = platypus::swap(vel);
+  write(128, 44, (uint8_t*)&command_, sizeof(command_));  
+}
+
+uint32_t Winch::position()
 {
   QuadratureResponse response;
   bool valid = false;
   
-  for (unsigned int i = 0; i < 2; ++i) {
+  for (size_t i = 0; i < 2; ++i) {
     valid = read(128, 16, (uint8_t*)&response, sizeof(response));
     if (valid)
     {
