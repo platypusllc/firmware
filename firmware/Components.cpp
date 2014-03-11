@@ -188,13 +188,13 @@ char* Winch::name()
 bool Winch::set(char* param, char* value)
 {
   // Set winch position
-  if (!strncmp("depth", param, 6))
+  if (!strncmp("p", param, 2))
   {
     uint32_t pos = atol(value);
     position(pos);
     return true;
   }
-  else if (!strncmp("speed", param, 6))
+  else if (!strncmp("v", param, 2))
   {
     int32_t vel = atol(value);
     velocity(vel);
