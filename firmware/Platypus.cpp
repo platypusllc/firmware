@@ -2,6 +2,7 @@
 
 using namespace platypus;
 
+// TODO: Switch to using HardwareSerial.
 USARTClass *platypus::SERIAL_PORTS[4] = {
   NULL,
   &Serial1,

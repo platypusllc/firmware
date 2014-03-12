@@ -270,23 +270,23 @@ void setup()
   // Latch power shutdown line high to keep board from turning off.
   pinMode(board::PWR_KILL, OUTPUT);
   digitalWrite(board::PWR_KILL, HIGH);
+
+  // Initialize debugging serial console.
+  Serial.begin(115200);
+
+  // Start the system in the disconnected state
+  system_state = DISCONNECTED;
   
   // Initialize sensors
   sensor[0] = new platypus::AnalogSensor(0);
   sensor[1] = new platypus::Hdf5(1);
-  sensor[2] = new platypus::Winch(2);
+  sensor[2] = new platypus::Winch(2, 0x80);
   sensor[3] = new platypus::AnalogSensor(3);
   
   // Initialize motors
   motor[0] = new platypus::Seaking(0); 
   motor[1] = new platypus::Seaking(1);
 
-  // Initialize debugging serial console.
-  Serial.begin(115200);
-  
-  // Start the system in the disconnected state
-  system_state = DISCONNECTED;
-  
   // Make the ADK buffers into null terminated string.
   debug_buffer[INPUT_BUFFER_SIZE] = '\0';
   input_buffer[INPUT_BUFFER_SIZE] = '\0';
@@ -491,17 +491,22 @@ void winchUpdateLoop()
   {  
     // TODO: Remove this hack
     // Send encoder status update over USB
-    long pos = ((platypus::Winch*)sensor[2])->position();
-    snprintf(output_buffer, OUTPUT_BUFFER_SIZE,
-      "{"
-        "\"s2\":{"
-          "\"type\":\"winch\","
-          "\"depth\":%ld"
-        "}"
-      "}",
-      pos
-    );
-    send(output_buffer);
+    bool valid = false;
+    long pos = ((platypus::Winch*)sensor[2])->encoder(&valid);
+    
+    if (valid)
+    {
+      snprintf(output_buffer, OUTPUT_BUFFER_SIZE,
+        "{"
+          "\"s2\":{"
+            "\"type\":\"winch\","
+            "\"depth\":%ld"
+          "}"
+        "}",
+        pos
+      );
+      send(output_buffer);
+    } 
   }
 }
 
@@ -544,47 +549,15 @@ void winchTestLoop()
   delay(100);
   
   Serial.println("GET ENC");
-  long pos = ((platypus::Winch*)sensor[2])->position();
+  long pos = ((platypus::Winch*)sensor[2])->encoder();
   Serial.println(pos);
   delay(100);
   return;
 
-  // Test PID
-  Serial.println("SET PID");
-  platypus::Winch::PidCommand pid = {
-    platypus::swap(100),
-    platypus::swap(0),
-    platypus::swap(0),
-    platypus::swap(0),
-    platypus::swap(0),
-    platypus::swap(0),
-    platypus::swap(0),
-  };
-  //((platypus::Winch*)sensor[2])->write(128, 61, (uint8_t*)&pid, sizeof(pid));
-  delay(100);
-
-  Serial.println("GET PID");
-  bool valid = ((platypus::Winch*)sensor[2])->read(128, 63, (uint8_t*)&pid, sizeof(pid));
-  Serial.print("P: ");
-  Serial.print(valid);
-  Serial.print(":");
-  Serial.println(platypus::swap(pid.P));
-  return;
-  
   // Test position
   Serial.println("SET POS");
   ((platypus::Winch*)sensor[2])->position(10000);
   delay(2000);
-
-  // Test velocity command
-  ((platypus::Winch*)sensor[2])->write(128,6,50); // Backwards
-  delay(1000);
-  ((platypus::Winch*)sensor[2])->write(128,6,64); // STOP
-  delay(1000);
-  ((platypus::Winch*)sensor[2])->write(128,6,80); // Forwards
-  delay(1000);
-  ((platypus::Winch*)sensor[2])->write(128,6,64); // STOP
-  delay(1000);
 }
 
 const unsigned int NUM_HD5_STRINGS = 20;

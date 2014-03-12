@@ -4,6 +4,13 @@ using namespace platypus;
 
 #define WAIT_FOR_CONDITION(condition, timeout_ms) for (unsigned int j = 0; j < (timeout_ms) && !(condition); ++j) delay(1);
 
+// TODO: move these somewhere reasonable
+// Default gains for the Roboclaw.
+#define Kp 0x00010000
+#define Ki 0x00008000
+#define Kd 0x00004000
+#define Qpps 44000
+
 void VaporPro::arm()
 {
   disable();
@@ -163,21 +170,23 @@ void Hdf5::onSerial()
   }
 }
 
-Winch::Winch(int channel)
-: Sensor(channel) 
-{
-  // Initialize default command
-  command_.position = 0;
-  command_.speed = 0;
-  command_.accel = 10000;
-  command_.is_buffered = 1;
-  
-  // Enable +12V output
+Winch::Winch(int channel, uint8_t address)
+: Sensor(channel)
+, roboclaw_(platypus::SERIAL_PORTS[channel], 100)
+, address_(address)
+, desired_position_(0)
+, desired_velocity_(0)
+, desired_acceleration_(12000)
+{  
+  // Enable +12V output.
   pinMode(board::SENSOR[channel].PWR_ENABLE, OUTPUT);
   digitalWrite(board::SENSOR[channel].PWR_ENABLE, HIGH);
-    
-  // Start up serial port
-  SERIAL_PORTS[channel]->begin(38400);
+  
+  // TODO: specifically enable e-stop line.
+  // (Right now it is just pulled up by default.)
+  
+  // Start up Roboclaw.
+  roboclaw_.begin(38400);
 }
 
 char* Winch::name()
@@ -214,90 +223,32 @@ bool Winch::set(char* param, char* value)
 
 void Winch::reset()
 {
-  write(128, 20, NULL, 0); 
+  roboclaw_.ResetEncoders(address_);
 }
 
 void Winch::position(uint32_t pos)
 {
-  command_.position = platypus::swap(pos);
-  write(128, 44, (uint8_t*)&command_, sizeof(command_));
+  desired_position_ = pos;
+  roboclaw_.SetM1VelocityPID(address_, Kd, Kp, Ki, Qpps);
+  roboclaw_.SpeedAccelDistanceM1(address_,
+                                 desired_acceleration_,
+                                 desired_velocity_,
+                                 desired_position_);
 }
 
 void Winch::velocity(int32_t vel)
 {
-  command_.speed = platypus::swap(vel);
-  write(128, 44, (uint8_t*)&command_, sizeof(command_));  
+  desired_velocity_ = vel;
+  roboclaw_.SetM1VelocityPID(address_, Kd, Kp, Ki, Qpps);
+  roboclaw_.SpeedAccelDistanceM1(address_, 
+                                 desired_acceleration_, 
+                                 desired_velocity_,
+                                 desired_position_);
 }
 
-uint32_t Winch::position()
+uint32_t Winch::encoder(bool *valid)
 {
-  QuadratureResponse response;
-  bool valid = false;
-  
-  for (size_t i = 0; i < 2; ++i) {
-    valid = read(128, 16, (uint8_t*)&response, sizeof(response));
-    if (valid)
-    {
-      swap(response.ticks);
-      return response.ticks;
-    }
-  }
-  return 0.0;
+  uint32_t enc1 = roboclaw_.ReadEncM1(address_, NULL, valid);
+  return enc1;
 }
 
-void Winch::write(uint8_t address, uint8_t command, uint8_t *data, unsigned int data_len)
-{  
-  // Compute 7-bit checksum as per Roboclaw datasheet.
-  uint8_t checksum = (address + command);
-  for (unsigned int i = 0; i < data_len; ++i)
-  {
-    checksum += data[i];
-  }
-  checksum &= 0x7F;
-
-  // Send command to motor controller
-  SERIAL_PORTS[channel_]->write(address);
-  SERIAL_PORTS[channel_]->write(command);
-  SERIAL_PORTS[channel_]->write(data, data_len);
-  SERIAL_PORTS[channel_]->write(checksum);
-}
-
-bool Winch::read(uint8_t address, uint8_t command, uint8_t *response, unsigned int response_len)
-{
-  uint8_t checksum = 0;
-  checksum += address;
-  checksum += command;
-  
-  // Clear any existing data in serial buffer.
-  SERIAL_PORTS[channel_]->read();
-    
-  // Send read command to motor controller.
-  SERIAL_PORTS[channel_]->write(address);
-  SERIAL_PORTS[channel_]->write(command);
-
-  // Read into specified response buffer.
-  for (unsigned int i = 0; i < response_len; ++i) {
-    WAIT_FOR_CONDITION(SERIAL_PORTS[channel_]->available(), 250);
-    char c = SERIAL_PORTS[channel_]->read();
-    response[i] = c;
-    checksum += c;
-  }
-
-  // Read and compare checksum.
-  checksum &= 0x7F;
-  WAIT_FOR_CONDITION(SERIAL_PORTS[channel_]->available(), 250);
-  char c = SERIAL_PORTS[channel_]->read();
-  return (c == checksum);
-}
-
-void Winch::write(uint8_t address, uint8_t command, uint8_t data)
-{
-  // Compute 7-bit checksum as per Roboclaw datasheet.
-  uint8_t checksum = (address + command + data) & 0x7F;
-  
-  // Send command to motor controller.
-  SERIAL_PORTS[channel_]->write(address);
-  SERIAL_PORTS[channel_]->write(command);
-  SERIAL_PORTS[channel_]->write(data);
-  SERIAL_PORTS[channel_]->write(checksum);
-}

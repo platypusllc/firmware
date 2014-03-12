@@ -30,11 +30,14 @@ int16_t RoboClaw::read(uint32_t timeout)
 {
   if(!serial_port_) return -1;
   
-  for (uint32_t j = 0; j < timeout; ++j) 
+  unsigned long start_time = millis();
+  while(millis() - start_time < timeout) 
   {
     if (serial_port_->available()) 
+    {
       return serial_port_->read();
-    delay(1);
+    }
+    yield();
   }
 
   return -1;

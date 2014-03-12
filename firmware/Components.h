@@ -2,6 +2,7 @@
 #define COMPONENTS_H
 
 #include "Platypus.h"
+#include "RoboClaw.h"
 
 namespace platypus 
 {
@@ -62,47 +63,22 @@ namespace platypus
   
   class Winch : public Sensor {
   public:
-    Winch(int channel);
+    Winch(int channel, uint8_t address);
     char *name();
     bool set(char* param, char* value);
     
     void reset();
 
     void velocity(int32_t pos);
-
     void position(uint32_t pos);
-    uint32_t position();
+    uint32_t encoder(bool *valid = NULL);
 
-    bool read(uint8_t address, uint8_t command, uint8_t *response, unsigned int response_len);
-
-    void write(uint8_t address, uint8_t command, uint8_t data);
-    void write(uint8_t address, uint8_t command, uint8_t *data, unsigned int data_len);
-    
-#pragma pack(push, 1) // Store current byte packing and set to 1.
-    typedef struct {
-      uint32_t accel;
-      int32_t speed;
-      uint32_t position;
-      uint8_t is_buffered;
-    } PositionCommand;
-    
-    typedef struct {
-      uint32_t P;
-      uint32_t I;
-      uint32_t D;
-      uint32_t MaxI;
-      uint32_t Deadzone;
-      uint32_t MinPos;
-      uint32_t MaxPos;
-    } PidCommand;
-    
-    typedef struct {
-      uint32_t ticks;
-      uint8_t status;
-    } QuadratureResponse;
-#pragma pack(pop) // Return to default byte packing.
-
-    PositionCommand command_;
+  private:
+    RoboClaw roboclaw_;
+    uint8_t address_;
+    uint32_t desired_position_;
+    int32_t desired_velocity_;
+    uint32_t desired_acceleration_;
   };
 }
 
