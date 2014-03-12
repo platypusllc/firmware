@@ -3,7 +3,7 @@
 //
 // Constructor
 //
-RoboClaw::RoboClaw(uint8_t receivePin, uint8_t transmitPin, uint32_t tout,bool doack) : BMSerial::BMSerial(receivePin, transmitPin)
+RoboClaw::RoboClaw(HardwareSerial *serial_port, uint32_t tout,bool doack) : serial_port_(serial_port)
 {
 	timeout = tout;
 	ack=doack;
@@ -16,6 +16,30 @@ RoboClaw::~RoboClaw()
 {
 }
 
+void RoboClaw::begin(long baud)
+{
+  serial_port_->begin(baud);
+}
+
+void RoboClaw::end()
+{
+  serial_port_->end();
+}
+
+int16_t RoboClaw::read(uint32_t timeout)
+{
+  if(!serial_port_) return -1;
+  
+  for (uint32_t j = 0; j < timeout; ++j) 
+  {
+    if (serial_port_->available()) 
+      return serial_port_->read();
+    delay(1);
+  }
+
+  return -1;
+}
+
 bool RoboClaw::write_n(uint8_t cnt, ... )
 {
 	uint8_t crc=0;
@@ -26,13 +50,13 @@ bool RoboClaw::write_n(uint8_t cnt, ... )
 	for(uint8_t index=0;index<cnt;index++){
 		uint8_t data = va_arg(marker, uint16_t);
 		crc+=data;
-		write(data);
+		serial_port_->write(data);
 	}
 	va_end( marker );              /* Reset variable arguments.      */
 	if(ack)
-		write(crc&0x7F | 0x80);
+		serial_port_->write(crc&0x7F | 0x80);
 	else
-		write(crc&0x7F);
+		serial_port_->write(crc&0x7F);
 	if(ack)
 		if(read(timeout)==0xFF)
 			return true;
@@ -98,9 +122,9 @@ bool RoboClaw::LeftRightMixed(uint8_t address, uint8_t speed){
 bool RoboClaw::read_n(uint8_t cnt,uint8_t address,uint8_t cmd,...)
 {
 	uint8_t crc;
-	write(address);
+	serial_port_->write(address);
 	crc=address;
-	write(cmd);
+	serial_port_->write(cmd);
 	crc+=cmd;
 
 	//send data with crc
@@ -137,9 +161,9 @@ bool RoboClaw::read_n(uint8_t cnt,uint8_t address,uint8_t cmd,...)
 
 uint32_t RoboClaw::Read4_1(uint8_t address, uint8_t cmd, uint8_t *status,bool *valid){
 	uint8_t crc;
-	write(address);
+	serial_port_->write(address);
 	crc=address;
-	write(cmd);
+	serial_port_->write(cmd);
 	crc+=cmd;
 
 	uint32_t value;
@@ -193,9 +217,9 @@ bool RoboClaw::ResetEncoders(uint8_t address){
 
 bool RoboClaw::ReadVersion(uint8_t address,char *version){
 	uint8_t crc;
-	write(address);
+	serial_port_->write(address);
 	crc=address;
-	write(GETVERSION);
+	serial_port_->write(GETVERSION);
 	crc+=GETVERSION;
 	
 	for(uint8_t i=0;i<32;i++){
@@ -213,9 +237,9 @@ bool RoboClaw::ReadVersion(uint8_t address,char *version){
 
 uint16_t RoboClaw::Read2(uint8_t address,uint8_t cmd,bool *valid){
 	uint8_t crc;
-	write(address);
+	serial_port_->write(address);
 	crc=address;
-	write(cmd);
+	serial_port_->write(cmd);
 	crc+=cmd;
 	
 	uint16_t value;	
@@ -472,9 +496,9 @@ bool RoboClaw::ReadTemp(uint8_t address, uint16_t &temp){
 
 uint8_t RoboClaw::ReadError(uint8_t address,bool *valid){
 	uint8_t crc;
-	write(address);
+	serial_port_->write(address);
 	crc=address;
-	write(GETERROR);
+	serial_port_->write(GETERROR);
 	crc+=GETERROR;
 	
 	uint8_t value = read(timeout);

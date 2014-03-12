@@ -2,8 +2,7 @@
 #define RoboClaw_h
 
 #include <stdarg.h>
-
-#include "../BMSerial/BMSerial.h"
+#include <Arduino.h>
 
 /******************************************************************************
 * Definitions
@@ -14,7 +13,7 @@
 #define GCC_VERSION (__GNUC__ * 10000 + __GNUC_MINOR__ * 100 + __GNUC_PATCHLEVEL__)
 #endif
 
-class RoboClaw : public BMSerial
+class RoboClaw
 {
 	uint32_t timeout;
 	bool ack;	//ack mode only supported on 3.1.8 and newer firmware
@@ -90,9 +89,12 @@ class RoboClaw : public BMSerial
 			WRITENVM = 94};
 public:
 	// public methods
-	RoboClaw(uint8_t receivePin, uint8_t transmitPin,uint32_t tout,bool doack=false);	//ack option only available on 3.1.8 and newer firmware
+	RoboClaw(HardwareSerial *serial_port,uint32_t tout,bool doack=false);	//ack option only available on 3.1.8 and newer firmware
 	
 	~RoboClaw();
+
+	void begin(long baud);
+	void end();
 
 	bool ForwardM1(uint8_t address, uint8_t speed);
 	bool BackwardM1(uint8_t address, uint8_t speed);
@@ -169,7 +171,9 @@ private:
 	bool read_n(uint8_t byte,uint8_t address,uint8_t cmd,...);
 	uint32_t Read4_1(uint8_t address,uint8_t cmd,uint8_t *status,bool *valid);
 	uint16_t Read2(uint8_t address,uint8_t cmd,bool *valid);
-	
+	int16_t read(uint32_t timeout);
+
+	HardwareSerial *serial_port_;	
 };
 
 #endif
