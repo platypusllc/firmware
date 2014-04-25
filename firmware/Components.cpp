@@ -53,6 +53,19 @@ void Seaking::arm()
   delay(2000);
 }
 
+void Swordfish::arm()
+{
+  disable();
+  delay(500);
+  
+  velocity(1.0);
+  enable();
+  delay(5000);
+
+  velocity(0.0);
+  delay(3000);
+}
+
 AnalogSensor::AnalogSensor(int channel)
   : Sensor(channel), scale_(1.0f), offset_(0.0f) {}
 

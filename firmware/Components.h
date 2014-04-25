@@ -26,6 +26,12 @@ namespace platypus
     void arm();
   };
 
+  class Swordfish : public Motor {
+  public:
+    Swordfish(int channel) : Motor(channel) {}
+    void arm();
+  };
+
   class AnalogSensor : public Sensor {
   public:
     AnalogSensor(int channel);
