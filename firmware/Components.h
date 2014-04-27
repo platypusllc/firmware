@@ -50,6 +50,22 @@ namespace platypus
     float offset_;
   };
   
+  class ServoSensor : public Sensor {
+  public:
+    ServoSensor(int channel);
+    ~ServoSensor();
+
+    bool set(char* param, char* value);
+    char *name();
+    
+    void position(float velocity);
+    float position();
+    
+  private:
+    Servo servo_;
+    float position_;
+  };
+  
   class ES2 : public Sensor {
   public:
     ES2(int channel) : Sensor(channel) {}

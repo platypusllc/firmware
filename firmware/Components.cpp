@@ -122,6 +122,57 @@ char* ES2::name()
   return "es2";
 }
 
+ServoSensor::ServoSensor(int channel)
+  : Sensor(channel), position_(0)
+{
+   servo_.attach(board::SENSOR[channel].ANALOG);
+}
+
+ServoSensor::~ServoSensor()
+{
+   servo_.detach(); 
+}
+
+void ServoSensor::position(float position)
+{
+  if (position > 1.0) {
+    position = 1.0;
+  }
+  if (position < -1.0) {
+    position = -1.0;
+  }
+  position_ = position;
+
+  float command = (position * 600) + 1500;
+  servo_.writeMicroseconds(command);
+}
+
+float ServoSensor::position()
+{
+  return position_;
+}
+
+bool ServoSensor::set(char *param, char *value)
+{
+  // Set motor velocity.
+  if (!strncmp("p", param, 2))
+  {
+    float p = atof(value);
+    position(p);
+    return true;
+  }
+  // Return false for unknown command.
+  else
+  {
+    return false;
+  }
+}
+
+char* ServoSensor::name()
+{
+  return "servo";
+}
+
 Hdf5::Hdf5(int channel)
 : Sensor(channel), recv_index_(0)
 {
