@@ -156,7 +156,7 @@ public class AirboatActivity extends Activity {
 				SharedPreferences prefs = getSharedPreferences(PREFS_PRIVATE, Context.MODE_PRIVATE);
 				Editor prefsPrivateEditor = prefs.edit();
 				prefsPrivateEditor.putString(KEY_MASTER_URI, masterAddress.getText().toString());
-				prefsPrivateEditor.commit();
+				prefsPrivateEditor.apply();
     			
 				// Depending on whether the service is running, start or stop
     			if (!connectToggle.isChecked()) {
@@ -188,7 +188,7 @@ public class AirboatActivity extends Activity {
                 SharedPreferences prefs = getSharedPreferences(PREFS_PRIVATE, Context.MODE_PRIVATE);
                 Editor prefsPrivateEditor = prefs.edit();
                 prefsPrivateEditor.putString(KEY_VEHICLE_TYPE, adapterView.getItemAtPosition(i).toString());
-                prefsPrivateEditor.commit();
+                prefsPrivateEditor.apply();
             }
 
             @Override
@@ -311,7 +311,7 @@ public class AirboatActivity extends Activity {
 				SharedPreferences prefs = getSharedPreferences(PREFS_PRIVATE, Context.MODE_PRIVATE);
 				Editor prefsPrivateEditor = prefs.edit();
 				prefsPrivateEditor.putString(KEY_FAILSAFE_ADDR, failsafeAddress.getText().toString());
-				prefsPrivateEditor.commit();
+				prefsPrivateEditor.apply();
     			
     			if (!failsafeToggle.isChecked()) {
     				Log.i(logTag, "Starting failsafe service.");
