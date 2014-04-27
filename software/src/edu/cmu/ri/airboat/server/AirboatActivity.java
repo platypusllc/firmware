@@ -32,8 +32,10 @@ import android.text.TextWatcher;
 import android.util.Log;
 import android.view.View;
 import android.view.View.OnClickListener;
+import android.widget.AdapterView;
 import android.widget.AutoCompleteTextView;
 import android.widget.Button;
+import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 import android.widget.ToggleButton;
@@ -48,6 +50,7 @@ public class AirboatActivity extends Activity {
 	public static final String PREFS_PRIVATE = "PREFS_PRIVATE";
 	public static final String KEY_MASTER_URI = "KEY_MASTER_URI";
 	public static final String KEY_FAILSAFE_ADDR = "KEY_FAILSAFE_ADDR";
+    public static final String KEY_VEHICLE_TYPE = "KEY_VEHICLE_TYPE";
 	public static final String OBSTACLE_DATA = "OBSTACLE_DATA";
 
 	private UtmPose _homePosition = new UtmPose();
@@ -164,7 +167,7 @@ public class AirboatActivity extends Activity {
     				stopService(new Intent(AirboatActivity.this, AirboatService.class));
     			}
 			}
-    	});
+        });
         
         // Periodically update status of toggle button
         final Handler handler = new Handler();
@@ -176,7 +179,24 @@ public class AirboatActivity extends Activity {
 				handler.postDelayed(this, 300);
 			}
 		}, 0);
-        
+
+        // Register handler for vehicle type spinner.
+        final Spinner vehicle_type = (Spinner)findViewById(R.id.VehicleTypeSpinner);
+        vehicle_type.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> adapterView, View view, int i, long l) {
+                SharedPreferences prefs = getSharedPreferences(PREFS_PRIVATE, Context.MODE_PRIVATE);
+                Editor prefsPrivateEditor = prefs.edit();
+                prefsPrivateEditor.putString(KEY_VEHICLE_TYPE, adapterView.getItemAtPosition(i).toString());
+                prefsPrivateEditor.commit();
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> arg0) {
+                // Nothing to do here.
+            }
+        });
+
         // Register handler for debug button
         final Button debugButton = (Button)findViewById(R.id.DebugButton);
         debugButton.setOnClickListener(new OnClickListener() {

@@ -36,8 +36,15 @@
             android:text="@string/master_default_addr"
             android:typeface="monospace" />
 
+        <Spinner
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:id="@+id/VehicleTypeSpinner"
+            android:entries="@array/vehicle_types"
+            android:prompt="@string/vehicle_type_prompt" />
+
         <LinearLayout
-            android:id="@+id/ButtonLayout"
+            android:id="@+id/ButtonLayoutService"
             android:layout_width="fill_parent"
             android:layout_height="wrap_content" >
 
@@ -89,7 +96,7 @@
             android:typeface="monospace" />
 
         <LinearLayout
-            android:id="@+id/ButtonLayout"
+            android:id="@+id/ButtonLayoutFailsafe"
             android:layout_width="fill_parent"
             android:layout_height="wrap_content" >
 
