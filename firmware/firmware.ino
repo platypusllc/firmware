@@ -38,8 +38,8 @@ platypus::Led rgb_led;
 
 const size_t NUM_MOTORS = 2;
 platypus::Motor *motor[NUM_MOTORS] = { 
-  new platypus::VaporPro(0), 
-  new platypus::VaporPro(1) 
+  new platypus::Seaking(0), 
+  new platypus::Seaking(1) 
 };
 
 const size_t NUM_SENSORS = 4;
