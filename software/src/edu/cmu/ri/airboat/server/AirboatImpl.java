@@ -66,7 +66,13 @@ public class AirboatImpl extends AbstractVehicleServer {
     // TODO: Remove this variable, it is totally arbitrary
     private double winch_depth_ = Double.NaN;
 
-	/**
+    public static enum VehicleType {
+        DIFFERENTIAL_THRUST,
+        VECTORED_THRUST,
+        UNKNOWN
+    }
+
+    /**
 	 * Defines the PID gains that will be returned if there is an error.
 	 */
 	public static final double[] NAN_GAINS = new double[] { Double.NaN,
@@ -97,11 +103,13 @@ public class AirboatImpl extends AbstractVehicleServer {
 	 * ry, rz, rPhi, rPsi, rOmega]
 	 */
 	Twist _velocities = new Twist(DEFAULT_TWIST);
-	/**
+
+    /**
 	 * Raw gyroscopic readings from the phone gyro. 
 	 */
 	final double[] _gyroPhone = new double[3];
-	/**
+
+    /**
 	 * Hard-coded constants used in Yunde's controller and for new implementation of Arduino code.
 	 * CONSTANTS FORMAT: range_min, range_max, servo_min, servo_max
 	 */
@@ -109,6 +117,17 @@ public class AirboatImpl extends AbstractVehicleServer {
 	double [] t_PID = {.5, .5, .5};
     public static final double SAFE_THRUST = 0.12;
     public static final double CONST_THRUST = SAFE_THRUST;
+
+    /**
+     * Simple clipping function that restricts a value to a given range.
+     * @param input value that needs to be clipped
+     * @param min minimum allowable value
+     * @param max maximum allowable value
+     * @return value after it has been clipped between min and max.
+     */
+    public static double clip(double input, double min, double max) {
+        return Math.min(Math.max(input, min), max);
+    }
 
 	/**
 	 * Creates a new instance of the vehicle implementation. This function
@@ -152,68 +171,72 @@ public class AirboatImpl extends AbstractVehicleServer {
 			logger.info("POSE: " + _utmPose);
 			sendState(_utmPose.clone());
 
+            // Determine current vehicle type from ordinal value.
+            int vehicle_type_index = _prefs.getInt(AirboatActivity.KEY_VEHICLE_TYPE, VehicleType.UNKNOWN.ordinal());
+            VehicleType vehicle_type = VehicleType.values()[vehicle_type_index];
+
             // Send vehicle command by converting raw command to appropriate vehicle model.
-            String vehicle_type = _prefs.getString(AirboatActivity.KEY_VEHICLE_TYPE, "Differential/Propeller");
-            if (vehicle_type.equalsIgnoreCase("Differential/Propeller")) {
+            JSONObject command = new JSONObject();
+            switch (vehicle_type) {
+                case DIFFERENTIAL_THRUST:
+                    // Construct objects to hold velocities
+                    JSONObject velocity0 = new JSONObject();
+                    JSONObject velocity1 = new JSONObject();
 
-                // Construct objects to hold velocities
-                JSONObject command = new JSONObject();
-                JSONObject velocity0 = new JSONObject();
-                JSONObject velocity1 = new JSONObject();
+                    // Send velocities as a JSON command
+                    try {
+                        // Until ESCs are able to reverse, set the lower limit to 0.0
+                        // Until ESC reboot is fixed, set the upper limit to SAFE_THRUST
+                        double constrainedV0 = clip(_velocities.dx() - _velocities.drz(), 0, AirboatImpl.SAFE_THRUST);
+                        double constrainedV1 = clip(_velocities.dx() + _velocities.drz(), 0, AirboatImpl.SAFE_THRUST);
 
-                // Send velocities as a JSON command
-                try {
-                    // Until ESCs are able to reverse, set the lower limit to 0.0
-                    // Until ESC reboot is fixed, set the upper limit to SAFE_THRUST
-                    double constrainedV0 = Math.min((Math.max(0.0, _velocities.dx() - _velocities.drz())), AirboatImpl.SAFE_THRUST);
-                    double constrainedV1 = Math.min((Math.max(0.0, _velocities.dx() + _velocities.drz())), AirboatImpl.SAFE_THRUST);
+                        velocity0.put("v", (float) constrainedV0);
+                        velocity1.put("v", (float) constrainedV1);
 
-                    velocity0.put("v", (float) constrainedV0);
-                    velocity1.put("v", (float) constrainedV1);
+                        command.put("m0", velocity0);
+                        command.put("m1", velocity1);
 
-                    command.put("m0", velocity0);
-                    command.put("m1", velocity1);
+                        _usbWriter.println(command.toString());
+                        _usbWriter.flush();
 
-                    _usbWriter.println(command.toString());
-                    _usbWriter.flush();
+                        logger.info("CMD: " + command.toString());
+                    } catch (JSONException e) {
+                        Log.w(logTag, "Failed to serialize command.", e); // TODO: remove this.
+                    }
+                    break;
 
-                    logger.info("CMD: " + command.toString());
-                } catch (JSONException e) {
-                    Log.w(logTag, "Failed to serialize command.", e); // TODO: remove this.
-                }
-            } else if (vehicle_type.equalsIgnoreCase("Vectored/Fan")) {
+                case VECTORED_THRUST:
+                    // Construct objects to hold velocities
+                    JSONObject thrust = new JSONObject();
+                    JSONObject rudder = new JSONObject();
 
-                // Construct objects to hold velocities
-                JSONObject command = new JSONObject();
-                JSONObject thrust = new JSONObject();
-                JSONObject rudder = new JSONObject();
+                    // Send velocities as a JSON command
+                    try {
+                        // Until ESCs are able to reverse, set the lower limit to 0.0
+                        // Until ESC reboot is fixed, set the upper limit to SAFE_THRUST
+                        double constrainedV = clip(_velocities.dx(), 0.0, AirboatImpl.SAFE_THRUST);
 
-                // Send velocities as a JSON command
-                try {
-                    // Until ESCs are able to reverse, set the lower limit to 0.0
-                    // Until ESC reboot is fixed, set the upper limit to SAFE_THRUST
-                    double constrainedV = Math.min((Math.max(0.0, _velocities.dx() - _velocities.drz())), AirboatImpl.SAFE_THRUST);
+                        // Rudder is constrained to +/-1.0
+                        double constrainedP = clip(_velocities.drz(), -1.0, 1.0);
 
-                    // Rudder is constrained to +/-1.0
-                    double constrainedP = Math.min((Math.max(-1.0, _velocities.drz())), 1.0);
+                        thrust.put("v", (float) constrainedV);
+                        rudder.put("p", (float) constrainedP);
 
-                    thrust.put("v", (float) constrainedV);
-                    rudder.put("p", (float) constrainedP);
+                        command.put("m0", thrust);
+                        command.put("s0", rudder);
 
-                    command.put("m0", thrust);
-                    command.put("s0", rudder);
+                        _usbWriter.println(command.toString());
+                        _usbWriter.flush();
 
-                    _usbWriter.println(command.toString());
-                    _usbWriter.flush();
-
-                    logger.info("CMD: " + command.toString());
-                } catch (JSONException e) {
-                    Log.w(logTag, "Failed to serialize command.", e); // TODO: remove this.
-                }
-            } else {
-                Log.w(logTag, "Unknown vehicle type: " + vehicle_type);
+                        logger.info("CMD: " + command.toString());
+                    } catch (JSONException e) {
+                        Log.w(logTag, "Failed to serialize command.", e); // TODO: remove this.
+                    }
+                    break;
+                default:
+                    Log.w(logTag, "Unknown vehicle type: " + vehicle_type);
             }
-		}
+        }
 	};
 
 	/**

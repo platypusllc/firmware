@@ -27,6 +27,7 @@ import android.location.LocationManager;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Handler;
+import android.preference.PreferenceManager;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.util.Log;
@@ -58,6 +59,7 @@ public class AirboatActivity extends Activity {
 	/** Called when the activity is first created. */
     @Override
 	public void onCreate(Bundle savedInstanceState) {
+        final SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(AirboatActivity.this);
 
     	// Create the "main" layout from the included XML file 
     	super.onCreate(savedInstanceState);
@@ -142,31 +144,30 @@ public class AirboatActivity extends Activity {
         // Register handler for server toggle button
         final ToggleButton connectToggle = (ToggleButton)findViewById(R.id.ConnectToggle);
         connectToggle.setOnClickListener(new OnClickListener() {
-        	
-			@Override
-			public void onClick(View v) {
-				// Don't allow re-clicking until the service status updates
-				connectToggle.setEnabled(false);
-				
-				// Create an intent to properly start the vehicle server
-				Intent intent = new Intent(AirboatActivity.this, LauncherActivity.class);
-				intent.putExtra(AirboatService.UDP_REGISTRY_ADDR, masterAddress.getText().toString());
-								
-				// Save the current preferences to the phone
-				SharedPreferences prefs = getSharedPreferences(PREFS_PRIVATE, Context.MODE_PRIVATE);
-				Editor prefsPrivateEditor = prefs.edit();
-				prefsPrivateEditor.putString(KEY_MASTER_URI, masterAddress.getText().toString());
-				prefsPrivateEditor.apply();
-    			
-				// Depending on whether the service is running, start or stop
-    			if (!connectToggle.isChecked()) {
-    				Log.i(logTag, "Starting background service.");
-    				startActivity(intent);
-    			} else {
-    				Log.i(logTag, "Stopping background service.");
-    				stopService(new Intent(AirboatActivity.this, AirboatService.class));
-    			}
-			}
+
+            @Override
+            public void onClick(View v) {
+                // Don't allow re-clicking until the service status updates
+                connectToggle.setEnabled(false);
+
+                // Create an intent to properly start the vehicle server
+                Intent intent = new Intent(AirboatActivity.this, LauncherActivity.class);
+                intent.putExtra(AirboatService.UDP_REGISTRY_ADDR, masterAddress.getText().toString());
+
+                // Save the current preferences to the phone
+                Editor prefsPrivateEditor = prefs.edit();
+                prefsPrivateEditor.putString(KEY_MASTER_URI, masterAddress.getText().toString());
+                prefsPrivateEditor.apply();
+
+                // Depending on whether the service is running, start or stop
+                if (!connectToggle.isChecked()) {
+                    Log.i(logTag, "Starting background service.");
+                    startActivity(intent);
+                } else {
+                    Log.i(logTag, "Stopping background service.");
+                    stopService(new Intent(AirboatActivity.this, AirboatService.class));
+                }
+            }
         });
         
         // Periodically update status of toggle button
@@ -180,14 +181,16 @@ public class AirboatActivity extends Activity {
 			}
 		}, 0);
 
-        // Register handler for vehicle type spinner.
+        // Initialize vehicle type spinner using preferences.
         final Spinner vehicle_type = (Spinner)findViewById(R.id.VehicleTypeSpinner);
+        vehicle_type.setSelection(prefs.getInt(KEY_VEHICLE_TYPE, 0));
+
+        // Register handler to update preferences from spinner.
         vehicle_type.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(AdapterView<?> adapterView, View view, int i, long l) {
-                SharedPreferences prefs = getSharedPreferences(PREFS_PRIVATE, Context.MODE_PRIVATE);
                 Editor prefsPrivateEditor = prefs.edit();
-                prefsPrivateEditor.putString(KEY_VEHICLE_TYPE, adapterView.getItemAtPosition(i).toString());
+                prefsPrivateEditor.putInt(KEY_VEHICLE_TYPE, i);
                 prefsPrivateEditor.apply();
             }
 
@@ -308,7 +311,6 @@ public class AirboatActivity extends Activity {
     			intent.putExtra(AirboatFailsafeIntent.HOME_NORTH, _homePosition.origin.isNorth);
     			
 				// Save the current BD addr and master URI
-				SharedPreferences prefs = getSharedPreferences(PREFS_PRIVATE, Context.MODE_PRIVATE);
 				Editor prefsPrivateEditor = prefs.edit();
 				prefsPrivateEditor.putString(KEY_FAILSAFE_ADDR, failsafeAddress.getText().toString());
 				prefsPrivateEditor.apply();
@@ -402,7 +404,6 @@ public class AirboatActivity extends Activity {
 		});
         
         // Set text boxes to previous values
-        SharedPreferences prefs = getSharedPreferences(PREFS_PRIVATE, Context.MODE_PRIVATE);
         masterAddress.setText(prefs.getString(KEY_MASTER_URI, masterAddress.getText().toString()));
         failsafeAddress.setText(prefs.getString(KEY_FAILSAFE_ADDR, failsafeAddress.getText().toString()));
     }

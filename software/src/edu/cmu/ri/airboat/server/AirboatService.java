@@ -81,7 +81,6 @@ public class AirboatService extends Service {
 	final int GPS_UPDATE_RATE = 200; // in milliseconds
 
 	// Intent fields definitions
-	public static final String BD_ADDR = "BD_ADDR";
 	public static final String UDP_REGISTRY_ADDR = "UDP_REGISTRY_ADDR";
 	public static final String UPDATE_RATE = "UPDATE_RATE";
 
