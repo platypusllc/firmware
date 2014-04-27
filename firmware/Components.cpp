@@ -123,14 +123,14 @@ char* ES2::name()
 }
 
 ServoSensor::ServoSensor(int channel)
-  : Sensor(channel), position_(0)
+  : Sensor(channel), position_(0.0)
 {
-   servo_.attach(board::SENSOR[channel].ANALOG);
+  servo_.attach(board::SENSOR[channel].GPIO[board::TX_NEG]);
 }
 
 ServoSensor::~ServoSensor()
 {
-   servo_.detach(); 
+  servo_.detach(); 
 }
 
 void ServoSensor::position(float position)
@@ -143,7 +143,7 @@ void ServoSensor::position(float position)
   }
   position_ = position;
 
-  float command = (position * 600) + 1500;
+  float command = (position_ * 600) + 1500;
   servo_.writeMicroseconds(command);
 }
 
