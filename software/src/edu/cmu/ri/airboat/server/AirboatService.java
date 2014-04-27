@@ -362,10 +362,6 @@ public class AirboatService extends Service {
 				new FileOutputStream(mUsbDescriptor.getFileDescriptor())));
 		final FileInputStream usbReader = new FileInputStream(mUsbDescriptor.getFileDescriptor());
 
-		// Create a filter to listen for obstacle avoidance instructions
-		IntentFilter obstacleFilter = new IntentFilter();
-		obstacleFilter.addAction(AirboatImpl.OBSTACLE);
-
 		// Create the data object
 		_airboatImpl = new AirboatImpl(this, usbWriter);
 		new Thread(new Runnable() {

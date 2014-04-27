@@ -1,6 +1,8 @@
 package edu.cmu.ri.airboat.server;
 
 import android.content.Context;
+import android.content.SharedPreferences;
+import android.preference.PreferenceManager;
 import android.util.JsonWriter;
 import android.util.Log;
 
@@ -40,14 +42,15 @@ public class AirboatImpl extends AbstractVehicleServer {
 
 	private static final com.google.code.microlog4android.Logger logger = LoggerFactory
 			.getLogger();
-	public static final String OBSTACLE = "avoidObstacle";
 
 	private static final String logTag = AirboatImpl.class.getName();
 	public static final int UPDATE_INTERVAL_MS = 200;
 	public static final int NUM_SENSORS = 4;
 	public static final VehicleController DEFAULT_CONTROLLER = AirboatController.STOP.controller;
 
-	protected final SensorType[] _sensorTypes = new SensorType[NUM_SENSORS];
+    protected final SharedPreferences _prefs;
+
+    protected final SensorType[] _sensorTypes = new SensorType[NUM_SENSORS];
 	protected UtmPose[] _waypoints = new UtmPose[0];
 
 	protected final Object _captureLock = new Object();
@@ -122,7 +125,10 @@ public class AirboatImpl extends AbstractVehicleServer {
 		_context = context;
 		_usbWriter = usbWriter;
 
-		// Start a regular update function
+        // Connect to the Shared Preferences for this process.
+        _prefs = PreferenceManager.getDefaultSharedPreferences(_context);
+
+        // Start a regular update function
 		_updateTimer.scheduleAtFixedRate(_updateTask, 0, UPDATE_INTERVAL_MS);
 	}
 
@@ -146,31 +152,67 @@ public class AirboatImpl extends AbstractVehicleServer {
 			logger.info("POSE: " + _utmPose);
 			sendState(_utmPose.clone());
 
-			// Construct objects to hold velocities
-			JSONObject command = new JSONObject();
-			JSONObject velocity0 = new JSONObject();
-			JSONObject velocity1 = new JSONObject();
-			
-			// Send velocities as a JSON command			
-			try {
-                // Until ESCs are able to reverse, set the lower limit to 0.0
-                // Until ESC reboot is fixed, set the upper limit to SAFE_THRUST
-                double constrainedV0 = Math.min((Math.max(0.0, _velocities.dx() - _velocities.drz())), AirboatImpl.SAFE_THRUST);
-                double constrainedV1 = Math.min((Math.max(0.0, _velocities.dx() + _velocities.drz())), AirboatImpl.SAFE_THRUST);
+            // Send vehicle command by converting raw command to appropriate vehicle model.
+            String vehicle_type = _prefs.getString(AirboatActivity.KEY_VEHICLE_TYPE, "Differential/Propeller");
+            if (vehicle_type.equalsIgnoreCase("Differential/Propeller")) {
 
-				velocity0.put("v", (float) constrainedV0);
-				velocity1.put("v", (float) constrainedV1);
-				
-				command.put("m0", velocity0);
-				command.put("m1", velocity1);
-				
-				_usbWriter.println(command.toString());
-				_usbWriter.flush();
-				
-				logger.info("VEL: " + command.toString());
-			} catch (JSONException e) {
-				Log.w(logTag, "Failed to serialize command.", e); // TODO: remove this.
-			}
+                // Construct objects to hold velocities
+                JSONObject command = new JSONObject();
+                JSONObject velocity0 = new JSONObject();
+                JSONObject velocity1 = new JSONObject();
+
+                // Send velocities as a JSON command
+                try {
+                    // Until ESCs are able to reverse, set the lower limit to 0.0
+                    // Until ESC reboot is fixed, set the upper limit to SAFE_THRUST
+                    double constrainedV0 = Math.min((Math.max(0.0, _velocities.dx() - _velocities.drz())), AirboatImpl.SAFE_THRUST);
+                    double constrainedV1 = Math.min((Math.max(0.0, _velocities.dx() + _velocities.drz())), AirboatImpl.SAFE_THRUST);
+
+                    velocity0.put("v", (float) constrainedV0);
+                    velocity1.put("v", (float) constrainedV1);
+
+                    command.put("m0", velocity0);
+                    command.put("m1", velocity1);
+
+                    _usbWriter.println(command.toString());
+                    _usbWriter.flush();
+
+                    logger.info("CMD: " + command.toString());
+                } catch (JSONException e) {
+                    Log.w(logTag, "Failed to serialize command.", e); // TODO: remove this.
+                }
+            } else if (vehicle_type.equalsIgnoreCase("Vectored/Fan")) {
+
+                // Construct objects to hold velocities
+                JSONObject command = new JSONObject();
+                JSONObject thrust = new JSONObject();
+                JSONObject rudder = new JSONObject();
+
+                // Send velocities as a JSON command
+                try {
+                    // Until ESCs are able to reverse, set the lower limit to 0.0
+                    // Until ESC reboot is fixed, set the upper limit to SAFE_THRUST
+                    double constrainedV = Math.min((Math.max(0.0, _velocities.dx() - _velocities.drz())), AirboatImpl.SAFE_THRUST);
+
+                    // Rudder is constrained to +/-1.0
+                    double constrainedP = Math.min((Math.max(-1.0, _velocities.drz())), 1.0);
+
+                    thrust.put("v", (float) constrainedV);
+                    rudder.put("p", (float) constrainedP);
+
+                    command.put("m0", thrust);
+                    command.put("s0", rudder);
+
+                    _usbWriter.println(command.toString());
+                    _usbWriter.flush();
+
+                    logger.info("CMD: " + command.toString());
+                } catch (JSONException e) {
+                    Log.w(logTag, "Failed to serialize command.", e); // TODO: remove this.
+                }
+            } else {
+                Log.w(logTag, "Unknown vehicle type: " + vehicle_type);
+            }
 		}
 	};
 
@@ -239,7 +281,7 @@ public class AirboatImpl extends AbstractVehicleServer {
 
 	/**
 	 * Function that maps a value between one range to a representative value in another range. Use for modifying servo commands
-	 * to send to Arduino   
+	 * to send to Arduino.
 	 */
 	public static double map(double x, double in_min, double in_max, double out_min, double out_max)
 	{
