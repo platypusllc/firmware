@@ -111,7 +111,7 @@ public enum AirboatController {
 				
 				// THRUST CONTROL SEGMENT
 				double[] thrust_pids = server_impl.getGains(0);
-				double thrust = AirboatImpl.CONST_THRUST * thrust_pids[0];
+				double thrust = 1.0 * thrust_pids[0]; // Use a normalized thrust value of 1.0.
 				
 				// update twist
 				twist.dx(thrust);

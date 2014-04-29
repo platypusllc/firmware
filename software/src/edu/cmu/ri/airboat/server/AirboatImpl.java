@@ -44,7 +44,7 @@ public class AirboatImpl extends AbstractVehicleServer {
 			.getLogger();
 
 	private static final String logTag = AirboatImpl.class.getName();
-	public static final int UPDATE_INTERVAL_MS = 200;
+	public static final int UPDATE_INTERVAL_MS = 100;
 	public static final int NUM_SENSORS = 4;
 	public static final VehicleController DEFAULT_CONTROLLER = AirboatController.STOP.controller;
 
@@ -110,13 +110,12 @@ public class AirboatImpl extends AbstractVehicleServer {
 	final double[] _gyroPhone = new double[3];
 
     /**
-	 * Hard-coded constants used in Yunde's controller and for new implementation of Arduino code.
-	 * CONSTANTS FORMAT: range_min, range_max, servo_min, servo_max
+	 * Hard-coded PID gains and thrust limits per vehicle type.
 	 */
 	double[] r_PID = {.2, 0, .3}; // Kp, Ki, Kd
 	double [] t_PID = {.5, .5, .5};
-    public static final double SAFE_THRUST = 0.12;
-    public static final double CONST_THRUST = SAFE_THRUST;
+    public static final double SAFE_DIFFERENTIAL_THRUST = 0.12;
+    public static final double SAFE_VECTORED_THRUST = 0.6;
 
     /**
      * Simple clipping function that restricts a value to a given range.
@@ -127,6 +126,25 @@ public class AirboatImpl extends AbstractVehicleServer {
      */
     public static double clip(double input, double min, double max) {
         return Math.min(Math.max(input, min), max);
+    }
+
+    /**
+     * Simple linear scaling function that maps a value from a given input range to a desired output range.
+     *
+     * This does *not* clip out of range values.  To invert values, swap min and max.
+     *
+     * @param input value that needs to be scaled
+     * @param input_min lower bound of original mapping
+     * @param input_max upper bound of original mapping
+     * @param output_min lower bound of desired mapping
+     * @param output_max upper bound of desired mapping.
+     * @return the input value mapped into the output range.
+     */
+    public static double map(double input,
+                              double input_min, double input_max,
+                              double output_min, double output_max) {
+        return (input - input_min) / (input_max - input_min)
+                * (output_max - output_min) + output_min;
     }
 
 	/**
@@ -186,9 +204,16 @@ public class AirboatImpl extends AbstractVehicleServer {
                     // Send velocities as a JSON command
                     try {
                         // Until ESCs are able to reverse, set the lower limit to 0.0
+                        double constrainedV0 = clip(_velocities.dx() - _velocities.drz(), 0.0, 1.0);
+                        double constrainedV1 = clip(_velocities.dx() + _velocities.drz(), 0.0, 1.0);
+
                         // Until ESC reboot is fixed, set the upper limit to SAFE_THRUST
-                        double constrainedV0 = clip(_velocities.dx() - _velocities.drz(), 0, AirboatImpl.SAFE_THRUST);
-                        double constrainedV1 = clip(_velocities.dx() + _velocities.drz(), 0, AirboatImpl.SAFE_THRUST);
+                        constrainedV0 = map(constrainedV0,
+                                0.0, 1.0, // Original range.
+                                0.0, AirboatImpl.SAFE_DIFFERENTIAL_THRUST); // New range.
+                        constrainedV1 = map(constrainedV1,
+                                0.0, 1.0, // Original range.
+                                0.0, AirboatImpl.SAFE_DIFFERENTIAL_THRUST); // New range.
 
                         velocity0.put("v", (float) constrainedV0);
                         velocity1.put("v", (float) constrainedV1);
@@ -213,8 +238,12 @@ public class AirboatImpl extends AbstractVehicleServer {
                     // Send velocities as a JSON command
                     try {
                         // Until ESCs are able to reverse, set the lower limit to 0.0
+                        double constrainedV = clip(_velocities.dx(), 0.0, 1.0);
+
                         // Until ESC reboot is fixed, set the upper limit to SAFE_THRUST
-                        double constrainedV = clip(_velocities.dx(), 0.0, AirboatImpl.SAFE_THRUST);
+                        constrainedV = map(constrainedV,
+                                0.0, 1.0, // Original range.
+                                0.0, AirboatImpl.SAFE_VECTORED_THRUST); // New range.
 
                         // Rudder is constrained to +/-1.0
                         double constrainedP = clip(_velocities.drz(), -1.0, 1.0);
@@ -300,15 +329,6 @@ public class AirboatImpl extends AbstractVehicleServer {
 	public double[] getGyro()
 	{
 		return _gyroPhone.clone();
-	}
-
-	/**
-	 * Function that maps a value between one range to a representative value in another range. Use for modifying servo commands
-	 * to send to Arduino.
-	 */
-	public static double map(double x, double in_min, double in_max, double out_min, double out_max)
-	{
-	  return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
 	}
 	
 	public void setPhoneGyro(float[] gyroValues)
