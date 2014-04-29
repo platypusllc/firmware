@@ -63,6 +63,7 @@ namespace platypus
     
   private:
     Servo servo_;
+    Servo servo_legacy_; // TODO: remove this once we only have v3+ boards
     float position_;
   };
   
