@@ -191,6 +191,18 @@ bool Motor::set(char *param, char *value)
   }
 }
 
+void Motor::loop()
+{
+  // TODO: set default arming behavior.
+}
+
+void Motor::onLoop_(void *data)
+{ 
+  // Resolve self-reference and call member function.
+  Motor *self = (Motor*)data;
+  self->loop();
+}
+
 Sensor::Sensor(int channel) 
 : channel_(channel)
 {  
@@ -257,4 +269,16 @@ void Sensor::onSerial_(void *data)
   // Resolve self-reference and call member function.
   Sensor *self = (Sensor*)data;
   self->onSerial();
+}
+
+void Sensor::loop()
+{
+  // Default to doing nothing in loop.
+}
+
+void Sensor::onLoop_(void *data)
+{ 
+  // Resolve self-reference and call member function.
+  Sensor *self = (Sensor*)data;
+  self->loop();
 }

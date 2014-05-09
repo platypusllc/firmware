@@ -15,21 +15,6 @@ extern void send(char *str);
 
 namespace platypus 
 {  
-  // Callbacks structure for serial events
-  typedef struct {
-    void (*handler)(void *arg);
-    void *data;
-  } SerialHandler_t;
-  
-  // Callbacks for serial events
-  extern SerialHandler_t SERIAL_HANDLERS[4];
-  
-  // Array of available serial ports
-  extern USARTClass *SERIAL_PORTS[4];
-  
-  // Helper function to do endian conversion
-  uint32_t swap(uint32_t bytes);
-  
   class Configurable
   {
   public:     
@@ -64,6 +49,7 @@ namespace platypus
 
     virtual void arm() = 0;
     virtual bool set(char *param, char *value);
+    virtual void loop();
     
     void velocity(float velocity);
     float velocity();
@@ -81,6 +67,8 @@ namespace platypus
     int enable_;
     bool enabled_;
     float velocity_;
+    
+    static void onLoop_(void *data);
   };
   
   class Sensor : public Configurable
@@ -92,6 +80,7 @@ namespace platypus
     virtual bool set(char* param, char* value);
     virtual char *name() = 0;
     virtual void onSerial();
+    virtual void loop();
 
   protected:
     // TODO: Change from channel to struct reference?
@@ -99,7 +88,23 @@ namespace platypus
     
   private:
     static void onSerial_(void *data);
+    static void onLoop_(void *data);
   };
+  
+    // Callbacks structure for serial events
+  typedef struct {
+    void (*handler)(void *arg);
+    void *data;
+  } SerialHandler_t;
+  
+  // Callbacks for serial events
+  extern SerialHandler_t SERIAL_HANDLERS[4];
+  
+  // Array of available serial ports
+  extern USARTClass *SERIAL_PORTS[4];
+  
+  // Helper function to do endian conversion
+  uint32_t swap(uint32_t bytes);
 }
 
 #endif //PLATYPUS_H
