@@ -296,8 +296,6 @@ void setup()
   Scheduler.startLoop(motorUpdateLoop);
   Scheduler.startLoop(serialConsoleLoop);
   Scheduler.startLoop(winchUpdateLoop);
-//  Scheduler.startLoop(winchTestLoop);
-//  Scheduler.startLoop(hd5SimLoop);
   
   // Print header indicating that board successfully initialized
   Serial.println("------------------------------");
@@ -540,72 +538,4 @@ void serialConsoleLoop()
     handleCommand(debug_buffer); 
   }
 }
-
-void winchTestLoop()
-{ 
-  // Test encoders
-  Serial.println("SET ENC");
-  ((platypus::Winch*)sensor[2])->reset();
-  delay(100);
-  
-  Serial.println("GET ENC");
-  long pos = ((platypus::Winch*)sensor[2])->encoder();
-  Serial.println(pos);
-  delay(100);
-  return;
-
-  // Test position
-  Serial.println("SET POS");
-  ((platypus::Winch*)sensor[2])->position(10000);
-  delay(2000);
-}
-
-const unsigned int NUM_HD5_STRINGS = 20;
-const char *hd5_strings[] = {
-  "$GPAPB,,,,,,,,,,,,,,,N*26",
-  "$SDHDG,,,,,*70",
-  "$GPRMB,,,,,*70",
-  "$GPAPB,,,,,,,,,,,,,,,N*26",
-  "$SDHDG,,,,,*70",
-  "$GPRMB,,,,,,,,,,,,,,N*04",
-  "$SDHDG,,,,,*70",
-  "$GPXTE,,,,,N,N*5E",
-  "$SDHDG,,,,,*70",
-  "$SDDBT,8.3,f,2.5,M,1.3,F*08",
-  "$SDHDG,,,,,*70",
-  "$SDMTW,21.4,C*03",
-  "$SDHDG,,,,,*70",
-  "$GPGGA,,,,,,0,00,,,M,,M,,*66",
-  "$SDHDG,,,,,*70",
-  "$GPGLL,,,,,,V,N*64",
-  "$SDHDG,,,,,*70",
-  "$GPVTG,,T,,M,,N,,K,N*2C",
-  "$SDHDG,,,,,*70",
-  "$SDHDG,,,,,*70"
-};
-
-static unsigned int hd5_sim_index = 0;
-void hd5SimLoop()
-{
-  char output_str[128+3];
-  snprintf(output_str, 128,
-    "{"
-     "\"s%u\":{"
-       "\"type\":\"hdf5\","
-       "\"nmea\":\"%s\""
-     "}"
-    "}",
-    1,
-    hd5_strings[hd5_sim_index]
-  );  
-  send(output_str);
-  delay(100);
-  
-  hd5_sim_index++;
-  if (hd5_sim_index >= NUM_HD5_STRINGS)
-  {
-    hd5_sim_index = 0;
-  }
-}
-
 
