@@ -290,7 +290,6 @@ void setup()
   // Create secondary tasks for system.
   Scheduler.startLoop(motorUpdateLoop);
   Scheduler.startLoop(serialConsoleLoop);
-//  Scheduler.startLoop(winchUpdateLoop);
 
   // Initialize Platypus library.
   platypus::init();
