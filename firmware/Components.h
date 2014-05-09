@@ -106,10 +106,10 @@ namespace platypus
     unsigned int recv_index_;
   };
   
-  class Hdf5 : public Sensor 
+  class Hds5 : public Sensor 
   {
   public:
-    Hdf5(int channel);
+    Hds5(int channel);
     char *name();
     void onSerial();
     

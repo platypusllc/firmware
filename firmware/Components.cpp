@@ -294,7 +294,7 @@ void AtlasSensor::onSerial()
   }
 }
 
-Hdf5::Hdf5(int channel)
+Hds5::Hds5(int channel)
 : Sensor(channel), recv_index_(0)
 {
   // Enable +12V output
@@ -321,12 +321,12 @@ Hdf5::Hdf5(int channel)
   SERIAL_PORTS[channel]->begin(4800);
 }
 
-char* Hdf5::name()
+char* Hds5::name()
 {
-  return "hdf5";
+  return "hds5";
 }
 
-void Hdf5::onSerial()
+void Hds5::onSerial()
 {
   char c = SERIAL_PORTS[channel_]->read();
   if (c != '\r' && c != '\n' && recv_index_ < DEFAULT_BUFFER_SIZE)
@@ -342,7 +342,7 @@ void Hdf5::onSerial()
     snprintf(output_str, DEFAULT_BUFFER_SIZE,
       "{"
        "\"s%u\":{"
-         "\"type\":\"hdf5\","
+         "\"type\":\"hds5\","
          "\"nmea\":\"%s\""
        "}"
       "}",
