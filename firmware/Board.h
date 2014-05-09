@@ -44,16 +44,20 @@ namespace board
   // Pin definitions
   const LED_t LED = { 54, 55, 56 };
 
-  const Motor_t MOTOR[2] = { 
+  const size_t NUM_MOTORS = 2;
+
+  const Motor_t MOTOR[NUM_MOTORS] = { 
     { 50, 11, A8 }, // Motor 0 
     { 48, 12, A9 }  // Motor 1
   };
 
-  const Sensor_t SENSOR[4] = {
-    { 32, 30, 36, 34, { 21, 2, 20, 3 }, 66,  A8, A7 },
-    { 33, 31, 37, 35, { 19, 4, 18, 5 }, 67,  A9, A6 },
-    { 24, 22, 28, 26, { 17, 6, 16, 7 }, 68, A10, A5 },
-    { 25, 23, 29, 27, { 15, 8, 14, 9 }, 69, A11, A4 }
+  const size_t NUM_SENSORS = 4;
+
+  const Sensor_t SENSOR[NUM_SENSORS] = {
+    { 32, 30, 36, 34, { 21, 2, 20, 3 }, 66,  A8, A7 }, // Sensor 0
+    { 33, 31, 37, 35, { 19, 4, 18, 5 }, 67,  A9, A6 }, // Sensor 1
+    { 24, 22, 28, 26, { 17, 6, 16, 7 }, 68, A10, A5 }, // Sensor 2
+    { 25, 23, 29, 27, { 15, 8, 14, 9 }, 69, A11, A4 }  // Sensor 3
   };
 
   const int V_BATT = A3;

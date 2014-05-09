@@ -15,6 +15,9 @@ extern void send(char *str);
 
 namespace platypus 
 {  
+  // Main library initialization function.
+  static void init();
+  
   class Configurable
   {
   public:     
@@ -68,6 +71,7 @@ namespace platypus
     bool enabled_;
     float velocity_;
     
+  public:
     static void onLoop_(void *data);
   };
   
@@ -86,10 +90,13 @@ namespace platypus
     // TODO: Change from channel to struct reference?
     const int channel_;
     
-  private:
+  public:
     static void onSerial_(void *data);
     static void onLoop_(void *data);
   };
+  
+  extern platypus::Motor *motors[board::NUM_MOTORS];
+  extern platypus::Sensor *sensors[board::NUM_SENSORS];
   
     // Callbacks structure for serial events
   typedef struct {

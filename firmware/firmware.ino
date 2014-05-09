@@ -53,12 +53,6 @@ const size_t RESPONSE_TIMEOUT_MS = 500;
 // TODO: move this board.h?
 platypus::Led rgb_led;
 
-const size_t NUM_MOTORS = 2;
-platypus::Motor *motor[NUM_MOTORS];
-
-const size_t NUM_SENSORS = 4;
-platypus::Sensor *sensor[NUM_SENSORS];
-
 /**
  * Wrapper for ADK send command that copies data to debug port.
  * Requires a null-terminated char* pointer.
@@ -200,23 +194,23 @@ void handleCommand(const char *buffer)
     if (entry_name[0] == 'm')
     {
       size_t motor_idx = entry_name[1] - '0';
-      if (motor_idx >= NUM_MOTORS || entry_name[2] != '\0') 
+      if (motor_idx >= board::NUM_MOTORS || entry_name[2] != '\0') 
       {
         reportError("Invalid motor index.", buffer);
         return;
       }
-      entry_object = motor[motor_idx];
+      entry_object = platypus::motors[motor_idx];
     }
     // If it is a motor, it must take the form 's1'.
     else if (entry_name[0] == 's')
     {
       size_t sensor_idx = entry_name[1] - '0';
-      if (sensor_idx >= NUM_SENSORS || entry_name[2] != '\0') 
+      if (sensor_idx >= board::NUM_SENSORS || entry_name[2] != '\0') 
       {
         reportError("Invalid sensor index.", buffer);
         return;
       }
-      entry_object = sensor[sensor_idx];
+      entry_object = platypus::sensors[sensor_idx];
     }
     // Report parse error if unable to identify this entry.
     else {
@@ -277,15 +271,16 @@ void setup()
   // Start the system in the disconnected state
   system_state = DISCONNECTED;
   
+  // TODO: replace this with smart hooks.
   // Initialize sensors
-  sensor[0] = new platypus::AnalogSensor(0);
-  sensor[1] = new platypus::Hdf5(1);
-  sensor[2] = new platypus::Winch(2, 0x80);
-  sensor[3] = new platypus::AnalogSensor(3);
+  platypus::sensors[0] = new platypus::AnalogSensor(0);
+  platypus::sensors[1] = new platypus::Hdf5(1);
+  platypus::sensors[2] = new platypus::Winch(2, 0x80);
+  platypus::sensors[3] = new platypus::AnalogSensor(3);
   
   // Initialize motors
-  motor[0] = new platypus::Seaking(0); 
-  motor[1] = new platypus::Seaking(1);
+  platypus::motors[0] = new platypus::Seaking(0); 
+  platypus::motors[1] = new platypus::Seaking(1);
 
   // Make the ADK buffers into null terminated string.
   debug_buffer[INPUT_BUFFER_SIZE] = '\0';
@@ -295,7 +290,10 @@ void setup()
   // Create secondary tasks for system.
   Scheduler.startLoop(motorUpdateLoop);
   Scheduler.startLoop(serialConsoleLoop);
-  Scheduler.startLoop(winchUpdateLoop);
+//  Scheduler.startLoop(winchUpdateLoop); // TODO: Put this in Winch::loop()
+
+  // Initialize Platypus library.
+  platypus::init();
   
   // Print header indicating that board successfully initialized
   Serial.println("------------------------------");
@@ -420,34 +418,37 @@ void motorUpdateLoop()
   {
   case DISCONNECTED:
     // Turn off motors.
-    for (size_t motor_idx = 0; motor_idx < NUM_MOTORS; ++motor_idx) 
+    for (size_t motor_idx = 0; motor_idx < board::NUM_MOTORS; ++motor_idx) 
     {
-      if (motor[motor_idx]->enabled())
+      platypus::Motor* motor = platypus::motors[motor_idx];
+      if (motor->enabled())
       {
         Serial.print("Disabling motor [");
         Serial.print(motor_idx);
         Serial.println("]");
-        motor[motor_idx]->disable();
+        motor->disable();
       }
     }
     break;
   case CONNECTED:
     // Decay all motors exponentially towards zero speed.
-    for (size_t motor_idx = 0; motor_idx < NUM_MOTORS; ++motor_idx) 
+    for (size_t motor_idx = 0; motor_idx < board::NUM_MOTORS; ++motor_idx) 
     {
-      motor[motor_idx]->velocity(motor[motor_idx]->velocity() * 0.8);
+      platypus::Motor* motor = platypus::motors[motor_idx];
+      motor->velocity(motor->velocity() * 0.8);
     }
     // NOTE: WE DO NOT BREAK OUT OF THE SWITCH HERE!
   case RUNNING:
     // Rearm motors if necessary.
-    for (size_t motor_idx = 0; motor_idx < NUM_MOTORS; ++motor_idx) 
+    for (size_t motor_idx = 0; motor_idx < board::NUM_MOTORS; ++motor_idx) 
     {
-      if (!motor[motor_idx]->enabled()) 
+      platypus::Motor* motor = platypus::motors[motor_idx];
+      if (!motor->enabled()) 
       {
         Serial.print("Arming motor [");
         Serial.print(motor_idx);
         Serial.println("]");
-        motor[motor_idx]->arm();
+        motor->arm();
       }
     }
     break;
@@ -469,8 +470,8 @@ void motorUpdateLoop()
           "\"c\":%f"
         "}"
       "}",
-      motor[0]->velocity(), motor[0]->current(),
-      motor[1]->velocity(), motor[1]->current()
+      platypus::motors[0]->velocity(), platypus::motors[0]->current(),
+      platypus::motors[1]->velocity(), platypus::motors[1]->current()
     );
     send(output_buffer);
   }
@@ -490,7 +491,7 @@ void winchUpdateLoop()
     // TODO: Remove this hack
     // Send encoder status update over USB
     bool valid = false;
-    long pos = ((platypus::Winch*)sensor[2])->encoder(&valid);
+    long pos = ((platypus::Winch*)platypus::sensors[2])->encoder(&valid);
     
     if (valid)
     {

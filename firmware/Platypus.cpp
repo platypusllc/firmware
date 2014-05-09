@@ -2,6 +2,10 @@
 
 using namespace platypus;
 
+// TODO: default initialization of these sensors.
+platypus::Motor *motors[board::NUM_MOTORS];
+platypus::Sensor *sensors[board::NUM_SENSORS];
+
 // TODO: Switch to using HardwareSerial.
 USARTClass *platypus::SERIAL_PORTS[4] = {
   NULL,
@@ -47,6 +51,29 @@ uint32_t platypus::swap(uint32_t bytes)
          | ((bytes <<  8) & 0x00FF0000)
          | ((bytes >>  8) & 0x0000FF00)
          | ((bytes >> 24) & 0x000000FF);
+}
+
+/**
+ * Cooperative task schedulers for Platypus motors and sensors.
+ */
+void platypusLoop_()
+{
+  // Run each motor loop task once.
+  for (int motorIdx = 0; motorIdx < board::NUM_MOTORS; ++motorIdx)
+  {
+    Scheduler.start(platypus::Motor::onLoop_, (void*)platypus::motors[motorIdx]);
+  }
+
+  // Run each sensor loop task once.  
+  for (int sensorIdx = 0; sensorIdx < board::NUM_SENSORS; ++sensorIdx)
+  {
+    Scheduler.start(platypus::Sensor::onLoop_, (void*)platypus::sensors[sensorIdx]);
+  }
+}
+
+void platypus::init()
+{
+  Scheduler.startLoop(platypusLoop_);
 }
 
 Led::Led()
