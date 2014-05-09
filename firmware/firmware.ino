@@ -273,8 +273,8 @@ void setup()
   
   // TODO: replace this with smart hooks.
   // Initialize sensors
-  platypus::sensors[0] = new platypus::PoweredSensor(0);
-  platypus::sensors[1] = new platypus::AtlasSensor(1);
+  platypus::sensors[0] = new platypus::ServoSensor(0);
+  platypus::sensors[1] = new platypus::Hds5(1);
   platypus::sensors[2] = new platypus::AtlasSensor(2);
   platypus::sensors[3] = new platypus::ES2(3);
   
@@ -416,6 +416,19 @@ void motorUpdateLoop()
   switch (system_state)
   {
   case DISCONNECTED:
+    // Turn off motors.
+    for (size_t motor_idx = 0; motor_idx < board::NUM_MOTORS; ++motor_idx) 
+    {
+      platypus::Motor* motor = platypus::motors[motor_idx];
+      if (motor->enabled())
+      {
+        Serial.print("Disabling motor [");
+        Serial.print(motor_idx);
+        Serial.println("]");
+        motor->disable();
+      }
+    }
+    break;
   case CONNECTED:
     // Decay all motors exponentially towards zero speed.
     for (size_t motor_idx = 0; motor_idx < board::NUM_MOTORS; ++motor_idx) 
