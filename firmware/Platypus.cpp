@@ -58,16 +58,27 @@ uint32_t platypus::swap(uint32_t bytes)
  */
 void platypusLoop_()
 {
+  // TODO: Currently, this runs loops in series, which is wrong.
+  // TODO: Parallelize these cooperative loops.
+  
   // Run each motor loop task once.
   for (int motorIdx = 0; motorIdx < board::NUM_MOTORS; ++motorIdx)
   {
-    Scheduler.start(platypus::Motor::onLoop_, (void*)platypus::motors[motorIdx]);
+    Motor *motor = platypus::motors[motorIdx];
+    if (motor != NULL)
+    {
+      platypus::Motor::onLoop_(motor);
+    }
   }
 
   // Run each sensor loop task once.  
   for (int sensorIdx = 0; sensorIdx < board::NUM_SENSORS; ++sensorIdx)
   {
-    Scheduler.start(platypus::Sensor::onLoop_, (void*)platypus::sensors[sensorIdx]);
+    Sensor *sensor = platypus::sensors[sensorIdx];
+    if (sensor != NULL) 
+    {
+      platypus::Sensor::onLoop_(sensor);
+    }
   }
 }
 
@@ -220,7 +231,7 @@ bool Motor::set(char *param, char *value)
 
 void Motor::loop()
 {
-  // TODO: set default arming behavior.
+  // Do nothing.
 }
 
 void Motor::onLoop_(void *data)
@@ -300,7 +311,7 @@ void Sensor::onSerial_(void *data)
 
 void Sensor::loop()
 {
-  // Default to doing nothing in loop.
+  // Do nothing.
 }
 
 void Sensor::onLoop_(void *data)

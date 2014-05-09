@@ -171,6 +171,18 @@ char* ServoSensor::name()
   return "servo";
 }
 
+PoweredSensor::PoweredSensor(int channel)
+: Sensor(channel)
+{
+  pinMode(board::SENSOR[channel_].PWR_ENABLE, OUTPUT);
+  digitalWrite(board::SENSOR[channel_].PWR_ENABLE, HIGH);
+}
+
+char* PoweredSensor::name()
+{
+  return "powered";
+}
+
 ES2::ES2(int channel)
 : Sensor(channel), recv_index_(0)
 {
@@ -197,13 +209,17 @@ void ES2::loop()
   digitalWrite(board::SENSOR[channel_].PWR_ENABLE, LOW);
   
   // Wait a while for next sensor reading.
-  delay(750);
+  delay(1750);
 }
 
 void ES2::onSerial()
 {
+  // TODO: verify checksum.
   char c = SERIAL_PORTS[channel_]->read();
-  if (c != '\r' && c != '\n' && recv_index_ < DEFAULT_BUFFER_SIZE)
+  if (c == '\0') { 
+    return;
+  } 
+  else if (c != '\r' && c != '\n' && recv_index_ < DEFAULT_BUFFER_SIZE)
   {
     recv_buffer_[recv_index_] = c;
     ++recv_index_;
@@ -212,19 +228,23 @@ void ES2::onSerial()
   { 
     recv_buffer_[recv_index_] = '\0';
     
-    char output_str[DEFAULT_BUFFER_SIZE+3];
-    snprintf(output_str, DEFAULT_BUFFER_SIZE,
-      "{"
-       "\"s%u\":{"
-         "\"type\":\"es2\","
-         "\"data\":\"%s\""
-       "}"
-      "}",
-      channel_,
-      recv_buffer_
-    );  
-    send(output_str);
-    
+    if (recv_index_ > 6) // Only send data strings
+    {
+      char output_str[DEFAULT_BUFFER_SIZE+3];
+      snprintf(output_str, DEFAULT_BUFFER_SIZE,
+        "{"
+         "\"s%u\":{"
+           "\"type\":\"es2\","
+           "\"data\":\"%s\""
+         "}"
+        "}",
+        channel_,
+        recv_buffer_
+      );
+      send(output_str);
+    }
+
+    memset(recv_buffer_, 0, recv_index_);
     recv_index_ = 0;
   }
 }
@@ -232,22 +252,16 @@ void ES2::onSerial()
 AtlasSensor::AtlasSensor(int channel)
 : Sensor(channel), recv_index_(0)
 {
-  // Start up serial port
+  // Start up serial port.
   SERIAL_PORTS[channel]->begin(38400);
+  
+  // Tell the sensor to output continuously.
+  SERIAL_PORTS[channel_]->print("C\r");
 }
 
 char* AtlasSensor::name()
 {
   return "atlas";
-}
-
-void AtlasSensor::loop()
-{
-  // Tell DO sensor to take a single reading.
-  SERIAL_PORTS[channel_]->print("R\r");
-  
-  // Wait a while for next reading.
-  delay(500);
 }
 
 void AtlasSensor::onSerial()
@@ -274,7 +288,8 @@ void AtlasSensor::onSerial()
       recv_buffer_
     );  
     send(output_str);
-    
+
+    memset(recv_buffer_, 0, recv_index_);   
     recv_index_ = 0;
   }
 }
@@ -336,6 +351,7 @@ void Hdf5::onSerial()
     );  
     send(output_str);
     
+    memset(recv_buffer_, 0, recv_index_);
     recv_index_ = 0;
   }
 }

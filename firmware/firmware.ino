@@ -273,14 +273,14 @@ void setup()
   
   // TODO: replace this with smart hooks.
   // Initialize sensors
-  platypus::sensors[0] = new platypus::AnalogSensor(0);
+  platypus::sensors[0] = new platypus::PoweredSensor(0);
   platypus::sensors[1] = new platypus::AtlasSensor(1);
   platypus::sensors[2] = new platypus::AtlasSensor(2);
   platypus::sensors[3] = new platypus::ES2(3);
   
   // Initialize motors
-  platypus::motors[0] = new platypus::Seaking(0); 
-  platypus::motors[1] = new platypus::Seaking(1);
+  platypus::motors[0] = new platypus::VaporPro(0); 
+  platypus::motors[1] = new platypus::VaporPro(1);
 
   // Make the ADK buffers into null terminated string.
   debug_buffer[INPUT_BUFFER_SIZE] = '\0';
@@ -416,19 +416,6 @@ void motorUpdateLoop()
   switch (system_state)
   {
   case DISCONNECTED:
-    // Turn off motors.
-    for (size_t motor_idx = 0; motor_idx < board::NUM_MOTORS; ++motor_idx) 
-    {
-      platypus::Motor* motor = platypus::motors[motor_idx];
-      if (motor->enabled())
-      {
-        Serial.print("Disabling motor [");
-        Serial.print(motor_idx);
-        Serial.println("]");
-        motor->disable();
-      }
-    }
-    break;
   case CONNECTED:
     // Decay all motors exponentially towards zero speed.
     for (size_t motor_idx = 0; motor_idx < board::NUM_MOTORS; ++motor_idx) 

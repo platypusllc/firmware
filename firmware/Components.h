@@ -72,6 +72,14 @@ namespace platypus
     Servo servo_legacy_; // TODO: remove this once we only have v3+ boards
     float position_;
   };
+
+  class PoweredSensor : public Sensor 
+  {
+  public:
+    PoweredSensor(int channel);
+    char *name();
+  };
+
   
   class ES2 : public Sensor 
   {
@@ -91,7 +99,6 @@ namespace platypus
   public:
     AtlasSensor(int channel);
     char *name();
-    void loop();
     void onSerial();
     
   private:
