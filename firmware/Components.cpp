@@ -117,11 +117,6 @@ char* AnalogSensor::name()
   return "analog";
 }
 
-char* ES2::name()
-{
-  return "es2";
-}
-
 ServoSensor::ServoSensor(int channel)
   : Sensor(channel), position_(0.0)
 {
@@ -174,6 +169,82 @@ bool ServoSensor::set(char *param, char *value)
 char* ServoSensor::name()
 {
   return "servo";
+}
+
+ES2::ES2(int channel)
+: Sensor(channel), recv_index_(0)
+{
+  // Start up serial port
+  SERIAL_PORTS[channel]->begin(1200);
+}
+
+char* ES2::name()
+{
+  return "es2";
+}
+
+void ES2::loop()
+{
+  // Enable +12V output.
+  pinMode(board::SENSOR[channel].PWR_ENABLE, OUTPUT);
+  digitalWrite(board::SENSOR[channel].PWR_ENABLE, HIGH);
+  
+  // Read response from sensor.
+  delay(100);
+  
+  // Turn off +12V output.
+  pinMode(board::SENSOR[channel].PWR_ENABLE, OUTPUT);
+  digitalWrite(board::SENSOR[channel].PWR_ENABLE, LOW);
+
+  // Wait a while for next sensor reading.
+  delay(900);
+}
+
+AtlasProbe::AtlasProbe(int channel)
+: Sensor(channel), recv_index_(0)
+{
+  // Start up serial port
+  SERIAL_PORTS[channel]->begin(38400);
+}
+
+char* AtlasProbe::name()
+{
+  return "atlas";
+}
+
+void AtlasProbe::loop()
+{
+  // Tell DO sensor to take a single reading.
+  SERIAL_PORTS[channel_]->print("R\r")
+}
+
+void AtlasProbe::onSerial()
+{
+  char c = SERIAL_PORTS[channel_]->read();
+  if (c != '\r' && c != '\n' && recv_index_ < DEFAULT_BUFFER_SIZE)
+  {
+    recv_buffer_[recv_index_] = c;
+    ++recv_index_;
+  }
+  else if (recv_index_ > 0)
+  { 
+    recv_buffer_[recv_index_] = '\0';
+    
+    char output_str[DEFAULT_BUFFER_SIZE+3];
+    snprintf(output_str, DEFAULT_BUFFER_SIZE,
+      "{"
+       "\"s%u\":{"
+         "\"type\":\"atlas\","
+         "\"data\":\"%s\""
+       "}"
+      "}",
+      channel_,
+      recv_buffer_
+    );  
+    send(output_str);
+    
+    recv_index_ = 0;
+  }
 }
 
 Hdf5::Hdf5(int channel)

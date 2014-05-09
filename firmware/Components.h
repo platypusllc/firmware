@@ -8,31 +8,36 @@ namespace platypus
 {
   const int DEFAULT_BUFFER_SIZE = 128;
   
-  class VaporPro : public Motor {
+  class VaporPro : public Motor 
+  {
   public:
     VaporPro(int channel) : Motor(channel) {}
     void arm();
   };
 
-  class HobbyKingBoat : public Motor {
+  class HobbyKingBoat : public Motor 
+  {
   public:
     HobbyKingBoat(int channel) : Motor(channel) {}
     void arm();
   };
   
-  class Seaking : public Motor {
+  class Seaking : public Motor 
+  {
   public:
     Seaking(int channel) : Motor(channel) {}
     void arm();
   };
 
-  class Swordfish : public Motor {
+  class Swordfish : public Motor 
+  {
   public:
     Swordfish(int channel) : Motor(channel) {}
     void arm();
   };
 
-  class AnalogSensor : public Sensor {
+  class AnalogSensor : public Sensor 
+  {
   public:
     AnalogSensor(int channel);
 
@@ -50,7 +55,8 @@ namespace platypus
     float offset_;
   };
   
-  class ServoSensor : public Sensor {
+  class ServoSensor : public Sensor 
+  {
   public:
     ServoSensor(int channel);
     ~ServoSensor();
@@ -67,13 +73,29 @@ namespace platypus
     float position_;
   };
   
-  class ES2 : public Sensor {
+  class ES2 : public Sensor 
+  {
   public:
     ES2(int channel) : Sensor(channel) {}
     char *name();
+    void loop();
+  };
+
+  class AtlasProbe : public Sensor 
+  {
+  public:
+    AtlasProbe(int channel) : Sensor(channel) {}
+    char *name();
+    void loop();
+    void onSerial();
+    
+  private:
+    char recv_buffer_[DEFAULT_BUFFER_SIZE];
+    unsigned int recv_index_;
   };
   
-  class Hdf5 : public Sensor {
+  class Hdf5 : public Sensor 
+  {
   public:
     Hdf5(int channel);
     char *name();
@@ -84,7 +106,8 @@ namespace platypus
     unsigned int recv_index_;
   };
   
-  class Winch : public Sensor {
+  class Winch : public Sensor 
+  {
   public:
     Winch(int channel, uint8_t address);
     char *name();

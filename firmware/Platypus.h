@@ -16,7 +16,7 @@ extern void send(char *str);
 namespace platypus 
 {  
   // Main library initialization function.
-  static void init();
+  void init();
   
   class Configurable
   {
