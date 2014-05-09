@@ -76,15 +76,20 @@ namespace platypus
   class ES2 : public Sensor 
   {
   public:
-    ES2(int channel) : Sensor(channel) {}
+    ES2(int channel);
     char *name();
     void loop();
+    void onSerial();
+
+  private:
+    char recv_buffer_[DEFAULT_BUFFER_SIZE];
+    unsigned int recv_index_;
   };
 
-  class AtlasProbe : public Sensor 
+  class AtlasSensor : public Sensor 
   {
   public:
-    AtlasProbe(int channel) : Sensor(channel) {}
+    AtlasSensor(int channel);
     char *name();
     void loop();
     void onSerial();

@@ -274,9 +274,9 @@ void setup()
   // TODO: replace this with smart hooks.
   // Initialize sensors
   platypus::sensors[0] = new platypus::AnalogSensor(0);
-  platypus::sensors[1] = new platypus::Hdf5(1);
-  platypus::sensors[2] = new platypus::Winch(2, 0x80);
-  platypus::sensors[3] = new platypus::AnalogSensor(3);
+  platypus::sensors[1] = new platypus::AtlasSensor(1);
+  platypus::sensors[2] = new platypus::AtlasSensor(2);
+  platypus::sensors[3] = new platypus::ES2(3);
   
   // Initialize motors
   platypus::motors[0] = new platypus::Seaking(0); 
@@ -290,7 +290,7 @@ void setup()
   // Create secondary tasks for system.
   Scheduler.startLoop(motorUpdateLoop);
   Scheduler.startLoop(serialConsoleLoop);
-//  Scheduler.startLoop(winchUpdateLoop); // TODO: Put this in Winch::loop()
+//  Scheduler.startLoop(winchUpdateLoop);
 
   // Initialize Platypus library.
   platypus::init();

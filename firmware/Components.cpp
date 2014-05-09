@@ -186,39 +186,71 @@ char* ES2::name()
 void ES2::loop()
 {
   // Enable +12V output.
-  pinMode(board::SENSOR[channel].PWR_ENABLE, OUTPUT);
-  digitalWrite(board::SENSOR[channel].PWR_ENABLE, HIGH);
+  pinMode(board::SENSOR[channel_].PWR_ENABLE, OUTPUT);
+  digitalWrite(board::SENSOR[channel_].PWR_ENABLE, HIGH);
   
   // Read response from sensor.
-  delay(100);
+  delay(250);
   
   // Turn off +12V output.
-  pinMode(board::SENSOR[channel].PWR_ENABLE, OUTPUT);
-  digitalWrite(board::SENSOR[channel].PWR_ENABLE, LOW);
-
+  pinMode(board::SENSOR[channel_].PWR_ENABLE, OUTPUT);
+  digitalWrite(board::SENSOR[channel_].PWR_ENABLE, LOW);
+  
   // Wait a while for next sensor reading.
-  delay(900);
+  delay(750);
 }
 
-AtlasProbe::AtlasProbe(int channel)
+void ES2::onSerial()
+{
+  char c = SERIAL_PORTS[channel_]->read();
+  if (c != '\r' && c != '\n' && recv_index_ < DEFAULT_BUFFER_SIZE)
+  {
+    recv_buffer_[recv_index_] = c;
+    ++recv_index_;
+  }
+  else if (recv_index_ > 0)
+  { 
+    recv_buffer_[recv_index_] = '\0';
+    
+    char output_str[DEFAULT_BUFFER_SIZE+3];
+    snprintf(output_str, DEFAULT_BUFFER_SIZE,
+      "{"
+       "\"s%u\":{"
+         "\"type\":\"es2\","
+         "\"data\":\"%s\""
+       "}"
+      "}",
+      channel_,
+      recv_buffer_
+    );  
+    send(output_str);
+    
+    recv_index_ = 0;
+  }
+}
+
+AtlasSensor::AtlasSensor(int channel)
 : Sensor(channel), recv_index_(0)
 {
   // Start up serial port
   SERIAL_PORTS[channel]->begin(38400);
 }
 
-char* AtlasProbe::name()
+char* AtlasSensor::name()
 {
   return "atlas";
 }
 
-void AtlasProbe::loop()
+void AtlasSensor::loop()
 {
   // Tell DO sensor to take a single reading.
-  SERIAL_PORTS[channel_]->print("R\r")
+  SERIAL_PORTS[channel_]->print("R\r");
+  
+  // Wait a while for next reading.
+  delay(500);
 }
 
-void AtlasProbe::onSerial()
+void AtlasSensor::onSerial()
 {
   char c = SERIAL_PORTS[channel_]->read();
   if (c != '\r' && c != '\n' && recv_index_ < DEFAULT_BUFFER_SIZE)
