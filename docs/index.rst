@@ -14,6 +14,8 @@ Contents:
    introduction
    assembly
    operation
+   software
+   sensors
 
 Indices and tables
 ==================
