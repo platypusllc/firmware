@@ -13,3 +13,5 @@ software/gen
 # Ignore eclipse generated files
 */.classpath
 */.settings/
+
+*/.idea/
