@@ -1,9 +1,0 @@
-<component name="libraryTable">
-  <library name="crwlib_core">
-    <CLASSES>
-      <root url="jar://$PROJECT_DIR$/libs/crwlib_core.jar!/" />
-    </CLASSES>
-    <JAVADOC />
-    <SOURCES />
-  </library>
-</component>
