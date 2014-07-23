@@ -9,4 +9,3 @@ Contents
 * [Electrical](./electrical) - Electrical schematics.
 * [Firmware](./firmware) - Embedded firmware for the Platypus Control Board.
 * [Mechanical](./mechanical) - Mechanical drawings.
-* [Software](./software) - Android code for the Platypus Server.
