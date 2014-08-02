@@ -172,7 +172,7 @@ void Motor::velocity(float velocity)
   }
   velocity_ = velocity;
 
-  float command = (velocity * 600) + 1500;
+  float command = (velocity * 500) + 1500;
   servo_.writeMicroseconds(command);
 }
 
