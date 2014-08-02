@@ -177,6 +177,7 @@ void handleCommand(const char *buffer)
   size_t num_entries = token->size / 2;
   for (size_t entry_idx = 0; entry_idx < num_entries; entry_idx++)
   {
+    
     // Get the name field for this entry.
     token++;
     char entry_name[64];
@@ -186,6 +187,7 @@ void handleCommand(const char *buffer)
       return;
     }
     json_string(*token, buffer, entry_name, 64);
+    
     
     // Attempt to decode the configurable object for this entry.
     platypus::Configurable *entry_object;
@@ -243,13 +245,14 @@ void handleCommand(const char *buffer)
         reportError("Expected name field for parameter.", buffer);
         return;
       }
-      json_string(*token, buffer, param_name, 64);
       
+      json_string(*token, buffer, param_name, 64);
+
       // Get the value field for this parameter.
       token++;
       char param_value[64];
       json_string(*token, buffer, param_value, 64);
-      
+
       // Pass this parameter to the entry object.
       if (!entry_object->set(param_name, param_value)) {
         reportError("Invalid parameter set.", buffer);
@@ -275,7 +278,7 @@ void setup()
   // Initialize sensors
   platypus::sensors[0] = new platypus::ServoSensor(0);
   platypus::sensors[1] = new platypus::Hds5(1);
-  platypus::sensors[2] = new platypus::AtlasSensor(2);
+  platypus::sensors[2] = new platypus::Winch(2,0x80);
   platypus::sensors[3] = new platypus::ES2(3);
   
   // Initialize motors
@@ -447,7 +450,10 @@ void motorUpdateLoop()
         Serial.print("Arming motor [");
         Serial.print(motor_idx);
         Serial.println("]");
+        //Serial.println("I've turned off the fucking motor arming");
         motor->arm();
+        Serial.println("Motor Armed");
+        //motor->enable
       }
     }
     break;
