@@ -5,7 +5,7 @@ This firmware is used by the Platypus Controller to interface the hardware on th
 ## Installation Setup ##
 
 1. Download the latest version of the [Arduino IDE](1).
-2. Navigate to **Tools > Board: "..."" > Boards Manager...**
+2. Navigate to **Tools > Board: "..." > Boards Manager...**
 3. Install the following board support package:
   - **Arduino SAM Boards (32-bits ARM Cortex-M3** by **Arduino**
 4. Navigate to **Sketch > Include Library > Manage Libraries...**
