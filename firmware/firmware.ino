@@ -278,12 +278,12 @@ void setup()
   // Initialize sensors
   platypus::sensors[0] = new platypus::ServoSensor(0);
   platypus::sensors[1] = new platypus::Hds5(1);
-  platypus::sensors[2] = new platypus::Winch(2,0x80);
+  platypus::sensors[2] = new platypus::AtlasSensor(2);
   platypus::sensors[3] = new platypus::ES2(3);
   
   // Initialize motors
-  platypus::motors[0] = new platypus::Seaking(0);
-  platypus::motors[1] = new platypus::Seaking(1);
+  platypus::motors[0] = new platypus::Dynamite(0);
+  platypus::motors[1] = new platypus::Dynamite(1);
 
   // Make the ADK buffers into null terminated string.
   debug_buffer[INPUT_BUFFER_SIZE] = '\0';

@@ -18,6 +18,7 @@ namespace board
   { 
     int ENABLE;
     int SERVO;
+    int SERVO_CTRL;
     int CURRENT;
   };
   
@@ -47,8 +48,8 @@ namespace board
   const size_t NUM_MOTORS = 2;
 
   const Motor_t MOTOR[NUM_MOTORS] = { 
-    { 50, 11, A8 }, // Motor 0 
-    { 48, 12, A9 }  // Motor 1
+    { 50, 11, 43, A8 }, // Motor 0 
+    { 48, 12, 45, A9 }  // Motor 1
   };
 
   const size_t NUM_SENSORS = 4;

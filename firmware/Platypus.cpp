@@ -148,17 +148,22 @@ int Led::B()
 }
 
 Motor::Motor(int channel)
-  : enable_(board::MOTOR[channel].ENABLE), enabled_(false), velocity_(0)
+  : enable_(board::MOTOR[channel].ENABLE), enabled_(false), velocity_(0), servo_ctrl(board::MOTOR[channel].SERVO_CTRL)
 {
-  servo_.attach(board::MOTOR[channel].SERVO);
+  channel_ = channel;
+  servo_.attach(board::MOTOR[channel_].SERVO);
   pinMode(enable_, OUTPUT);
   digitalWrite(enable_, LOW);
+  pinMode(servo_ctrl,OUTPUT);
+  digitalWrite(servo_ctrl,HIGH);
 }
 
 Motor::~Motor()
 {
   pinMode(enable_, INPUT);
   digitalWrite(enable_, LOW);
+  pinMode(servo_ctrl,INPUT);
+  digitalWrite(servo_ctrl,HIGH);  
   servo_.detach();
 }
 
@@ -185,6 +190,7 @@ void Motor::enable(bool enabled)
 {
   enabled_ = enabled;
   digitalWrite(enable_, enabled_);
+  digitalWrite(servo_ctrl, !enabled_);
 
   if (!enabled_)
   {
@@ -209,8 +215,10 @@ void Motor::disable()
 
 float Motor::current()
 {
-  // TODO: fill me in.
-  return 0.0;
+  float vsense = analogRead(board::MOTOR[channel_].CURRENT);
+  //V sense is measured across a 330 Ohm resistor, I = V/R
+  //I sense is ~1/5000 of output current
+  return vsense*5000.0/330.0;
 }
 
 bool Motor::set(char *param, char *value)

@@ -84,6 +84,16 @@ void Swordfish::arm()
   delay(3000);
 }
 
+void Dynamite::arm()
+{
+    disable();
+    delay(500);
+
+    velocity(0.0);
+    enable();
+    delay(2000);
+}
+
 AnalogSensor::AnalogSensor(int channel)
   : Sensor(channel), scale_(1.0f), offset_(0.0f) {}
 
@@ -268,15 +278,44 @@ AtlasSensor::AtlasSensor(int channel)
 : Sensor(channel), recv_index_(0)
 {
   // Start up serial port.
-  SERIAL_PORTS[channel]->begin(38400);
+  SERIAL_PORTS[channel_]->begin(115200);
+
+  //delay(1000);
+
+  //SERIAL_PORTS[channel]->print("SERIAL,115200\r");
   
   // Tell the sensor to output continuously.
-  SERIAL_PORTS[channel_]->print("C\r");
+  SERIAL_PORTS[channel_]->print("C,1\r");
 }
 
 char* AtlasSensor::name()
 {
   return "atlas";
+}
+
+void AtlasSensor::loop(){  
+  
+  //SERIAL_PORTS[channel]->begin(9600);
+/*
+  delay(1000);
+  SERIAL_PORTS[channel_]->print("Factory\r");
+  delay(2000);
+  SERIAL_PORTS[channel_]->print("SERIAL,115200\r");
+
+  delay(2000);
+
+  SERIAL_PORTS[channel_]->end();
+
+  delay(1000);
+  SERIAL_PORTS[channel_]->begin(115200);
+
+  delay(1000);
+
+  //SERIAL_PORTS[channel]->print("SERIAL,115200\r");
+  
+  // Tell the sensor to output continuously.
+  SERIAL_PORTS[channel_]->print("C,1\r");
+  */
 }
 
 void AtlasSensor::onSerial()
