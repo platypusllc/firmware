@@ -53,6 +53,7 @@ const size_t RESPONSE_TIMEOUT_MS = 500;
 // TODO: move this board.h?
 platypus::Led rgb_led;
 
+
 /**
  * Wrapper for ADK send command that copies data to debug port.
  * Requires a null-terminated char* pointer.
@@ -277,8 +278,8 @@ void setup()
   // TODO: replace this with smart hooks.
   // Initialize sensors
   platypus::sensors[0] = new platypus::ServoSensor(0);
-  platypus::sensors[1] = new platypus::Hds5(1);
-  platypus::sensors[2] = new platypus::AtlasSensor(2);
+  platypus::sensors[1] = new platypus::HDS(1);
+  platypus::sensors[2] = new platypus::AtlasDO(2);
   platypus::sensors[3] = new platypus::ES2(3);
   
   // Initialize motors
@@ -389,6 +390,20 @@ void loop()
   // Attempt to parse command
   handleCommand(input_buffer);
 }
+
+/*void tempLoop(){
+  delay(500);
+
+  
+  //assumes es2 on port 3 and Do probe on port 2
+  double newTemp = ((platypus::ES2*)platypus::sensors[3])->getLastTemp();
+  if (newTemp != lastTemp){
+    //send updated temp to do probe
+    ((platypus::AtlasSensor*)platypus::sensors[2])->setTemp(newTemp);
+    lastTemp = newTemp;
+    Serial.println(newTemp);
+  }
+}*/
 
 /**
  * Periodically sends motor velocity updates.

@@ -106,7 +106,7 @@ namespace platypus
   {
   public:
     AtlasSensor(int channel);
-    char *name();
+    virtual char *name();
     void onSerial();
     void loop();
     
@@ -114,11 +114,30 @@ namespace platypus
     char recv_buffer_[DEFAULT_BUFFER_SIZE];
     unsigned int recv_index_;
   };
-  
-  class Hds5 : public Sensor 
+
+  class AtlasPH : public AtlasSensor
   {
   public:
-    Hds5(int channel);
+    AtlasPH(int channel);
+    char * name();
+    void setTemp(double temp);
+    void calibrate();
+  };
+
+  class AtlasDO : public AtlasSensor
+  {
+  public:
+    AtlasDO(int channel);
+    char * name();
+    void setTemp(double temp);
+    void setEC(double EC);
+    void calibrate();
+  };
+  
+  class HDS : public Sensor 
+  {
+  public:
+    HDS(int channel);
     char *name();
     void onSerial();
     
