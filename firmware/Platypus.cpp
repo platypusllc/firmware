@@ -215,6 +215,7 @@ void Motor::disable()
 
 float Motor::current()
 {
+  //Will no longer work with battery directly powering esc?
   float vsense = analogRead(board::MOTOR[channel_].CURRENT);
   //V sense is measured across a 330 Ohm resistor, I = V/R
   //I sense is ~1/5000 of output current

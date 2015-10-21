@@ -51,7 +51,7 @@ namespace platypus
     AnalogSensor(int channel);
 
     bool set(char* param, char* value);
-    char *name();
+    virtual char *name() = 0;
     
     void scale(float scale);
     float scale();
@@ -81,27 +81,42 @@ namespace platypus
     float position_;
   };
 
-  class PoweredSensor : public Sensor 
+  class PoweredSensor : virtual public Sensor 
   {
   public:
-    PoweredSensor(int channel);
-    char *name();
+    PoweredSensor(int channel, bool poweredOn=true);
+    virtual char *name() = 0;
+    bool powerOn();
+    bool powerOff();
+
+  private:
+    bool state_;
+  };
+
+  class SerialSensor : virtual public Sensor
+  {
+  public:
+    SerialSensor(int channel, int baudRate, int dataStringLength = 0);
+    virtual char * name() = 0;
+    void onSerial();
+
+  private:
+    int baud_;
+    int minDataStringLength_;
+    char recv_buffer_[DEFAULT_BUFFER_SIZE];
+    unsigned int recv_index_;
   };
 
   
-  class ES2 : public Sensor 
+  class ES2 : public PoweredSensor, public SerialSensor
   {
   public:
     ES2(int channel);
     char *name();
     void loop();
-    void onSerial();
-
-  private:
-    char recv_buffer_[DEFAULT_BUFFER_SIZE];
-    unsigned int recv_index_;
+    //void onSerial();
   };
-
+/*
   class AtlasSensor : public Sensor 
   {
   public:
@@ -114,8 +129,8 @@ namespace platypus
     char recv_buffer_[DEFAULT_BUFFER_SIZE];
     unsigned int recv_index_;
   };
-
-  class AtlasPH : public AtlasSensor
+*/
+  class AtlasPH : public SerialSensor
   {
   public:
     AtlasPH(int channel);
@@ -124,7 +139,7 @@ namespace platypus
     void calibrate();
   };
 
-  class AtlasDO : public AtlasSensor
+  class AtlasDO : public SerialSensor
   {
   public:
     AtlasDO(int channel);
