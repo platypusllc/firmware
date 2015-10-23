@@ -140,12 +140,6 @@ float AnalogSensor::offset()
   return offset_;
 }
 
-/*
-char* AnalogSensor::name()
-{
-  return "analog";
-}*/
-
 ServoSensor::ServoSensor(int channel)
   : Sensor(channel), position_(0.0)
 {
@@ -213,7 +207,7 @@ PoweredSensor::PoweredSensor(int channel, bool poweredOn)
 // Turn 12v pin on. Returns true if successful, false if power was already on
 bool PoweredSensor::powerOn(){
   if (state_){
-    Serial.println("Power On Failure, sensor already powered on");
+    //Serial.println("Power On Failure, sensor already powered on");
     return false;
   } else {
     pinMode(board::SENSOR[channel_].PWR_ENABLE, OUTPUT);
@@ -231,22 +225,46 @@ bool PoweredSensor::powerOff(){
     state_ = false;
     return true;
   } else {
-    Serial.println("Power Off Failure, sensor already powered off");
+    //Serial.println("Power Off Failure, sensor already powered off");
     return false;
   }
 }
 
-SerialSensor::SerialSensor(int channel, int baudRate, int dataStringLength) 
+SerialSensor::SerialSensor(int channel, int baudRate, int serialType, int dataStringLength) 
   : Sensor(channel), recv_index_(0)
 {
   baud_ = baudRate;
+  serialType_ = serialType;
   minDataStringLength_ = dataStringLength;
-  Serial.println(minDataStringLength_);
+
+  if (serialType == RS485){
+    // Enable RSxxx receiver
+    pinMode(board::SENSOR[channel].RX_DISABLE, OUTPUT);
+    digitalWrite(board::SENSOR[channel].RX_DISABLE, LOW);
+    
+    // Enable RSxxx transmitter
+    pinMode(board::SENSOR[channel].TX_ENABLE, OUTPUT);
+    digitalWrite(board::SENSOR[channel].TX_ENABLE, HIGH);
+    
+    // Enable RS485 termination resistor
+    pinMode(board::SENSOR[channel].RS485_TE, OUTPUT);
+    digitalWrite(board::SENSOR[channel].RS485_TE, HIGH);
+    
+    // Select RS485 (deselect RS232)
+    pinMode(board::SENSOR[channel].RS485_232, OUTPUT);
+    digitalWrite(board::SENSOR[channel].RS485_232, HIGH);
+  }
+  
   SERIAL_PORTS[channel]->begin(baudRate);
 }
 
 void SerialSensor::onSerial(){
   char c = SERIAL_PORTS[channel_]->read();
+  
+  // Ignore null and tab characters
+  if (c == '\0' || c == '\t') {
+    return;
+  }
   if (c != '\r' && c != '\n' && recv_index_ < DEFAULT_BUFFER_SIZE)
   {
     recv_buffer_[recv_index_] = c;
@@ -256,7 +274,6 @@ void SerialSensor::onSerial(){
   {
     recv_buffer_[recv_index_] = '\0';
 
-    Serial.println(recv_buffer_);
     if (recv_index_ >  minDataStringLength_){
       char output_str[DEFAULT_BUFFER_SIZE + 3];
       snprintf(output_str, DEFAULT_BUFFER_SIZE,
@@ -279,10 +296,9 @@ void SerialSensor::onSerial(){
 }
 
 ES2::ES2(int channel)
-  : Sensor(channel), PoweredSensor(channel, false), SerialSensor(channel, 1200, 6)
+  : Sensor(channel), PoweredSensor(channel, false), SerialSensor(channel, 1200, RS232, 3) //minDataLength filters out "q>"
 {
-  // Start up serial port
-  //SERIAL_PORTS[channel]->begin(1200);
+  
 }
 
 char* ES2::name()
@@ -294,140 +310,17 @@ void ES2::loop()
 {
   // Enable +12V output.
   powerOn();
-  //pinMode(board::SENSOR[channel_].PWR_ENABLE, OUTPUT);
-  //digitalWrite(board::SENSOR[channel_].PWR_ENABLE, HIGH);
 
   // Read response from sensor.
   delay(250);
 
   // Turn off +12V output.
   powerOff();
-  //pinMode(board::SENSOR[channel_].PWR_ENABLE, OUTPUT);
-  //digitalWrite(board::SENSOR[channel_].PWR_ENABLE, LOW);
 
   // Wait a while for next sensor reading.
   delay(1750);
 }
 
-/*void ES2::onSerial()
-{
-  // TODO: verify checksum.
-  char c = SERIAL_PORTS[channel_]->read();
-  if (c == '\0') {
-    return;
-  }
-  else if (c != '\r' && c != '\n' && recv_index_ < DEFAULT_BUFFER_SIZE)
-  {
-    recv_buffer_[recv_index_] = c;
-    ++recv_index_;
-  }
-  else if (recv_index_ > 0)
-  {
-    recv_buffer_[recv_index_] = '\0';
-
-    if (recv_index_ > 6) // Only send data strings
-    {
-      char output_str[DEFAULT_BUFFER_SIZE + 3];
-      snprintf(output_str, DEFAULT_BUFFER_SIZE,
-               "{"
-               "\"s%u\":{"
-               "\"type\":\"es2\","
-               "\"data\":\"%s\""
-               "}"
-               "}",
-               channel_,
-               recv_buffer_
-              );
-      send(output_str);
-    }
-
-    memset(recv_buffer_, 0, recv_index_);
-    recv_index_ = 0;
-  }
-}*/
-/*
-AtlasSensor::AtlasSensor(int channel)
-  : Sensor(channel), recv_index_(0)
-{
-  // Start up serial port.
-  SERIAL_PORTS[channel_]->begin(115200);
-
-  //delay(10000);
-
-  //SERIAL_PORTS[channel_]->print("C,0\r");
-  //SERIAL_PORTS[channel_]->print("CAL\r");
-
-  delay (1000);
-
-  //SERIAL_PORTS[channel]->print("SERIAL,115200\r");
-
-  // Tell the sensor to output continuously.
-  SERIAL_PORTS[channel_]->print("C,1\r");
-}
-
-char* AtlasSensor::name()
-{
-  return "atlas";
-}
-
-void AtlasSensor::loop() {
-  //SERIAL_PORTS[channel_]->print("O,%,0\r");
-  //SERIAL_PORTS[channel_]->print("CAL\r");
-  //SERIAL_PORTS[channel_]->print("T,?\r");
-  //SERIAL_PORTS[channel]->begin(9600);
-  /*
-    delay(1000);
-    SERIAL_PORTS[channel_]->print("Factory\r");
-    delay(2000);
-    SERIAL_PORTS[channel_]->print("SERIAL,115200\r");
-
-    delay(2000);
-
-    SERIAL_PORTS[channel_]->end();
-
-    delay(1000);
-    SERIAL_PORTS[channel_]->begin(115200);
-
-    delay(1000);
-
-    //SERIAL_PORTS[channel]->print("SERIAL,115200\r");
-
-    // Tell the sensor to output continuously.
-    SERIAL_PORTS[channel_]->print("C,1\r");
-    
-}
-
-void AtlasSensor::onSerial()
-{
-  char c = SERIAL_PORTS[channel_]->read();
-  if (c != '\r' && c != '\n' && recv_index_ < DEFAULT_BUFFER_SIZE)
-  {
-    recv_buffer_[recv_index_] = c;
-    ++recv_index_;
-  }
-  else if (recv_index_ > 0)
-  {
-    recv_buffer_[recv_index_] = '\0';
-
-    char output_str[DEFAULT_BUFFER_SIZE + 3];
-    snprintf(output_str, DEFAULT_BUFFER_SIZE,
-             "{"
-             "\"s%u\":{"
-             "\"type\":\"%s\","
-             "\"data\":\"%s\""
-             "}"
-             "}",
-             channel_,
-             this->name(),
-             recv_buffer_
-            );
-    send(output_str);
-
-    memset(recv_buffer_, 0, recv_index_);
-    recv_index_ = 0;
-  }
-}
-*/
 AtlasPH::AtlasPH(int channel) 
   : Sensor(channel), SerialSensor(channel, 115200)
 {
@@ -473,67 +366,15 @@ void AtlasDO::calibrate(){
 }
 
 HDS::HDS(int channel)
-  : Sensor(channel), recv_index_(0)
+  : Sensor(channel), PoweredSensor(channel, true), SerialSensor(channel, 4800, RS485)
 {
-  // Enable +12V output
-  pinMode(board::SENSOR[channel].PWR_ENABLE, OUTPUT);
-  digitalWrite(board::SENSOR[channel].PWR_ENABLE, HIGH);
-  //powerOn();
-  
-  // Enable RSxxx receiver
-  pinMode(board::SENSOR[channel].RX_DISABLE, OUTPUT);
-  digitalWrite(board::SENSOR[channel].RX_DISABLE, LOW);
 
-  // Enable RSxxx transmitter
-  pinMode(board::SENSOR[channel].TX_ENABLE, OUTPUT);
-  digitalWrite(board::SENSOR[channel].TX_ENABLE, HIGH);
-
-  // Enable RS485 termination resistor
-  pinMode(board::SENSOR[channel].RS485_TE, OUTPUT);
-  digitalWrite(board::SENSOR[channel].RS485_TE, HIGH);
-
-  // Select RS485 (deselect RS232)
-  pinMode(board::SENSOR[channel].RS485_232, OUTPUT);
-  digitalWrite(board::SENSOR[channel].RS485_232, HIGH);
-
-  // Start up serial port
-  SERIAL_PORTS[channel]->begin(4800);
 }
 
 char* HDS::name()
 {
   return "hds";
 }
-
-/*void HDS::onSerial()
-{
-  char c = SERIAL_PORTS[channel_]->read();
-  if (c != '\r' && c != '\n' && recv_index_ < DEFAULT_BUFFER_SIZE)
-  {
-    recv_buffer_[recv_index_] = c;
-    ++recv_index_;
-  }
-  else if (recv_index_ > 0)
-  {
-    recv_buffer_[recv_index_] = '\0';
-
-    char output_str[DEFAULT_BUFFER_SIZE + 3];
-    snprintf(output_str, DEFAULT_BUFFER_SIZE,
-             "{"
-             "\"s%u\":{"
-             "\"type\":\"hds\","
-             "\"data\":\"%s\""
-             "}"
-             "}",
-             channel_,
-             recv_buffer_
-            );
-    send(output_str);
-
-    memset(recv_buffer_, 0, recv_index_);
-    recv_index_ = 0;
-  }
-}*/
 
 Winch::Winch(int channel, uint8_t address)
   : Sensor(channel)

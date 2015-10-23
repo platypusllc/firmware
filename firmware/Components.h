@@ -96,12 +96,19 @@ namespace platypus
   class SerialSensor : virtual public Sensor
   {
   public:
-    SerialSensor(int channel, int baudRate, int dataStringLength = 0);
+    SerialSensor(int channel, int baudRate, int serialType = RS232, int dataStringLength = 0);
     virtual char * name() = 0;
     void onSerial();
 
-  private:
+    enum SERIAL_TYPE{
+      RS232,
+      RS485
+    };
+
+    
+    private:
     int baud_;
+    int serialType_;
     int minDataStringLength_;
     char recv_buffer_[DEFAULT_BUFFER_SIZE];
     unsigned int recv_index_;
@@ -114,22 +121,8 @@ namespace platypus
     ES2(int channel);
     char *name();
     void loop();
-    //void onSerial();
   };
-/*
-  class AtlasSensor : public Sensor 
-  {
-  public:
-    AtlasSensor(int channel);
-    virtual char *name();
-    void onSerial();
-    void loop();
-    
-  private:
-    char recv_buffer_[DEFAULT_BUFFER_SIZE];
-    unsigned int recv_index_;
-  };
-*/
+  
   class AtlasPH : public SerialSensor
   {
   public:
@@ -149,16 +142,12 @@ namespace platypus
     void calibrate();
   };
   
-  class HDS : public Sensor 
+  class HDS : public PoweredSensor, public SerialSensor
   {
   public:
     HDS(int channel);
     char *name();
-    void onSerial();
-    
-  private:
-    char recv_buffer_[DEFAULT_BUFFER_SIZE];
-    unsigned int recv_index_;
+    //void onSerial();
   };
   
   class Winch : public Sensor 
