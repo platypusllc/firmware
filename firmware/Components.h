@@ -106,7 +106,7 @@ namespace platypus
     };
 
     
-    private:
+  private:
     int baud_;
     int serialType_;
     int minDataStringLength_;
