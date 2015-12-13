@@ -91,7 +91,7 @@ void Dynamite::arm()
 
   velocity(0.0);
   enable();
-  delay(2000);
+  delay(3000);
 }
 
 AnalogSensor::AnalogSensor(int channel)
@@ -324,11 +324,20 @@ void ES2::loop()
 AtlasPH::AtlasPH(int channel) 
   : Sensor(channel), SerialSensor(channel, 115200)
 {
-  
+  //SERIAL_PORTS[channel]->print("C,1,\r");
+  //SERIAL_PORTS[channel]->print("SERIAL,115200\r");
 }
 
 char * AtlasPH::name(){
   return "atlas_ph";
+}
+
+bool AtlasPH::set(char* param, char* value){
+  if (strncmp(param, "temp", 4) == 0){
+    this->setTemp(atof(value));
+    return true;
+  }
+  return false;
 }
 
 void AtlasPH::setTemp(double temp) {
@@ -344,14 +353,30 @@ void AtlasPH::calibrate(){
 AtlasDO::AtlasDO(int channel) 
   : Sensor(channel), SerialSensor(channel, 115200)
 {
-
+  //SERIAL_PORTS[channel]->print("C,1,\r");
+  //SERIAL_PORTS[channel]->print("SERIAL,115200\r");
 }
+
 
 char * AtlasDO::name(){
   return "atlas_do";
 }
 
+bool AtlasDO::set(char* param, char* value){
+  Serial.println("In AtlasDO set method");
+  if (strncmp(param, "ec", 2) == 0){
+    this->setEC(atof(value));
+    return true;
+  } else if (strncmp(param, "temp", 4) == 0){
+    this->setTemp(atof(value));
+    return true;  
+  }
+  return false;
+}
+
 void AtlasDO::setTemp(double temp) {
+  Serial.println("Setting atlas do temp");
+  Serial.println(temp);
   SERIAL_PORTS[channel_]->print("T,");
   SERIAL_PORTS[channel_]->print(temp);
   SERIAL_PORTS[channel_]->print("\r");
@@ -359,6 +384,11 @@ void AtlasDO::setTemp(double temp) {
 
 void AtlasDO::setEC(double ec) {
   //Check for salt water and set ec compensation if applicable
+  if (ec >= 2500){
+    SERIAL_PORTS[channel_]->print("S,");
+    SERIAL_PORTS[channel_]->print(ec);
+    SERIAL_PORTS[channel_]->print("\r");
+  }
 }
 
 void AtlasDO::calibrate(){

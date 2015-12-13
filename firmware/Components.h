@@ -71,7 +71,7 @@ namespace platypus
     ~ServoSensor();
 
     bool set(char* param, char* value);
-    char *name();
+    virtual char *name();
     
     void position(float velocity);
     float position();
@@ -119,7 +119,7 @@ namespace platypus
   {
   public:
     ES2(int channel);
-    char *name();
+    virtual char *name();
     void loop();
   };
   
@@ -127,7 +127,8 @@ namespace platypus
   {
   public:
     AtlasPH(int channel);
-    char * name();
+    bool set(char * param, char * value);
+    virtual char * name();
     void setTemp(double temp);
     void calibrate();
   };
@@ -136,7 +137,8 @@ namespace platypus
   {
   public:
     AtlasDO(int channel);
-    char * name();
+    bool set(char * param, char * value);
+    virtual char * name();
     void setTemp(double temp);
     void setEC(double EC);
     void calibrate();
@@ -146,7 +148,7 @@ namespace platypus
   {
   public:
     HDS(int channel);
-    char *name();
+    virtual char *name();
     //void onSerial();
   };
   
@@ -154,7 +156,7 @@ namespace platypus
   {
   public:
     Winch(int channel, uint8_t address);
-    char *name();
+    virtual char *name();
     bool set(char* param, char* value);
     
     void reset();

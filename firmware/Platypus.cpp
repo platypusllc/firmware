@@ -175,6 +175,9 @@ void Motor::velocity(float velocity)
   if (velocity < -1.0) {
     velocity = -1.0;
   }
+
+  //Turn down velocity by 40% to avoid power issues with running motor power through eboard
+  //velocity = 0.6 * velocity;
   velocity_ = velocity;
 
   float command = (velocity * 500) + 1500;

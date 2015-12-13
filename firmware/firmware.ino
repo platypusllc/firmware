@@ -204,7 +204,7 @@ void handleCommand(const char *buffer)
       }
       entry_object = platypus::motors[motor_idx];
     }
-    // If it is a motor, it must take the form 's1'.
+    // If it is a sensor, it must take the form 's1'.
     else if (entry_name[0] == 's')
     {
       size_t sensor_idx = entry_name[1] - '0';
@@ -214,6 +214,42 @@ void handleCommand(const char *buffer)
         return;
       }
       entry_object = platypus::sensors[sensor_idx];
+    }
+    //check for compensation commands 'c_'
+    else if (entry_name[0] == 'c'){
+      Serial.println("compensation data detected");
+      //ec compensation data
+      if (entry_name[2] == 'e'){
+        Serial.println("Got ec data, looking for sensors...");
+        //loop through sensors looking for sensors that care about ec (DO)
+        for (int i=0; i < 4; i++){
+          if (strncmp(platypus::sensors[i]->name(), "atlas_do", 7) == 0){
+            Serial.print("sensor ");
+            Serial.print(i);
+            Serial.println(" cares about ec");
+            entry_object = platypus::sensors[i];
+          }
+        }
+      } else if (entry_name[2] == 't'){
+        Serial.println("Got temp data, looking for sensors...");
+        for (int i=0; i < 4; i++){
+          Serial.println(platypus::sensors[i]->name());
+          if (strncmp(platypus::sensors[i]->name(), "atlas", 5) == 0){
+            Serial.print("sensor ");
+            Serial.print(i);
+            Serial.println(" cares about temp");
+            entry_object = platypus::sensors[i];
+          }
+        }
+      } else {
+        reportError("Unknown compensation entry.", buffer);
+        return;
+      }
+
+      //No sensors to compensate
+      if (entry_object == NULL){
+        return;
+      }
     }
     // Report parse error if unable to identify this entry.
     else {
@@ -278,8 +314,8 @@ void setup()
   // TODO: replace this with smart hooks.
   // Initialize sensors
   platypus::sensors[0] = new platypus::ServoSensor(0);
-  platypus::sensors[3] = new platypus::HDS(1);
-  platypus::sensors[2] = new platypus::AtlasDO(2);
+  platypus::sensors[1] = new platypus::AtlasDO(1);
+  platypus::sensors[2] = new platypus::AtlasPH(2);
   platypus::sensors[3] = new platypus::ES2(3);
   
   // Initialize motors
@@ -387,7 +423,7 @@ void loop()
   // Copy incoming message to debug console.
   Serial.print("<- ");
   Serial.println(input_buffer);
-    
+  delay(1000);
   // Attempt to parse command
   handleCommand(input_buffer);
 }
@@ -400,14 +436,14 @@ void batteryUpdateLoop()
   char output_str[128];
   snprintf(output_str, 128,
            "{"
-           "\"s9\":{"
+           "\"s4\":{"
            "\"type\":\"battery\","
-           "\"data\":\"%f %f %f\""
+           "\"data\":\"%.3f %f %f\""
            "}"
            "}",
            voltageReading, 
-           platypus::motors[0]->velocity(),
-           platypus::motors[1]->velocity()
+           platypus::motors[0]->current(),
+           platypus::motors[1]->current()
           );
   send(output_str);  
   delay(1000);
