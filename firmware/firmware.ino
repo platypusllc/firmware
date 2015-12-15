@@ -216,7 +216,7 @@ void handleCommand(const char *buffer)
       entry_object = platypus::sensors[sensor_idx];
     }
     //check for compensation commands 'c_'
-    else if (entry_name[0] == 'c'){
+    /*else if (entry_name[0] == 'c'){
       Serial.println("compensation data detected");
       //ec compensation data
       if (entry_name[2] == 'e'){
@@ -250,7 +250,7 @@ void handleCommand(const char *buffer)
       if (entry_object == NULL){
         return;
       }
-    }
+    }*/
     // Report parse error if unable to identify this entry.
     else {
       reportError("Unknown command entry.", buffer);
@@ -423,7 +423,7 @@ void loop()
   // Copy incoming message to debug console.
   Serial.print("<- ");
   Serial.println(input_buffer);
-  delay(1000);
+  
   // Attempt to parse command
   handleCommand(input_buffer);
 }

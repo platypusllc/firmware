@@ -169,6 +169,7 @@ Motor::~Motor()
 
 void Motor::velocity(float velocity)
 {
+  //Cap motor signals to between -1 and 1
   if (velocity > 1.0) {
     velocity = 1.0;
   }
@@ -176,8 +177,17 @@ void Motor::velocity(float velocity)
     velocity = -1.0;
   }
 
-  //Turn down velocity by 40% to avoid power issues with running motor power through eboard
-  //velocity = 0.6 * velocity;
+  double minOutputSignal = -1.0;
+  double maxOutputSignal = 0.1;
+
+  //Velocity scaling to acceptable ranges for non soft switched boats
+  if (velocity < 0.0){
+    velocity = -velocity * minOutputSignal;
+  } else if (velocity > 0.0){
+    velocity = velocity * maxOutputSignal;
+  }
+
+  
   velocity_ = velocity;
 
   float command = (velocity * 500) + 1500;
