@@ -169,7 +169,7 @@ Motor::~Motor()
 
 void Motor::velocity(float velocity)
 {
-  //Cap motor signals to between -1 and 1
+  //Cap motor signals to between -1.0 and 1.0
   if (velocity > 1.0) {
     velocity = 1.0;
   }
@@ -177,17 +177,30 @@ void Motor::velocity(float velocity)
     velocity = -1.0;
   }
 
-  double minOutputSignal = -1.0;
-  double maxOutputSignal = 0.1;
+  //Code below assumes input bounds are -1.0 to 1.0
 
-  //Velocity scaling to acceptable ranges for non soft switched boats
-  if (velocity < 0.0){
-    velocity = -velocity * minOutputSignal;
-  } else if (velocity > 0.0){
-    velocity = velocity * maxOutputSignal;
+  //New desired deadband around 0 - all commands under this magnitude map to 0
+  double deadBandSize = 0.001;
+
+  //Max safe reverse command
+  double reverseCommandLowerBound = -1.0;
+  //Min reverse command that will spin the motors
+  double reverseCommandUpperBound = -0.1;
+
+  //Min forward command that will spin the motors
+  double forwardCommandLowerBound = 0.03;
+  //Max safe forward command
+  double forwardCommandUpperBound = 0.1;
+
+
+  if (velocity < -deadBandSize){
+    velocity = (velocity + 1.0) * (reverseCommandUpperBound - reverseCommandLowerBound) + reverseCommandLowerBound;
+  } else if (velocity > deadBandSize){
+    velocity = velocity * (forwardCommandUpperBound - forwardCommandLowerBound) + forwardCommandLowerBound;
+  } else {
+    velocity = 0.0;
   }
 
-  
   velocity_ = velocity;
 
   float command = (velocity * 500) + 1500;

@@ -71,8 +71,8 @@ void send(char *str)
   if (adk.isReady()) adk.write(len, (uint8_t*)str);
   
   // Copy string to debugging console.
-  Serial.print("-> ");
-  Serial.print(str);
+  //Serial.print("-> ");
+  //Serial.print(str);
 }
 
 /**
@@ -421,8 +421,8 @@ void loop()
   input_buffer[bytes_read] = '\0';
   
   // Copy incoming message to debug console.
-  Serial.print("<- ");
-  Serial.println(input_buffer);
+  //Serial.print("<- ");
+  //Serial.println(input_buffer);
   
   // Attempt to parse command
   handleCommand(input_buffer);
