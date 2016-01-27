@@ -21,10 +21,10 @@ using namespace platypus;
 #define PosKp 2500
 #define PosKi 0
 #define PosKd 20000
-#define KiMax 0
-#define DeadZone 5 //10
-#define Min 50
-#define Max 1950
+#define KikMax 0
+#define kDeadZone 5 //10
+#define kMin 50
+#define kMax 1950
 
 
 #define addr 0x80
@@ -473,7 +473,7 @@ void Winch::reset()
 void Winch::position(uint32_t pos)
 {
   desired_position_ = pos;
-  roboclaw_.SetM1PositionPID(addr, PosKd, PosKp, PosKi, KiMax, DeadZone, Min, Max);
+  roboclaw_.SetM1PositionPID(addr, PosKd, PosKp, PosKi, KikMax, kDeadZone, kMin, kMax);
 }
 
 void Winch::velocity(int32_t vel)
