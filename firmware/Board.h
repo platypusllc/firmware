@@ -7,14 +7,14 @@ namespace board
 {
   
   // Board type definitions
-  typedef struct LED_t 
+  struct LED_t
   { 
     int R;
     int G;
     int B;
   };
   
-  typedef struct Motor_t 
+  struct Motor_t
   { 
     int ENABLE;
     int SERVO;
@@ -22,7 +22,7 @@ namespace board
     int CURRENT;
   };
   
-  typedef struct Sensor_t
+  struct Sensor_t
   {
     int RX_DISABLE;
     int TX_ENABLE;
