@@ -71,8 +71,8 @@ void send(char *str)
   if (adk.isReady()) adk.write(len, (uint8_t*)str);
   
   // Copy string to debugging console.
-  //Serial.print("-> ");
-  //Serial.print(str);
+  Serial.print("-> ");
+  Serial.print(str);
 }
 
 /**
@@ -215,42 +215,6 @@ void handleCommand(const char *buffer)
       }
       entry_object = platypus::sensors[sensor_idx];
     }
-    //check for compensation commands 'c_'
-    /*else if (entry_name[0] == 'c'){
-      Serial.println("compensation data detected");
-      //ec compensation data
-      if (entry_name[2] == 'e'){
-        Serial.println("Got ec data, looking for sensors...");
-        //loop through sensors looking for sensors that care about ec (DO)
-        for (int i=0; i < 4; i++){
-          if (strncmp(platypus::sensors[i]->name(), "atlas_do", 7) == 0){
-            Serial.print("sensor ");
-            Serial.print(i);
-            Serial.println(" cares about ec");
-            entry_object = platypus::sensors[i];
-          }
-        }
-      } else if (entry_name[2] == 't'){
-        Serial.println("Got temp data, looking for sensors...");
-        for (int i=0; i < 4; i++){
-          Serial.println(platypus::sensors[i]->name());
-          if (strncmp(platypus::sensors[i]->name(), "atlas", 5) == 0){
-            Serial.print("sensor ");
-            Serial.print(i);
-            Serial.println(" cares about temp");
-            entry_object = platypus::sensors[i];
-          }
-        }
-      } else {
-        reportError("Unknown compensation entry.", buffer);
-        return;
-      }
-
-      //No sensors to compensate
-      if (entry_object == NULL){
-        return;
-      }
-    }*/
     // Report parse error if unable to identify this entry.
     else {
       reportError("Unknown command entry.", buffer);
@@ -301,6 +265,8 @@ void handleCommand(const char *buffer)
 
 void setup() 
 {
+  delay(2000);
+  
   // Latch power shutdown line high to keep board from turning off.
   pinMode(board::PWR_KILL, OUTPUT);
   digitalWrite(board::PWR_KILL, HIGH);
@@ -315,7 +281,7 @@ void setup()
   // Initialize sensors
   platypus::sensors[0] = new platypus::ServoSensor(0);
   platypus::sensors[1] = new platypus::AtlasDO(1);
-  platypus::sensors[2] = new platypus::AtlasPH(2);
+  platypus::sensors[2] = new platypus::HDS(2);
   platypus::sensors[3] = new platypus::ES2(3);
   
   // Initialize motors
@@ -326,6 +292,9 @@ void setup()
   debug_buffer[INPUT_BUFFER_SIZE] = '\0';
   input_buffer[INPUT_BUFFER_SIZE] = '\0';
   output_buffer[OUTPUT_BUFFER_SIZE] = '\0';
+
+  // Set ADC Precision:
+  analogReadResolution(12);
   
   // Create secondary tasks for system.
   Scheduler.startLoop(motorUpdateLoop);
@@ -421,8 +390,8 @@ void loop()
   input_buffer[bytes_read] = '\0';
   
   // Copy incoming message to debug console.
-  //Serial.print("<- ");
-  //Serial.println(input_buffer);
+  Serial.print("<- ");
+  Serial.println(input_buffer);
   
   // Attempt to parse command
   handleCommand(input_buffer);
@@ -431,7 +400,8 @@ void loop()
 void batteryUpdateLoop()
 {
   int rawVoltage = analogRead(board::V_BATT);
-  double voltageReading = 0.03516*rawVoltage+0.05135;
+  double voltageReading = 0.008879*rawVoltage + 0.09791;
+  //0.03516*rawVoltage+0.05135;
 
   char output_str[128];
   snprintf(output_str, 128,
@@ -442,26 +412,12 @@ void batteryUpdateLoop()
            "}"
            "}",
            voltageReading, 
-           platypus::motors[0]->current(),
-           platypus::motors[1]->current()
+           platypus::motors[0]->velocity(),
+           platypus::motors[1]->velocity()
           );
   send(output_str);  
   delay(1000);
 }
-
-/*void tempLoop(){
-  delay(500);
-
-  
-  //assumes es2 on port 3 and Do probe on port 2
-  double newTemp = ((platypus::ES2*)platypus::sensors[3])->getLastTemp();
-  if (newTemp != lastTemp){
-    //send updated temp to do probe
-    ((platypus::AtlasSensor*)platypus::sensors[2])->setTemp(newTemp);
-    lastTemp = newTemp;
-    Serial.println(newTemp);
-  }
-}*/
 
 /**
  * Periodically sends motor velocity updates.

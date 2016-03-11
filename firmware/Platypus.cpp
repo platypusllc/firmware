@@ -153,7 +153,7 @@ Motor::Motor(int channel)
   channel_ = channel;
   servo_.attach(board::MOTOR[channel_].SERVO);
   pinMode(enable_, OUTPUT);
-  digitalWrite(enable_, LOW);
+  digitalWrite(enable_, HIGH);
   pinMode(servo_ctrl,OUTPUT);
   digitalWrite(servo_ctrl,HIGH);
 }
@@ -190,7 +190,7 @@ void Motor::velocity(float velocity)
   //Min forward command that will spin the motors
   double forwardCommandLowerBound = 0.03;
   //Max safe forward command
-  double forwardCommandUpperBound = 0.1;
+  double forwardCommandUpperBound = 1.0;
 
 
   if (velocity < -deadBandSize){
@@ -215,7 +215,7 @@ float Motor::velocity()
 void Motor::enable(bool enabled)
 {
   enabled_ = enabled;
-  digitalWrite(enable_, enabled_);
+  //digitalWrite(enable_, enabled_);
   digitalWrite(servo_ctrl, !enabled_);
 
   if (!enabled_)
