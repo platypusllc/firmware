@@ -153,7 +153,7 @@ Motor::Motor(int channel)
   channel_ = channel;
   servo_.attach(board::MOTOR[channel_].SERVO);
   pinMode(enable_, OUTPUT);
-  digitalWrite(enable_, LOW);
+  digitalWrite(enable_, HIGH);
   pinMode(servo_ctrl,OUTPUT);
   digitalWrite(servo_ctrl,HIGH);
 }
@@ -169,12 +169,38 @@ Motor::~Motor()
 
 void Motor::velocity(float velocity)
 {
+  //Cap motor signals to between -1.0 and 1.0
   if (velocity > 1.0) {
     velocity = 1.0;
   }
   if (velocity < -1.0) {
     velocity = -1.0;
   }
+
+  //Code below assumes input bounds are -1.0 to 1.0
+
+  //New desired deadband around 0 - all commands under this magnitude map to 0
+  double deadBandSize = 0.001;
+
+  //Max safe reverse command
+  double reverseCommandLowerBound = -1.0;
+  //Min reverse command that will spin the motors
+  double reverseCommandUpperBound = -0.1;
+
+  //Min forward command that will spin the motors
+  double forwardCommandLowerBound = 0.03;
+  //Max safe forward command
+  double forwardCommandUpperBound = 1.0;
+
+
+  if (velocity < -deadBandSize){
+    velocity = (velocity + 1.0) * (reverseCommandUpperBound - reverseCommandLowerBound) + reverseCommandLowerBound;
+  } else if (velocity > deadBandSize){
+    velocity = velocity * (forwardCommandUpperBound - forwardCommandLowerBound) + forwardCommandLowerBound;
+  } else {
+    velocity = 0.0;
+  }
+
   velocity_ = velocity;
 
   float command = (velocity * 500) + 1500;
@@ -189,7 +215,7 @@ float Motor::velocity()
 void Motor::enable(bool enabled)
 {
   enabled_ = enabled;
-  digitalWrite(enable_, enabled_);
+  //digitalWrite(enable_, enabled_);
   digitalWrite(servo_ctrl, !enabled_);
 
   if (!enabled_)
@@ -215,6 +241,7 @@ void Motor::disable()
 
 float Motor::current()
 {
+  //Will no longer work with battery directly powering esc?
   float vsense = analogRead(board::MOTOR[channel_].CURRENT);
   //V sense is measured across a 330 Ohm resistor, I = V/R
   //I sense is ~1/5000 of output current

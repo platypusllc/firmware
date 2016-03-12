@@ -53,6 +53,7 @@ const size_t RESPONSE_TIMEOUT_MS = 500;
 // TODO: move this board.h?
 platypus::Led rgb_led;
 
+
 /**
  * Wrapper for ADK send command that copies data to debug port.
  * Requires a null-terminated char* pointer.
@@ -203,7 +204,7 @@ void handleCommand(const char *buffer)
       }
       entry_object = platypus::motors[motor_idx];
     }
-    // If it is a motor, it must take the form 's1'.
+    // If it is a sensor, it must take the form 's1'.
     else if (entry_name[0] == 's')
     {
       size_t sensor_idx = entry_name[1] - '0';
@@ -264,6 +265,8 @@ void handleCommand(const char *buffer)
 
 void setup() 
 {
+  delay(2000);
+  
   // Latch power shutdown line high to keep board from turning off.
   pinMode(board::PWR_KILL, OUTPUT);
   digitalWrite(board::PWR_KILL, HIGH);
@@ -277,8 +280,8 @@ void setup()
   // TODO: replace this with smart hooks.
   // Initialize sensors
   platypus::sensors[0] = new platypus::ServoSensor(0);
-  platypus::sensors[1] = new platypus::Hds5(1);
-  platypus::sensors[2] = new platypus::AtlasSensor(2);
+  platypus::sensors[1] = new platypus::AtlasDO(1);
+  platypus::sensors[2] = new platypus::HDS(2);
   platypus::sensors[3] = new platypus::ES2(3);
   
   // Initialize motors
@@ -289,10 +292,14 @@ void setup()
   debug_buffer[INPUT_BUFFER_SIZE] = '\0';
   input_buffer[INPUT_BUFFER_SIZE] = '\0';
   output_buffer[OUTPUT_BUFFER_SIZE] = '\0';
+
+  // Set ADC Precision:
+  analogReadResolution(12);
   
   // Create secondary tasks for system.
   Scheduler.startLoop(motorUpdateLoop);
-  Scheduler.startLoop(serialConsoleLoop);
+  //Scheduler.startLoop(serialConsoleLoop);
+  Scheduler.startLoop(batteryUpdateLoop);
 
   // Initialize Platypus library.
   platypus::init();
@@ -385,9 +392,30 @@ void loop()
   // Copy incoming message to debug console.
   Serial.print("<- ");
   Serial.println(input_buffer);
-    
+  
   // Attempt to parse command
   handleCommand(input_buffer);
+}
+
+void batteryUpdateLoop()
+{
+  int rawVoltage = analogRead(board::V_BATT);
+  double voltageReading = 0.008879*rawVoltage + 0.09791;
+
+  char output_str[128];
+  snprintf(output_str, 128,
+           "{"
+           "\"s4\":{"
+           "\"type\":\"battery\","
+           "\"data\":\"%.3f %f %f\""
+           "}"
+           "}",
+           voltageReading, 
+           platypus::motors[0]->velocity(),
+           platypus::motors[1]->velocity()
+          );
+  send(output_str);  
+  delay(1000);
 }
 
 /**

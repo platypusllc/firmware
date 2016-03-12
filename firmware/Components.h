@@ -51,7 +51,7 @@ namespace platypus
     AnalogSensor(int channel);
 
     bool set(char* param, char* value);
-    char *name();
+    virtual char *name() = 0;
     
     void scale(float scale);
     float scale();
@@ -71,7 +71,7 @@ namespace platypus
     ~ServoSensor();
 
     bool set(char* param, char* value);
-    char *name();
+    virtual char *name();
     
     void position(float velocity);
     float position();
@@ -81,57 +81,82 @@ namespace platypus
     float position_;
   };
 
-  class PoweredSensor : public Sensor 
+  class PoweredSensor : virtual public Sensor 
   {
   public:
-    PoweredSensor(int channel);
-    char *name();
+    PoweredSensor(int channel, bool poweredOn=true);
+    virtual char *name() = 0;
+    bool powerOn();
+    bool powerOff();
+
+  private:
+    bool state_;
+  };
+
+  class SerialSensor : virtual public Sensor
+  {
+  public:
+    SerialSensor(int channel, int baudRate, int serialType = RS232, int dataStringLength = 0);
+    virtual char * name() = 0;
+    void onSerial();
+
+    enum SERIAL_TYPE{
+      RS232,
+      RS485
+    };
+
+    
+  private:
+    int baud_;
+    int serialType_;
+    int minDataStringLength_;
+    char recv_buffer_[DEFAULT_BUFFER_SIZE];
+    unsigned int recv_index_;
   };
 
   
-  class ES2 : public Sensor 
+  class ES2 : public PoweredSensor, public SerialSensor
   {
   public:
     ES2(int channel);
-    char *name();
+    virtual char *name();
     void loop();
-    void onSerial();
-
-  private:
-    char recv_buffer_[DEFAULT_BUFFER_SIZE];
-    unsigned int recv_index_;
-  };
-
-  class AtlasSensor : public Sensor 
-  {
-  public:
-    AtlasSensor(int channel);
-    char *name();
-    void onSerial();
-    void loop();
-    
-  private:
-    char recv_buffer_[DEFAULT_BUFFER_SIZE];
-    unsigned int recv_index_;
   };
   
-  class Hds5 : public Sensor 
+  class AtlasPH : public SerialSensor
   {
   public:
-    Hds5(int channel);
-    char *name();
-    void onSerial();
-    
-  private:
-    char recv_buffer_[DEFAULT_BUFFER_SIZE];
-    unsigned int recv_index_;
+    AtlasPH(int channel);
+    bool set(char * param, char * value);
+    virtual char * name();
+    void setTemp(double temp);
+    void calibrate();
+  };
+
+  class AtlasDO : public SerialSensor
+  {
+  public:
+    AtlasDO(int channel);
+    bool set(char * param, char * value);
+    virtual char * name();
+    void setTemp(double temp);
+    void setEC(double EC);
+    void calibrate();
+  };
+  
+  class HDS : public PoweredSensor, public SerialSensor
+  {
+  public:
+    HDS(int channel);
+    virtual char *name();
+    //void onSerial();
   };
   
   class Winch : public Sensor 
   {
   public:
     Winch(int channel, uint8_t address);
-    char *name();
+    virtual char *name();
     bool set(char* param, char* value);
     
     void reset();
