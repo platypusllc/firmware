@@ -49,6 +49,10 @@ SystemState system_state = DISCONNECTED;
 // server to be unresponsive.
 const size_t RESPONSE_TIMEOUT_MS = 500;
 
+// Time to wait before dropping into DISCONNECTED state when USB cable is disconnected
+// Deals with dodgy USB connections and improves USB C support for all cables
+const size_t CONNECTION_TIMEOUT_MS = 10000;
+
 // Define the systems on this board
 // TODO: move this board.h?
 platypus::Led rgb_led;
@@ -322,6 +326,9 @@ void loop()
 {
   // Keep track of how many reads we haven't made so far.
   static unsigned long last_command_time = 0;
+
+  // Keep track of last time USB connection was detected
+  static unsigned long last_usb_connection_time = 0;
   
   // Number of bytes received from USB.
   uint32_t bytes_read = 0;
@@ -332,11 +339,15 @@ void loop()
   // Report system as shutdown if not connected to USB.
   if (!adk.isReady())
   {
+    unsigned long current_time = millis();
     // If not connected to USB, we are 'DISCONNECTED'.
     if (system_state != DISCONNECTED)
     {
-      Serial.println("STATE: DISCONNECTED");
-      system_state = DISCONNECTED;
+      Serial.println("WARNING: USB connection state fault");
+      if (current_time - last_usb_connection_time >= CONNECTION_TIMEOUT_MS){
+        Serial.println("STATE: DISCONNECTED");
+        system_state = DISCONNECTED;
+      }
     }
     
     // Wait for USB connection again.
@@ -349,7 +360,8 @@ void loop()
     if (system_state == DISCONNECTED)
     {
       Serial.println("STATE: CONNECTED");
-      system_state = CONNECTED; 
+      system_state = CONNECTED;
+      last_usb_connection_time = millis();
     }
   }
         
@@ -384,6 +396,7 @@ void loop()
     
     // Update the timestamp of last received command.
     last_command_time = current_command_time;
+    last_usb_connection_time = current_command_time;
   }
   
   // Properly null-terminate the buffer.
@@ -468,6 +481,7 @@ void motorUpdateLoop()
       platypus::Motor* motor = platypus::motors[motor_idx];
       motor->velocity(motor->velocity() * 0.8);
     }
+    break;
     // NOTE: WE DO NOT BREAK OUT OF THE SWITCH HERE!
   case RUNNING:
     // Rearm motors if necessary.
