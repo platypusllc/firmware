@@ -414,7 +414,6 @@ void batteryUpdateLoop()
 {
   int rawVoltage = analogRead(board::V_BATT);
   double voltageReading = 0.008879*rawVoltage + 0.09791;
-  //0.03516*rawVoltage+0.05135;
 
   char output_str[128];
   snprintf(output_str, 128,
