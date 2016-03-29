@@ -344,7 +344,8 @@ void loop()
     if (system_state != DISCONNECTED)
     {
       Serial.println("WARNING: USB connection state fault");
-      if (current_time - last_usb_connection_time >= CONNECTION_TIMEOUT_MS){
+      if (current_time - last_usb_connection_time >= CONNECTION_TIMEOUT_MS)
+      {
         Serial.println("STATE: DISCONNECTED");
         system_state = DISCONNECTED;
       }
