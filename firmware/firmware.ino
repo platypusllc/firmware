@@ -481,7 +481,6 @@ void motorUpdateLoop()
       platypus::Motor* motor = platypus::motors[motor_idx];
       motor->velocity(motor->velocity() * 0.8);
     }
-    break;
     // NOTE: WE DO NOT BREAK OUT OF THE SWITCH HERE!
   case RUNNING:
     // Rearm motors if necessary.
