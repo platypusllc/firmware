@@ -56,7 +56,11 @@ namespace platypus
     
     void velocity(float velocity);
     float velocity();
-    
+
+    // Enable motor power output on board for pump/wifi
+    void enablePower(bool enabled);
+
+    // Enable ESCs (softswitch)
     void enable(bool enabled);
     bool enabled();
     

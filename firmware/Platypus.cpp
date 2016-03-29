@@ -153,7 +153,9 @@ Motor::Motor(int channel)
   channel_ = channel;
   servo_.attach(board::MOTOR[channel_].SERVO);
   pinMode(enable_, OUTPUT);
+  // Initialize with power output on
   digitalWrite(enable_, HIGH);
+  // Initialize with ESC softswitch off
   pinMode(servo_ctrl,OUTPUT);
   digitalWrite(servo_ctrl,HIGH);
 }
@@ -212,10 +214,15 @@ float Motor::velocity()
   return velocity_;
 }
 
+void Motor::enablePower(bool enabled)
+{
+  digitalWrite(enable_, enabled);
+}
+
+// Deals with ESC softswitch exclusively
 void Motor::enable(bool enabled)
 {
   enabled_ = enabled;
-  //digitalWrite(enable_, enabled_);
   digitalWrite(servo_ctrl, !enabled_);
 
   if (!enabled_)

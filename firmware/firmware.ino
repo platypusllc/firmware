@@ -269,7 +269,7 @@ void handleCommand(const char *buffer)
 
 void setup() 
 {
-  delay(2000);
+  delay(1000);
   
   // Latch power shutdown line high to keep board from turning off.
   pinMode(board::PWR_KILL, OUTPUT);
@@ -291,6 +291,10 @@ void setup()
   // Initialize motors
   platypus::motors[0] = new platypus::Dynamite(0);
   platypus::motors[1] = new platypus::Dynamite(1);
+
+  // Power all peripherals
+  platypus::motors[0]->enablePower(true);
+  platypus::motors[1]->enablePower(true);
 
   // Make the ADK buffers into null terminated string.
   debug_buffer[INPUT_BUFFER_SIZE] = '\0';
@@ -344,8 +348,7 @@ void loop()
     if (system_state != DISCONNECTED)
     {
       Serial.println("WARNING: USB connection state fault");
-      if (current_time - last_usb_connection_time >= CONNECTION_TIMEOUT_MS)
-      {
+      if (current_time - last_usb_connection_time >= CONNECTION_TIMEOUT_MS){
         Serial.println("STATE: DISCONNECTED");
         system_state = DISCONNECTED;
       }
@@ -492,10 +495,8 @@ void motorUpdateLoop()
         Serial.print("Arming motor [");
         Serial.print(motor_idx);
         Serial.println("]");
-        //Serial.println("I've turned off the fucking motor arming");
         motor->arm();
         Serial.println("Motor Armed");
-        //motor->enable
       }
     }
     break;
