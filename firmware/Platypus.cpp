@@ -215,7 +215,7 @@ float Motor::velocity()
 void Motor::enable(bool enabled)
 {
   enabled_ = enabled;
-  digitalWrite(enable_, enabled_);
+  //digitalWrite(enable_, enabled_);
   digitalWrite(servo_ctrl, !enabled_);
 
   if (!enabled_)
