@@ -86,13 +86,12 @@ void Swordfish::arm()
 
 void Dynamite::arm()
 {
-  /*disable();
+  disable();
   delay(500);
 
   velocity(0.0);
   enable();
-  delay(3000);*/
-  enable();
+  delay(3000);
 }
 
 AnalogSensor::AnalogSensor(int channel)

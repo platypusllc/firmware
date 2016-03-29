@@ -51,7 +51,7 @@ const size_t RESPONSE_TIMEOUT_MS = 500;
 
 // Time to wait before dropping into DISCONNECTED state when USB cable is disconnected
 // Deals with dodgy USB connections and improves USB C support for all cables
-const size_t CONNECTION_TIMEOUT_MS = 10000;
+const size_t CONNECTION_TIMEOUT_MS = 500;
 
 // Define the systems on this board
 // TODO: move this board.h?
