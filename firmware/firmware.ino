@@ -482,7 +482,7 @@ void motorUpdateLoop()
     for (size_t motor_idx = 0; motor_idx < board::NUM_MOTORS; ++motor_idx) 
     {
       platypus::Motor* motor = platypus::motors[motor_idx];
-      motor->velocity(motor->velocity() * 0.8);
+      motor->set("v", "0.0");
     }
     // NOTE: WE DO NOT BREAK OUT OF THE SWITCH HERE!
   case RUNNING:

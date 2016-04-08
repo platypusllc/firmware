@@ -261,6 +261,13 @@ bool Motor::set(char *param, char *value)
   if (!strncmp("v", param, 2))
   {
     float v = atof(value);
+    Serial.print("Received set velocity command: ");
+    Serial.println(v);
+
+    desiredVelocity_ = v;
+
+
+    // Disregards the ramping for now
     velocity(v);
     return true;
   }
@@ -273,7 +280,13 @@ bool Motor::set(char *param, char *value)
 
 void Motor::loop()
 {
-  // Do nothing.
+  // If not at desired velocity, move towards it
+  if (abs(desiredVelocity_-velocity_) > 0.001){
+    constexpr float alpha = 0.1;
+    float v = (1.0 - alpha) * velocity_ + alpha * desiredVelocity_;
+    velocity(v);
+  }
+  
 }
 
 void Motor::onLoop_(void *data)
