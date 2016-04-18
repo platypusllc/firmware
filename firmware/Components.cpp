@@ -296,7 +296,7 @@ void SerialSensor::onSerial(){
 }
 
 ES2::ES2(int channel)
-  : Sensor(channel), PoweredSensor(channel, false), SerialSensor(channel, 1200, RS232, 3), measurementInterval(1000), minReadTime(300)//minDataLength filters out "q>"
+  : Sensor(channel), PoweredSensor(channel, false), SerialSensor(channel, 1200, RS232, 3), measurementInterval(1000), minReadTime(100)//minDataLength filters out "q>"
 {
   lastMeasurementTime = 0;
   takingMeasurement = false;
