@@ -80,6 +80,9 @@ void platypusLoop_()
       platypus::Sensor::onLoop_(sensor);
     }
   }
+
+  // Removing this causes hang
+  delay(1000);
 }
 
 void platypus::init()

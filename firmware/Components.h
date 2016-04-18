@@ -117,6 +117,12 @@ namespace platypus
   
   class ES2 : public PoweredSensor, public SerialSensor
   {
+  private:
+    int lastMeasurementTime;
+    const int measurementInterval;
+    const int minReadTime;
+    bool takingMeasurement;
+    
   public:
     ES2(int channel);
     virtual char *name();
