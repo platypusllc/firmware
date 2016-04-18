@@ -8,6 +8,13 @@ namespace platypus
 {
   const int DEFAULT_BUFFER_SIZE = 128;
 
+  typedef enum 
+  {
+    OFF,
+    IDLE,
+    ACTIVE
+  } SensorState;
+
   // ESCs //
   class VaporPro : public Motor 
   {
@@ -118,10 +125,10 @@ namespace platypus
   class ES2 : public PoweredSensor, public SerialSensor
   {
   private:
+    SensorState state;
     int lastMeasurementTime;
     const int measurementInterval;
     const int minReadTime;
-    bool takingMeasurement;
     
   public:
     ES2(int channel);

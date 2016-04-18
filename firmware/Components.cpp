@@ -296,10 +296,10 @@ void SerialSensor::onSerial(){
 }
 
 ES2::ES2(int channel)
-  : Sensor(channel), PoweredSensor(channel, false), SerialSensor(channel, 1200, RS232, 3), measurementInterval(1000), minReadTime(100)//minDataLength filters out "q>"
+  : Sensor(channel), PoweredSensor(channel, false), SerialSensor(channel, 1200, RS232, 3), measurementInterval(1000), minReadTime(200)//minDataLength filters out "q>"
 {
   lastMeasurementTime = 0;
-  takingMeasurement = false;
+  state = OFF;
 }
 
 char* ES2::name()
@@ -309,19 +309,25 @@ char* ES2::name()
 
 void ES2::loop()
 {
-  if (!takingMeasurement && millis() - lastMeasurementTime > measurementInterval){
-    // Enable +12V output.
-    powerOn();
 
-    takingMeasurement = true;
-    lastMeasurementTime = millis();
-    
-  } else if (takingMeasurement && millis() - lastMeasurementTime > minReadTime){
-    // Turn off +12V output.
-    powerOff();
-
-    takingMeasurement = false;
+  switch (state){
+    case OFF:
+    case IDLE:
+      if (millis() - lastMeasurementTime > measurementInterval){
+        // Take a measurement
+        powerOn();
+        state = ACTIVE;
+        lastMeasurementTime = millis();
+      }
+      break;
+    case ACTIVE:
+      if (millis() - lastMeasurementTime > minReadTime){
+        // Done taking measurement
+        powerOff();
+        state = IDLE;  
+      }
   }
+  
 }
 
 AtlasPH::AtlasPH(int channel) 
