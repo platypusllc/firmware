@@ -11,9 +11,24 @@ namespace platypus
   typedef enum 
   {
     OFF,
+    INIT,
     IDLE,
-    ACTIVE
+    WAITING,
+    MEASUREMENT
   } SensorState;
+
+  typedef enum
+  {
+    NONE,
+    STOP_CONTINUOUS, // Stop continuous measurement mode
+    READING, // Take a reading
+    GET_CALIB, // Get calibration status
+    CALIB, // Calibrate
+    GET_TEMP, // Get temperature compensation value
+    SET_TEMP, // Set temperature compensation value
+    GET_EC, // Get EC compensation value
+    SET_EC // Set EC compensation value
+  } AtlasCommand;
 
   // ESCs //
   class VaporPro : public Motor 
@@ -113,7 +128,7 @@ namespace platypus
     };
 
     
-  private:
+  protected:
     int baud_;
     int serialType_;
     int minDataStringLength_;
@@ -138,16 +153,40 @@ namespace platypus
   
   class AtlasPH : public SerialSensor
   {
+  private:
+    const int measurementInterval;
+    int lastMeasurementTime;
+    SensorState state;
+    int calibrationStatus;
+    AtlasCommand lastCommand;
+
+    void resendLastCommand();
+    
   public:
     AtlasPH(int channel);
     bool set(char * param, char * value);
     virtual char * name();
     void setTemp(double temp);
     void calibrate();
+    void loop();
+    void onSerial();
   };
 
   class AtlasDO : public SerialSensor
   {
+  private:
+    const int measurementInterval;
+    int lastMeasurementTime;
+    SensorState state;
+    AtlasCommand lastCommand;
+    bool initialized;
+    int calibrationStatus;
+    float temperature;
+    float ec;
+
+    //void updateCalibrationStatus();
+    void resendLastCommand();
+    
   public:
     AtlasDO(int channel);
     bool set(char * param, char * value);
@@ -155,6 +194,8 @@ namespace platypus
     void setTemp(double temp);
     void setEC(double EC);
     void calibrate();
+    void loop();
+    void onSerial();
   };
   
   class HDS : public PoweredSensor, public SerialSensor

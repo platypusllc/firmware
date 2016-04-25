@@ -2,6 +2,10 @@
 
 using namespace platypus;
 
+// Velocity decay/ramping constants
+constexpr float VELOCITY_ALPHA = 0.1;
+constexpr float VELOCITY_THRESHOLD = 0.001;
+
 // TODO: Correct default initialization of these sensors.
 platypus::Motor *platypus::motors[board::NUM_MOTORS];
 platypus::Sensor *platypus::sensors[board::NUM_SENSORS];
@@ -179,32 +183,8 @@ void Motor::velocity(float velocity)
   if (velocity > 1.0) {
     velocity = 1.0;
   }
-  if (velocity < -1.0) {
+  else if (velocity < -1.0) {
     velocity = -1.0;
-  }
-
-  //Code below assumes input bounds are -1.0 to 1.0
-
-  //New desired deadband around 0 - all commands under this magnitude map to 0
-  double deadBandSize = 0.001;
-
-  //Max safe reverse command
-  double reverseCommandLowerBound = -1.0;
-  //Min reverse command that will spin the motors
-  double reverseCommandUpperBound = -0.1;
-
-  //Min forward command that will spin the motors
-  double forwardCommandLowerBound = 0.03;
-  //Max safe forward command
-  double forwardCommandUpperBound = 1.0;
-
-
-  if (velocity < -deadBandSize){
-    velocity = (velocity + 1.0) * (reverseCommandUpperBound - reverseCommandLowerBound) + reverseCommandLowerBound;
-  } else if (velocity > deadBandSize){
-    velocity = velocity * (forwardCommandUpperBound - forwardCommandLowerBound) + forwardCommandLowerBound;
-  } else {
-    velocity = 0.0;
   }
 
   velocity_ = velocity;
@@ -265,14 +245,17 @@ bool Motor::set(char *param, char *value)
   if (!strncmp("v", param, 2))
   {
     float v = atof(value);
-    Serial.print("Received set velocity command: ");
-    Serial.println(v);
+
+    // Cap velocity command to between -1.0 and 1.0
+    if (v > 1.0) {
+      v = 1.0;
+    }
+    else if (v < -1.0) {
+      v = -1.0;
+    }
 
     desiredVelocity_ = v;
-
-
-    // Disregards the ramping for now
-    velocity(v);
+    
     return true;
   }
   // Return false for unknown command.
@@ -284,12 +267,40 @@ bool Motor::set(char *param, char *value)
 
 void Motor::loop()
 {
-  // If not at desired velocity, move towards it
-  if (abs(desiredVelocity_-velocity_) > 0.001){
-    constexpr float alpha = 0.1;
-    float v = (1.0 - alpha) * velocity_ + alpha * desiredVelocity_;
-    velocity(v);
+  // At the desired velocity - Do nothing
+  if (abs(desiredVelocity_ - velocity_) < VELOCITY_THRESHOLD){
+    velocity(desiredVelocity_);
+    return;
   }
+
+  /*
+  // Scale
+
+  //New desired deadband around 0 - all commands under this magnitude map to 0
+  double deadBandSize = 0.001;
+
+  //Max safe reverse command
+  double reverseCommandLowerBound = -1.0;
+  //Min reverse command that will spin the motors
+  double reverseCommandUpperBound = -0.1;
+
+  //Min forward command that will spin the motors
+  double forwardCommandLowerBound = 0.03;
+  //Max safe forward command
+  double forwardCommandUpperBound = 1.0;
+
+  float v = desiredVelocity_;
+
+  if (v < -deadBandSize){
+    v = (v + 1.0) * (reverseCommandUpperBound - reverseCommandLowerBound) + reverseCommandLowerBound;
+  } else if (v > deadBandSize){
+    v = v * (forwardCommandUpperBound - forwardCommandLowerBound) + forwardCommandLowerBound;
+  } else {
+    v = 0.0;
+  }*/
+
+  float v = (1.0 - VELOCITY_ALPHA) * velocity_ + VELOCITY_ALPHA * desiredVelocity_;
+  velocity(v);
   
 }
 

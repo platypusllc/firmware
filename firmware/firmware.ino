@@ -285,7 +285,7 @@ void setup()
   // Initialize sensors
   platypus::sensors[0] = new platypus::ServoSensor(0);
   platypus::sensors[1] = new platypus::AtlasDO(1);
-  platypus::sensors[2] = new platypus::HDS(2);
+  platypus::sensors[2] = new platypus::AtlasPH(2);
   platypus::sensors[3] = new platypus::ES2(3);
   
   // Initialize motors
@@ -407,8 +407,8 @@ void loop()
   input_buffer[bytes_read] = '\0';
   
   // Copy incoming message to debug console.
-  Serial.print("<- ");
-  Serial.println(input_buffer);
+  //Serial.print("<- ");
+  //Serial.println(input_buffer);
   
   // Attempt to parse command
   handleCommand(input_buffer);
@@ -433,6 +433,7 @@ void batteryUpdateLoop()
           );
   send(output_str);  
   delay(1000);
+  yield();
 }
 
 /**
@@ -555,6 +556,7 @@ void winchUpdateLoop()
       send(output_buffer);
     } 
   }
+  yield();
 }
 
 /**

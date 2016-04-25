@@ -295,8 +295,9 @@ void SerialSensor::onSerial(){
   }
 }
 
+// Known working values: measurementInterval = 1500, minReadTime = 350 (min difference seems to be 1150)
 ES2::ES2(int channel)
-  : Sensor(channel), PoweredSensor(channel, false), SerialSensor(channel, 1200, RS232, 3), measurementInterval(1000), minReadTime(200)//minDataLength filters out "q>"
+  : Sensor(channel), PoweredSensor(channel, false), SerialSensor(channel, 1200, RS232, 3), measurementInterval(1500), minReadTime(350)//minDataLength filters out "q>"
 {
   lastMeasurementTime = 0;
   state = OFF;
@@ -311,29 +312,31 @@ void ES2::loop()
 {
 
   switch (state){
-    case OFF:
     case IDLE:
+    // Sensor should not enter this state
+    case OFF:
       if (millis() - lastMeasurementTime > measurementInterval){
         // Take a measurement
         powerOn();
-        state = ACTIVE;
+        state = MEASUREMENT;
         lastMeasurementTime = millis();
       }
       break;
-    case ACTIVE:
+    case MEASUREMENT:
       if (millis() - lastMeasurementTime > minReadTime){
         // Done taking measurement
         powerOff();
-        state = IDLE;  
+        state = OFF;  
       }
   }
   
 }
 
 AtlasPH::AtlasPH(int channel) 
-  : Sensor(channel), SerialSensor(channel, 115200)
+  : Sensor(channel), SerialSensor(channel, 9600), measurementInterval(1000)
 {
-  //SERIAL_PORTS[channel]->print("C,1,\r");
+  lastMeasurementTime = millis();
+  SERIAL_PORTS[channel]->print("C,0,\r");
   //SERIAL_PORTS[channel]->print("SERIAL,115200\r");
 }
 
@@ -349,6 +352,20 @@ bool AtlasPH::set(char* param, char* value){
   return false;
 }
 
+void AtlasPH::loop(){
+  if (millis() - lastMeasurementTime > measurementInterval){
+      lastCommand = READING;
+      SERIAL_PORTS[channel_]->print("R\r");
+      //SERIAL_PORTS[channel_]->print("C,0,\r");
+      //SERIAL_PORTS[channel_]->print("T,13.5\r");
+      //SERIAL_PORTS[channel_]->print("Cal,mid,7.00\r");
+      //SERIAL_PORTS[channel_]->print("Cal,low,4.00\r");
+      //SERIAL_PORTS[channel_]->print("Cal,high,10.00\r");
+      //SERIAL_PORTS[channel_]->print("Cal,?\r");
+      lastMeasurementTime = millis(); 
+  }
+}
+
 void AtlasPH::setTemp(double temp) {
   SERIAL_PORTS[channel_]->print("T,");
   SERIAL_PORTS[channel_]->print(temp);
@@ -359,10 +376,86 @@ void AtlasPH::calibrate(){
   //todo: add calibration routine
 }
 
+void AtlasPH::resendLastCommand(){
+  switch (lastCommand){
+  case GET_CALIB:
+    SERIAL_PORTS[channel_]->print("Cal,?\r");
+    break;
+  case READING:
+    SERIAL_PORTS[channel_]->print("R\r");
+    break;
+  }
+}
+
+void AtlasPH::onSerial(){
+  char c = SERIAL_PORTS[channel_]->read();
+  
+  // Ignore null and tab characters
+  if (c == '\0' || c == '\t') {
+    return;
+  }
+  if (c != '\r' && c != '\n' && recv_index_ < DEFAULT_BUFFER_SIZE)
+  {
+    recv_buffer_[recv_index_] = c;
+    ++recv_index_;
+  }
+  else if (recv_index_ > 0)
+  {
+    recv_buffer_[recv_index_] = '\0';
+    
+    if (!strcmp(recv_buffer_, "*ER")){
+        //Serial.println("Error Detected, resending last command");
+        this->resendLastCommand();
+      } else if (!strcmp(recv_buffer_, "*OK")){
+        //Serial.println("Command received");
+       
+        /*if (!initialized){
+          state = INIT;
+        } */
+      } else {
+        if (recv_index_ >  minDataStringLength_){
+        
+          char output_str[DEFAULT_BUFFER_SIZE + 3];
+          snprintf(output_str, DEFAULT_BUFFER_SIZE,
+                   "{"
+                   "\"s%u\":{"
+                   "\"type\":\"%s\","
+                   "\"data\":\"%s\""
+                   "}"
+                   "}",
+                   channel_,
+                   this->name(),
+                   recv_buffer_
+                  );
+          send(output_str);
+        }
+        state = IDLE;
+      }
+
+
+    memset(recv_buffer_, 0, recv_index_);
+    recv_index_ = 0;
+  }
+}
+
 AtlasDO::AtlasDO(int channel) 
-  : Sensor(channel), SerialSensor(channel, 115200)
+  : Sensor(channel), SerialSensor(channel, 9600), measurementInterval(1000)
 {
-  //SERIAL_PORTS[channel]->print("C,1,\r");
+  // Initialize internal variables
+  lastMeasurementTime = 0;
+  lastCommand = NONE;
+  initialized = false;
+  calibrationStatus = -1;
+  temperature = -1.0;
+  ec = -1.0;
+
+  // Skip init for now
+  state = IDLE;
+
+  // Enter INIT state to read sensor info
+  //state = INIT;
+
+  // Code to set BAUD rate - eventually implement check for incorrect baud rate
   //SERIAL_PORTS[channel]->print("SERIAL,115200\r");
 }
 
@@ -402,6 +495,110 @@ void AtlasDO::setEC(double ec) {
 
 void AtlasDO::calibrate(){
   //todo: add calibration routine
+}
+
+void AtlasDO::resendLastCommand(){
+  switch (lastCommand){
+  case GET_CALIB:
+    SERIAL_PORTS[channel_]->print("Cal,?\r");
+    break;
+  case READING:
+    SERIAL_PORTS[channel_]->print("R\r");
+    break;
+  }
+}
+
+void AtlasDO::loop(){
+  switch (state){
+  case INIT:
+    switch (lastCommand){
+    // Just starting initialization
+    case NONE:
+      state = WAITING;
+      SERIAL_PORTS[channel_]->print("Cal,?\r");
+      lastCommand = GET_CALIB;
+      break;
+    }
+    break;
+  case IDLE:
+    if (millis() - lastMeasurementTime > measurementInterval){
+      state = WAITING;
+      //Serial.println("Requesting Measurement");
+      //this->setTemp(13.5);
+      //SERIAL_PORTS[channel_]->print("T,?\r");
+      
+      SERIAL_PORTS[channel_]->print("R\r");
+      lastCommand = READING;
+    }
+  }
+
+}
+
+void AtlasDO::onSerial(){
+  char c = SERIAL_PORTS[channel_]->read();
+  
+  // Ignore null and tab characters
+  if (c == '\0' || c == '\t') {
+    return;
+  }
+  if (c != '\r' && c != '\n' && recv_index_ < DEFAULT_BUFFER_SIZE)
+  {
+    recv_buffer_[recv_index_] = c;
+    ++recv_index_;
+  }
+  else if (recv_index_ > 0)
+  {
+    recv_buffer_[recv_index_] = '\0';
+
+
+    switch (state){
+    case WAITING:
+      if (!strcmp(recv_buffer_, "*ER")){
+        //Serial.println("Error Detected, resending last command");
+        this->resendLastCommand();
+      } else if (!strcmp(recv_buffer_, "*OK")){
+        //Serial.println("Command received");
+        if (lastCommand = READING){
+          state = IDLE;
+          lastCommand = NONE;
+        }
+        state = IDLE;
+        /*if (!initialized){
+          state = INIT;
+        } */
+      } else {
+        if (recv_index_ >  minDataStringLength_){
+        
+          char output_str[DEFAULT_BUFFER_SIZE + 3];
+          snprintf(output_str, DEFAULT_BUFFER_SIZE,
+                   "{"
+                   "\"s%u\":{"
+                   "\"type\":\"%s\","
+                   "\"data\":\"%s\""
+                   "}"
+                   "}",
+                   channel_,
+                   this->name(),
+                   recv_buffer_
+                  );
+          send(output_str);
+        }
+        state = IDLE;
+      }
+    case INIT:
+      break;
+      // check for response
+
+    case MEASUREMENT:
+
+     
+      
+      state = IDLE;
+    }
+
+    memset(recv_buffer_, 0, recv_index_);
+    recv_index_ = 0;
+  }
 }
 
 HDS::HDS(int channel)
