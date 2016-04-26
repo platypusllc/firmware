@@ -153,10 +153,11 @@ void handleCommand(const char *buffer)
 
   // Initialize the JSON parser.
   jsmn_init(&json_parser);
-  
+
+  ;
   // Parse command as JSON string
   json_result = jsmn_parse(&json_parser, buffer, json_tokens, NUM_JSON_TOKENS);
-  
+
   // Check for valid result, report error on failure.
   if (json_result != JSMN_SUCCESS)
   {
@@ -306,8 +307,8 @@ void setup()
   
   // Create secondary tasks for system.
   Scheduler.startLoop(motorUpdateLoop);
-  //Scheduler.startLoop(serialConsoleLoop);
-  Scheduler.startLoop(batteryUpdateLoop);
+  Scheduler.startLoop(serialConsoleLoop);
+  //Scheduler.startLoop(batteryUpdateLoop);
 
   // Initialize Platypus library.
   platypus::init();
@@ -570,23 +571,33 @@ void serialConsoleLoop()
   // Wait until characters are received.
   while (!Serial.available()) yield();
 
-  // Put the new character into the buffer.  
+  // Put the new character into the buffer, ignore \n and \r
   char c = Serial.read();
-  debug_buffer[debug_buffer_idx++] = c;
-
+  if (c != '\n' && c != '\r'){
+    debug_buffer[debug_buffer_idx++] = c;
+  }
+  
   // If it is the end of a line, or we are out of space, parse the buffer.
   if (debug_buffer_idx >= INPUT_BUFFER_SIZE || c == '\n' || c == '\r') 
   {
     // Properly null-terminate the buffer.
     debug_buffer[debug_buffer_idx] = '\0';
     debug_buffer_idx = 0;
-    
-    // Echo incoming message on debug console.
-    Serial.print("## ");
-    Serial.println(debug_buffer);
-    
+
+    //Serial.println(debug_buffer);
+    if (strcmp(debug_buffer, "DOc") == 0){
+      platypus::sensors[1]->calibrate(1);
+    } else if (strcmp(debug_buffer, "DOc0") == 0){
+      platypus::sensors[1]->calibrate(0);
+    } else if (strcmp(debug_buffer, "PHcm") == 0){
+      platypus::sensors[2]->calibrate(0.0);
+    } else if (strcmp(debug_buffer, "PHcl") == 0){
+      platypus::sensors[2]->calibrate(-1);
+    } else if (strcmp(debug_buffer, "PHch") == 0){
+      platypus::sensors[2]->calibrate(1);
+    }
     // Attempt to parse command.
-    handleCommand(debug_buffer); 
+    //handleCommand(debug_buffer); 
   }
 }
 

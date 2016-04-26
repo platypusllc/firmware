@@ -100,6 +100,7 @@ namespace platypus
   public:
     static void onSerial_(void *data);
     static void onLoop_(void *data);
+    virtual void calibrate(int flag);
   };
   
   extern platypus::Motor *motors[board::NUM_MOTORS];

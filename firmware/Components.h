@@ -13,8 +13,7 @@ namespace platypus
     OFF,
     INIT,
     IDLE,
-    WAITING,
-    MEASUREMENT
+    WAITING // Awaiting response from sensor
   } SensorState;
 
   typedef enum
@@ -23,7 +22,11 @@ namespace platypus
     STOP_CONTINUOUS, // Stop continuous measurement mode
     READING, // Take a reading
     GET_CALIB, // Get calibration status
-    CALIB, // Calibrate
+    CALIB_ATM, // Atlas DO: Calibrate to atmospheric oxygen levels
+    CALIB_ZERO, // Atlas DO: Calibrate to 0 dissolved oxygen
+    CALIB_LOW, // Atlas pH: Lowpoint Calibration
+    CALIB_MID, // Atlas pH: Midpoint Calibration
+    CALIB_HIGH,// Atlas pH: Highpoint Calibration
     GET_TEMP, // Get temperature compensation value
     SET_TEMP, // Set temperature compensation value
     GET_EC, // Get EC compensation value
@@ -157,17 +160,19 @@ namespace platypus
     const int measurementInterval;
     int lastMeasurementTime;
     SensorState state;
+    bool initialized;
     int calibrationStatus;
+    float temperature;
     AtlasCommand lastCommand;
 
-    void resendLastCommand();
+    void sendCommand();
     
   public:
     AtlasPH(int channel);
     bool set(char * param, char * value);
     virtual char * name();
     void setTemp(double temp);
-    void calibrate();
+    void calibrate(int flag);
     void loop();
     void onSerial();
   };
@@ -185,7 +190,7 @@ namespace platypus
     float ec;
 
     //void updateCalibrationStatus();
-    void resendLastCommand();
+    void sendCommand();
     
   public:
     AtlasDO(int channel);
@@ -193,7 +198,7 @@ namespace platypus
     virtual char * name();
     void setTemp(double temp);
     void setEC(double EC);
-    void calibrate();
+    void calibrate(int flag);
     void loop();
     void onSerial();
   };
