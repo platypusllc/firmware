@@ -28,7 +28,7 @@ ADK adk(&Usb, companyName, applicationName, accessoryName, versionNumber, url, s
 // Android send/receive buffers
 const size_t INPUT_BUFFER_SIZE = 512;
 char input_buffer[INPUT_BUFFER_SIZE+1];
-char debug_buffer[INPUT_BUFFER_SIZE+1];
+//char debug_buffer[INPUT_BUFFER_SIZE+1];
 
 const size_t OUTPUT_BUFFER_SIZE = 576;
 char output_buffer[OUTPUT_BUFFER_SIZE+3];
@@ -56,7 +56,6 @@ const size_t CONNECTION_TIMEOUT_MS = 500;
 // Define the systems on this board
 // TODO: move this board.h?
 platypus::Led rgb_led;
-
 
 /**
  * Wrapper for ADK send command that copies data to debug port.
@@ -141,23 +140,34 @@ void json_string(const jsmntok_t &token, const char *json_str, char *output_str,
  */
 void handleCommand(const char *buffer)
 {
+  Serial.println(F("In handle command"));
   // JSON parser structure
   jsmn_parser json_parser;
-  
+
+  Serial.println(F("json parser declared"));
   // JSON token buffer
-  const size_t NUM_JSON_TOKENS = 64;
+  const size_t NUM_JSON_TOKENS = 16;
   jsmntok_t json_tokens[NUM_JSON_TOKENS];
+
+  Serial.println(F("token buffer defined"));
+
   
   // Result of JSON parsing.
   jsmnerr_t json_result;
 
-  // Initialize the JSON parser.
-  jsmn_init(&json_parser);
 
-  ;
+  Serial.println(F("initializing json parser"));
+  // Initialize the JSON parser.
+  //jsmn_init(&json_parser);
+  json_parser.pos = 0;
+  json_parser.toknext = 0;
+  json_parser.toksuper = -1;
+
+  Serial.println(F("Attempting to parse json"));
   // Parse command as JSON string
   json_result = jsmn_parse(&json_parser, buffer, json_tokens, NUM_JSON_TOKENS);
 
+  Serial.println(F("json parsed"));
   // Check for valid result, report error on failure.
   if (json_result != JSMN_SUCCESS)
   {
@@ -265,7 +275,7 @@ void handleCommand(const char *buffer)
         return;
       }
     }
-  } 
+  }
 }
 
 void setup() 
@@ -298,7 +308,7 @@ void setup()
   platypus::motors[1]->enablePower(true);
 
   // Make the ADK buffers into null terminated string.
-  debug_buffer[INPUT_BUFFER_SIZE] = '\0';
+  //debug_buffer[INPUT_BUFFER_SIZE] = '\0';
   input_buffer[INPUT_BUFFER_SIZE] = '\0';
   output_buffer[OUTPUT_BUFFER_SIZE] = '\0';
 
@@ -308,18 +318,18 @@ void setup()
   // Create secondary tasks for system.
   Scheduler.startLoop(motorUpdateLoop);
   Scheduler.startLoop(serialConsoleLoop);
-  //Scheduler.startLoop(batteryUpdateLoop);
+  Scheduler.startLoop(batteryUpdateLoop);
 
   // Initialize Platypus library.
   platypus::init();
   
   // Print header indicating that board successfully initialized
-  Serial.println("------------------------------");
+  Serial.println(F("------------------------------"));
   Serial.println(companyName);
   Serial.println(url);
   Serial.println(accessoryName);
   Serial.println(versionNumber);
-  Serial.println("------------------------------");
+  Serial.println(F("------------------------------"));
   
   // Turn LED off
   // TODO: Investigate how this gets turned on in the first place
@@ -416,7 +426,7 @@ void loop()
 }
 
 void batteryUpdateLoop()
-{
+{  
   int rawVoltage = analogRead(board::V_BATT);
   double voltageReading = 0.008879*rawVoltage + 0.09791;
 
@@ -472,9 +482,7 @@ void motorUpdateLoop()
       platypus::Motor* motor = platypus::motors[motor_idx];
       if (motor->enabled())
       {
-        Serial.print("Disabling motor [");
-        Serial.print(motor_idx);
-        Serial.println("]");
+        Serial.print("Disabling motor "); Serial.println(motor_idx);
         motor->disable();
       }
     }
@@ -494,11 +502,9 @@ void motorUpdateLoop()
       platypus::Motor* motor = platypus::motors[motor_idx];
       if (!motor->enabled()) 
       {
-        Serial.print("Arming motor [");
-        Serial.print(motor_idx);
-        Serial.println("]");
+        Serial.print("Arming motor "); Serial.print(motor_idx);
         motor->arm();
-        Serial.println("Motor Armed");
+        Serial.println(F("Motor Armed"));
       }
     }
     break;
@@ -574,30 +580,30 @@ void serialConsoleLoop()
   // Put the new character into the buffer, ignore \n and \r
   char c = Serial.read();
   if (c != '\n' && c != '\r'){
-    debug_buffer[debug_buffer_idx++] = c;
+    input_buffer[debug_buffer_idx++] = c;
   }
   
   // If it is the end of a line, or we are out of space, parse the buffer.
   if (debug_buffer_idx >= INPUT_BUFFER_SIZE || c == '\n' || c == '\r') 
   {
     // Properly null-terminate the buffer.
-    debug_buffer[debug_buffer_idx] = '\0';
+    input_buffer[debug_buffer_idx] = '\0';
     debug_buffer_idx = 0;
 
-    //Serial.println(debug_buffer);
-    if (strcmp(debug_buffer, "DOc") == 0){
+    Serial.println(input_buffer);
+    if (strcmp(input_buffer, "DOc") == 0){
       platypus::sensors[1]->calibrate(1);
-    } else if (strcmp(debug_buffer, "DOc0") == 0){
+    } else if (strcmp(input_buffer, "DOc0") == 0){
       platypus::sensors[1]->calibrate(0);
-    } else if (strcmp(debug_buffer, "PHcm") == 0){
+    } else if (strcmp(input_buffer, "PHcm") == 0){
       platypus::sensors[2]->calibrate(0.0);
-    } else if (strcmp(debug_buffer, "PHcl") == 0){
+    } else if (strcmp(input_buffer, "PHcl") == 0){
       platypus::sensors[2]->calibrate(-1);
-    } else if (strcmp(debug_buffer, "PHch") == 0){
+    } else if (strcmp(input_buffer, "PHch") == 0){
       platypus::sensors[2]->calibrate(1);
     }
     // Attempt to parse command.
-    //handleCommand(debug_buffer); 
+    handleCommand(input_buffer); 
   }
 }
 
