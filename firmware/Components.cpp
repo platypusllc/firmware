@@ -97,7 +97,7 @@ void Dynamite::arm()
 AnalogSensor::AnalogSensor(int channel)
   : Sensor(channel), scale_(1.0f), offset_(0.0f) {}
 
-bool AnalogSensor::set(char* param, char* value)
+bool AnalogSensor::set(const char* param, const char* value)
 {
   // Set analog scale.
   if (!strncmp("scale", param, 6))
@@ -170,7 +170,7 @@ float ServoSensor::position()
   return position_;
 }
 
-bool ServoSensor::set(char *param, char *value)
+bool ServoSensor::set(const char *param, const char *value)
 {
   // Set motor velocity.
   if (!strncmp("p", param, 2))
@@ -349,7 +349,7 @@ char * AtlasPH::name(){
   return "atlas_ph";
 }
 
-bool AtlasPH::set(char* param, char* value){
+bool AtlasPH::set(const char* param, const char* value){
   if (strncmp(param, "temp", 4) == 0){
     this->setTemp(atof(value));
     return true;
@@ -570,7 +570,7 @@ char * AtlasDO::name(){
   return "atlas_do";
 }
 
-bool AtlasDO::set(char* param, char* value){
+bool AtlasDO::set(const char* param, const char* value){
   if (strncmp(param, "ec", 2) == 0){
     this->setEC(atof(value));
     return true;
@@ -850,7 +850,7 @@ char* Winch::name()
   return "winch";
 }
 
-bool Winch::set(char* param, char* value)
+bool Winch::set(const char* param, const char* value)
 {
   // Set winch position
   if (!strncmp("p", param, 2))

@@ -239,7 +239,7 @@ float Motor::current()
   return vsense*5000.0/330.0;
 }
 
-bool Motor::set(char *param, char *value)
+bool Motor::set(const char *param, const char *value)
 {
   // Set motor velocity.
   if (!strncmp("v", param, 2))
@@ -366,7 +366,7 @@ Sensor::~Sensor()
   // TODO: fill me in
 }
 
-bool Sensor::set(char* param, char* value)
+bool Sensor::set(const char* param, const char* value)
 {
   return false;
 }

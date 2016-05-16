@@ -75,7 +75,7 @@ namespace platypus
   public:
     AnalogSensor(int channel);
 
-    bool set(char* param, char* value);
+    bool set(const char* param, const char* value);
     virtual char *name() = 0;
     
     void scale(float scale);
@@ -95,7 +95,7 @@ namespace platypus
     ServoSensor(int channel);
     ~ServoSensor();
 
-    bool set(char* param, char* value);
+    bool set(const char* param, const char* value);
     virtual char *name();
     
     void position(float velocity);
@@ -130,7 +130,6 @@ namespace platypus
       RS485
     };
 
-    
   protected:
     int baud_;
     int serialType_;
@@ -169,7 +168,7 @@ namespace platypus
     
   public:
     AtlasPH(int channel);
-    bool set(char * param, char * value);
+    bool set(const char * param, const char * value);
     virtual char * name();
     void setTemp(double temp);
     void calibrate(int flag);
@@ -194,7 +193,7 @@ namespace platypus
     
   public:
     AtlasDO(int channel);
-    bool set(char * param, char * value);
+    bool set(const char * param, const char * value);
     virtual char * name();
     void setTemp(double temp);
     void setEC(double EC);
@@ -230,7 +229,7 @@ namespace platypus
   public:
     Winch(int channel, uint8_t address);
     virtual char *name();
-    bool set(char* param, char* value);
+    bool set(const char* param, const char* value);
     
     void reset();
 

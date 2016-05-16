@@ -8,6 +8,7 @@
 #include <Scheduler.h>
 
 // JSON parsing library
+#include <ArduinoJson.h>
 #include "jsmn.h"
 
 // TODO: remove me
@@ -28,7 +29,7 @@ ADK adk(&Usb, companyName, applicationName, accessoryName, versionNumber, url, s
 // Android send/receive buffers
 const size_t INPUT_BUFFER_SIZE = 512;
 char input_buffer[INPUT_BUFFER_SIZE+1];
-//char debug_buffer[INPUT_BUFFER_SIZE+1];
+char debug_buffer[INPUT_BUFFER_SIZE+1];
 
 const size_t OUTPUT_BUFFER_SIZE = 576;
 char output_buffer[OUTPUT_BUFFER_SIZE+3];
@@ -138,57 +139,86 @@ void json_string(const jsmntok_t &token, const char *json_str, char *output_str,
  * Handler to respond to incoming JSON commands and dispatch them to
  * configurable hardware components.
  */
-void handleCommand(const char *buffer)
+void handleCommand(char *buffer)
 {
   Serial.println(F("In handle command"));
-  // JSON parser structure
-  jsmn_parser json_parser;
+  // Allocate buffer for JSON parsing
+  StaticJsonBuffer<200> jsonBuffer;
 
-  Serial.println(F("json parser declared"));
-  // JSON token buffer
-  const size_t NUM_JSON_TOKENS = 16;
-  jsmntok_t json_tokens[NUM_JSON_TOKENS];
+  // Attempt to parse JSON in buffer
+  JsonObject& command = jsonBuffer.parseObject(buffer);
 
-  Serial.println(F("token buffer defined"));
-
-  
-  // Result of JSON parsing.
-  jsmnerr_t json_result;
-
-
-  Serial.println(F("initializing json parser"));
-  // Initialize the JSON parser.
-  //jsmn_init(&json_parser);
-  json_parser.pos = 0;
-  json_parser.toknext = 0;
-  json_parser.toksuper = -1;
-
-  Serial.println(F("Attempting to parse json"));
-  // Parse command as JSON string
-  json_result = jsmn_parse(&json_parser, buffer, json_tokens, NUM_JSON_TOKENS);
-
-  Serial.println(F("json parsed"));
-  // Check for valid result, report error on failure.
-  if (json_result != JSMN_SUCCESS)
+  // Check for parsing error
+  if (!command.success())
   {
-    reportJsonError(json_result, buffer);
-    return;
+    // Parsing Failure 
+    Serial.println("Parsing Failure");
   }
-  
-  // Get the first token and make sure it is a JSON object.
-  jsmntok_t *token = json_tokens;
-  if (token->type != JSMN_OBJECT) 
+
+  for (JsonObject::iterator it=command.begin(); it!=command.end(); ++it)
   {
-    reportError("Commands must be JSON objects.", buffer);
-    return;
+    const char * key = it->key;
+    
+    platypus::Configurable * target_object;
+    size_t object_index;
+
+    // Determine target object
+    switch (key[0]){
+    case 'm': // Motor command
+      object_index = key[1] - '0';
+
+      if (object_index >= board::NUM_MOTORS){
+        reportError("Invalid motor index.", buffer);
+        return;
+      }
+
+      target_object = platypus::motors[object_index];
+      break;
+      
+    case 's': // Sensor command
+      object_index = key[1] - '0';
+
+      if (object_index >= board::NUM_SENSORS){
+        reportError("Invalid sensor index.", buffer);
+        return;
+      }
+
+      target_object = platypus::sensors[object_index];
+      break;
+
+    default: // Unrecognized target
+      reportError("Unknown command target.", buffer);
+      return;
+    }
+
+    // Extract JsonObject with param:value pairs
+    JsonObject& params = it->value;
+
+
+    // Todo: Move this parsing to specific components and pass ref to params instead
+    // Iterate over and set parameter:value pairs on target object
+    for (JsonObject::iterator paramIt=params.begin(); paramIt!=params.end(); ++paramIt)
+    {
+      const char * param_name = paramIt->key;
+      const char * param_value = paramIt->value;
+
+      Serial.print("Sending command to ");
+      Serial.print(key);
+      Serial.print(": ");
+      Serial.print(param_name);
+      Serial.print(" : ");
+      Serial.println(param_value);
+
+      if (!target_object->set(param_name, param_value)) {
+        reportError("Invalid parameter set.", buffer);
+        continue; // Todo: Should we return or continue?
+      }
+    }
+
+    
   }
   
-  // There should always be an even number of key-value pairs
-  if (token->size & 1) {
-    reportError("Command entries must be key-value pairs.", buffer);
-    return;      
-  }
-  
+  /*
   // Read each field of the JSON object and act accordingly.
   size_t num_entries = token->size / 2;
   for (size_t entry_idx = 0; entry_idx < num_entries; entry_idx++)
@@ -275,7 +305,7 @@ void handleCommand(const char *buffer)
         return;
       }
     }
-  }
+  }*/
 }
 
 void setup() 
@@ -603,7 +633,7 @@ void serialConsoleLoop()
       platypus::sensors[2]->calibrate(1);
     }
     // Attempt to parse command.
-    //handleCommand(input_buffer); 
+    handleCommand(input_buffer); 
   }
 }
 
