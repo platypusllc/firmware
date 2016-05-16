@@ -9,7 +9,6 @@
 
 // JSON parsing library
 #include <ArduinoJson.h>
-#include "jsmn.h"
 
 // TODO: remove me
 #include "Board.h"
@@ -96,52 +95,11 @@ void reportError(const char *error_message, const char *buffer)
 }
 
 /**
- * Constructs a JSON error message related to the parsing of a JSON string.
- */
-void reportJsonError(jsmnerr_t error, const char* buffer)
-{
-  char *error_message;
-  
-  // Fill in the appropriate JSON error description.
-  switch(error) {
-    case JSMN_SUCCESS:
-      // If we were successful, there is nothing to report.
-      return;
-    case JSMN_ERROR_NOMEM:
-      error_message = "Insufficient memory.";
-      break;
-    case JSMN_ERROR_INVAL:
-      error_message = "Invalid JSON string.";
-      break;
-    case JSMN_ERROR_PART:
-      error_message = "Incomplete JSON string.";
-      break;
-    default:
-      error_message = "Unknown JSON error.";
-      break;
-  }
-
-  // Send appropriate error message
-  reportError(error_message, buffer);  
-}
-
-/**
- * Copies a JSON string token into a provided char* buffer.
- */
-void json_string(const jsmntok_t &token, const char *json_str, char *output_str, size_t output_len)
-{
-  size_t len = min(token.end - token.start, output_len - 1);
-  strncpy(output_str, &json_str[token.start], len);
-  output_str[len] = '\0';
-}
-
-/**
  * Handler to respond to incoming JSON commands and dispatch them to
  * configurable hardware components.
  */
 void handleCommand(char *buffer)
 {
-  Serial.println(F("In handle command"));
   // Allocate buffer for JSON parsing
   StaticJsonBuffer<200> jsonBuffer;
 
@@ -152,7 +110,8 @@ void handleCommand(char *buffer)
   if (!command.success())
   {
     // Parsing Failure 
-    Serial.println("Parsing Failure");
+    reportError("Failed to parse JSON command.", buffer);
+    return;
   }
 
   for (JsonObject::iterator it=command.begin(); it!=command.end(); ++it)
@@ -194,7 +153,6 @@ void handleCommand(char *buffer)
     // Extract JsonObject with param:value pairs
     JsonObject& params = it->value;
 
-
     // Todo: Move this parsing to specific components and pass ref to params instead
     // Iterate over and set parameter:value pairs on target object
     for (JsonObject::iterator paramIt=params.begin(); paramIt!=params.end(); ++paramIt)
@@ -202,110 +160,21 @@ void handleCommand(char *buffer)
       const char * param_name = paramIt->key;
       const char * param_value = paramIt->value;
 
+      /* Debugging Output
       Serial.print("Sending command to ");
       Serial.print(key);
       Serial.print(": ");
       Serial.print(param_name);
       Serial.print(" : ");
       Serial.println(param_value);
+      */
 
       if (!target_object->set(param_name, param_value)) {
         reportError("Invalid parameter set.", buffer);
         continue; // Todo: Should we return or continue?
       }
     }
-
-    
   }
-  
-  /*
-  // Read each field of the JSON object and act accordingly.
-  size_t num_entries = token->size / 2;
-  for (size_t entry_idx = 0; entry_idx < num_entries; entry_idx++)
-  {
-    
-    // Get the name field for this entry.
-    token++;
-    char entry_name[64];
-    if (token->type != JSMN_STRING)
-    {
-      reportError("Expected name field for entry.", buffer);
-      return;
-    }
-    json_string(*token, buffer, entry_name, 64);
-    
-    
-    // Attempt to decode the configurable object for this entry.
-    platypus::Configurable *entry_object;
-    
-    // If it is a motor, it must take the form 'm1'.
-    if (entry_name[0] == 'm')
-    {
-      size_t motor_idx = entry_name[1] - '0';
-      if (motor_idx >= board::NUM_MOTORS || entry_name[2] != '\0') 
-      {
-        reportError("Invalid motor index.", buffer);
-        return;
-      }
-      entry_object = platypus::motors[motor_idx];
-    }
-    // If it is a sensor, it must take the form 's1'.
-    else if (entry_name[0] == 's')
-    {
-      size_t sensor_idx = entry_name[1] - '0';
-      if (sensor_idx >= board::NUM_SENSORS || entry_name[2] != '\0') 
-      {
-        reportError("Invalid sensor index.", buffer);
-        return;
-      }
-      entry_object = platypus::sensors[sensor_idx];
-    }
-    // Report parse error if unable to identify this entry.
-    else {
-      reportError("Unknown command entry.", buffer);
-      return;
-    }
-    
-    // The following token should always be the entry object.
-    token++;
-    if (token->type != JSMN_OBJECT) {
-      reportError("Command entries must be objects.", buffer);
-      return;      
-    }
-
-    // There should always be an even number of key-value pairs
-    if (token->size & 1) {
-      reportError("Command parameters must be key-value pairs.", buffer);
-      return;      
-    }
-    
-    // Iterate through each parameter.
-    size_t num_params = token->size / 2;
-    for (size_t param_idx = 0; param_idx < num_params; param_idx++)
-    {
-      // Get the name field for this parameter.
-      token++;
-      char param_name[64];
-      if (token->type != JSMN_STRING)
-      {
-        reportError("Expected name field for parameter.", buffer);
-        return;
-      }
-      
-      json_string(*token, buffer, param_name, 64);
-
-      // Get the value field for this parameter.
-      token++;
-      char param_value[64];
-      json_string(*token, buffer, param_value, 64);
-
-      // Pass this parameter to the entry object.
-      if (!entry_object->set(param_name, param_value)) {
-        reportError("Invalid parameter set.", buffer);
-        return;
-      }
-    }
-  }*/
 }
 
 void setup() 
@@ -338,7 +207,7 @@ void setup()
   platypus::motors[1]->enablePower(true);
 
   // Make the ADK buffers into null terminated string.
-  //debug_buffer[INPUT_BUFFER_SIZE] = '\0';
+  debug_buffer[INPUT_BUFFER_SIZE] = '\0';
   input_buffer[INPUT_BUFFER_SIZE] = '\0';
   output_buffer[OUTPUT_BUFFER_SIZE] = '\0';
 
@@ -610,30 +479,30 @@ void serialConsoleLoop()
   // Put the new character into the buffer, ignore \n and \r
   char c = Serial.read();
   if (c != '\n' && c != '\r'){
-    input_buffer[debug_buffer_idx++] = c;
+    debug_buffer[debug_buffer_idx++] = c;
   }
   
   // If it is the end of a line, or we are out of space, parse the buffer.
   if (debug_buffer_idx >= INPUT_BUFFER_SIZE || c == '\n' || c == '\r') 
   {
     // Properly null-terminate the buffer.
-    input_buffer[debug_buffer_idx] = '\0';
+    debug_buffer[debug_buffer_idx] = '\0';
     debug_buffer_idx = 0;
 
-    Serial.println(input_buffer);
-    if (strcmp(input_buffer, "DOc") == 0){
+    Serial.println(debug_buffer);
+    if (strcmp(debug_buffer, "DOc") == 0){
       platypus::sensors[1]->calibrate(1);
-    } else if (strcmp(input_buffer, "DOc0") == 0){
+    } else if (strcmp(debug_buffer, "DOc0") == 0){
       platypus::sensors[1]->calibrate(0);
-    } else if (strcmp(input_buffer, "PHcm") == 0){
+    } else if (strcmp(debug_buffer, "PHcm") == 0){
       platypus::sensors[2]->calibrate(0.0);
-    } else if (strcmp(input_buffer, "PHcl") == 0){
+    } else if (strcmp(debug_buffer, "PHcl") == 0){
       platypus::sensors[2]->calibrate(-1);
-    } else if (strcmp(input_buffer, "PHch") == 0){
+    } else if (strcmp(debug_buffer, "PHch") == 0){
       platypus::sensors[2]->calibrate(1);
     }
     // Attempt to parse command.
-    handleCommand(input_buffer); 
+    handleCommand(debug_buffer); 
   }
 }
 

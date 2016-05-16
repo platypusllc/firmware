@@ -810,7 +810,7 @@ void GY26Compass::loop(){
   if (millis() - lastMeasurementTime > measurementInterval){
     SERIAL_PORTS[channel_]->write(0x31);
     lastMeasurementTime = millis();
-    Serial.println("requested compass measurement");
+    //Serial.println("requested compass measurement");
   }
 }
 
