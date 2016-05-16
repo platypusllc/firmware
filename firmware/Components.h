@@ -202,6 +202,20 @@ namespace platypus
     void loop();
     void onSerial();
   };
+
+  class GY26Compass : public SerialSensor
+  {
+  private:
+    const int measurementInterval;
+    int lastMeasurementTime;
+    int declinationAngle;
+    
+  public:
+    GY26Compass(int channel);
+    virtual char * name();  
+    void loop();
+    //void onSerial();
+  };
   
   class HDS : public PoweredSensor, public SerialSensor
   {

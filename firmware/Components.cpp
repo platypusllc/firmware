@@ -796,6 +796,25 @@ void AtlasDO::onSerial(){
   }
 }
 
+GY26Compass::GY26Compass(int channel) : Sensor(channel), SerialSensor(channel, 9600, 0), measurementInterval(5000)
+{
+  lastMeasurementTime = 0;
+  declinationAngle = 93; 
+}
+
+char * GY26Compass::name(){
+  return "GY26Compass";
+}
+
+void GY26Compass::loop(){
+  if (millis() - lastMeasurementTime > measurementInterval){
+    SERIAL_PORTS[channel_]->write(0x31);
+    lastMeasurementTime = millis();
+    Serial.println("requested compass measurement");
+  }
+}
+
+
 HDS::HDS(int channel)
   : Sensor(channel), PoweredSensor(channel, true), SerialSensor(channel, 4800, RS485)
 {
