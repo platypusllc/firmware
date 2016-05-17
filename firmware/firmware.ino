@@ -74,7 +74,7 @@ void send(char *str)
   if (adk.isReady()) adk.write(len, (uint8_t*)str);
   
   // Copy string to debugging console.
-  Serial.print("-> ");
+  //Serial.print("-> ");
   Serial.print(str);
 }
 
@@ -223,13 +223,13 @@ void setup()
   platypus::init();
   
   // Print header indicating that board successfully initialized
-  Serial.println(F("------------------------------"));
+  /*Serial.println(F("------------------------------"));
   Serial.println(companyName);
   Serial.println(url);
   Serial.println(accessoryName);
   Serial.println(versionNumber);
   Serial.println(F("------------------------------"));
-  
+  */
   // Turn LED off
   // TODO: Investigate how this gets turned on in the first place
   rgb_led.set(0, 0, 0);
@@ -489,7 +489,7 @@ void serialConsoleLoop()
     debug_buffer[debug_buffer_idx] = '\0';
     debug_buffer_idx = 0;
 
-    Serial.println(debug_buffer);
+    //Serial.println(debug_buffer);
     if (strcmp(debug_buffer, "DOc") == 0){
       platypus::sensors[1]->calibrate(1);
     } else if (strcmp(debug_buffer, "DOc0") == 0){
