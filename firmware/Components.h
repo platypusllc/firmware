@@ -33,6 +33,22 @@ namespace platypus
     SET_EC // Set EC compensation value
   } AtlasCommand;
 
+  enum RMCString_t {
+    SENTENCE_TYPE,
+    TIME,
+    STATUS,
+    LATITUDE_RAW,
+    LAT_CARDINAL,
+    LONGITUDE_RAW,
+    LON_CARDINAL,
+    SPEED,
+    TRACK_ANGLE
+  };
+
+  #define RMC_MAX_CHAR_LENGTH   71  // the exact proper number of characters for a RMC sentence 
+  #define RMC_WORD_COUNT 9 // after the 9th is not useful
+
+
   // ESCs //
   class VaporPro : public Motor 
   {
@@ -136,6 +152,28 @@ namespace platypus
     int minDataStringLength_;
     char recv_buffer_[DEFAULT_BUFFER_SIZE];
     unsigned int recv_index_;
+  };
+
+  class AdafruitGPS : public SerialSensor
+  {
+  private:
+    float RMC_to_Deg(float value);
+    String buf;
+    String RMCStrings[RMC_WORD_COUNT];
+    float latDeg;
+    float lonDeg;
+    float timeStamp;
+    bool valid;
+    bool fixed;
+    String north = String('N');
+    String east = String('E');
+    String active = String('A');
+
+  public:
+    AdafruitGPS(int channel);
+    virtual char *name();
+    void loop();
+    //void onSerial();
   };
 
   

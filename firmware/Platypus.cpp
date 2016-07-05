@@ -3,7 +3,7 @@
 using namespace platypus;
 
 // Velocity decay/ramping constants
-constexpr float VELOCITY_ALPHA = 0.1;
+constexpr float VELOCITY_ALPHA = 0.2;
 constexpr float VELOCITY_THRESHOLD = 0.001;
 
 // TODO: Correct default initialization of these sensors.

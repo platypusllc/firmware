@@ -26,8 +26,43 @@ using namespace platypus;
 #define kMin 50
 #define kMax 1950
 
-
 #define addr 0x80
+
+
+// GPS Settings
+
+// different commands to set the update rate from once a second (1 Hz) to 10 times a second (10Hz)
+// Note that these only control the rate at which the position is echoed, to actually speed up the
+// position fix you must also send one of the position fix rate commands below too.
+#define PMTK_SET_NMEA_UPDATE_100_MILLIHERTZ  "$PMTK220,10000*2F" // Once every 10 seconds, 100 millihertz.
+#define PMTK_SET_NMEA_UPDATE_200_MILLIHERTZ  "$PMTK220,5000*1B"  // Once every 5 seconds, 200 millihertz.
+#define PMTK_SET_NMEA_UPDATE_1HZ  "$PMTK220,1000*1F"
+#define PMTK_SET_NMEA_UPDATE_5HZ  "$PMTK220,200*2C"
+#define PMTK_SET_NMEA_UPDATE_10HZ "$PMTK220,100*2F"
+// Position fix update rate commands.
+#define PMTK_API_SET_FIX_CTL_100_MILLIHERTZ  "$PMTK300,10000,0,0,0,0*2C" // Once every 10 seconds, 100 millihertz.
+#define PMTK_API_SET_FIX_CTL_200_MILLIHERTZ  "$PMTK300,5000,0,0,0,0*18"  // Once every 5 seconds, 200 millihertz.
+#define PMTK_API_SET_FIX_CTL_1HZ  "$PMTK300,1000,0,0,0,0*1C"
+#define PMTK_API_SET_FIX_CTL_5HZ  "$PMTK300,200,0,0,0,0*2F"
+// Can't fix position faster than 5 times a second!
+
+
+#define PMTK_SET_BAUD_57600 "$PMTK251,57600*2C"
+#define PMTK_SET_BAUD_9600 "$PMTK251,9600*17"
+
+// turn on only the second sentence (GPRMC)
+#define PMTK_SET_NMEA_OUTPUT_RMCONLY "$PMTK314,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0*29"
+// turn on GPRMC and GGA
+#define PMTK_SET_NMEA_OUTPUT_RMCGGA "$PMTK314,0,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0*28"
+// turn on ALL THE DATA
+#define PMTK_SET_NMEA_OUTPUT_ALLDATA "$PMTK314,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0*28"
+// turn off output
+#define PMTK_SET_NMEA_OUTPUT_OFF "$PMTK314,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0*28"
+
+#define RMC_MAX_CHAR_LENGTH   71  // the exact proper number of characters for a RMC sentence 
+#define RMC_WORD_COUNT 9 // after the 9th is not useful
+
+
 
 void VaporPro::arm()
 {
@@ -295,6 +330,106 @@ void SerialSensor::onSerial(){
   }
 }
 
+AdafruitGPS::AdafruitGPS(int channel): Sensor(channel), SerialSensor(channel, 9600, RS232, 0){
+  SERIAL_PORTS[channel]->setTimeout(250);
+  SERIAL_PORTS[channel]->println(PMTK_SET_NMEA_OUTPUT_RMCONLY);
+  SERIAL_PORTS[channel]->flush();
+  SERIAL_PORTS[channel]->println(PMTK_API_SET_FIX_CTL_5HZ);
+  SERIAL_PORTS[channel]->println(PMTK_SET_NMEA_UPDATE_200_MILLIHERTZ);
+}
+
+char * AdafruitGPS::name(){
+  return "AdafruitGPS";
+}
+
+void AdafruitGPS::loop(){
+  //SERIAL_PORTS[channel_]->println(PMTK_SET_NMEA_OUTPUT_RMCONLY);
+}
+
+float AdafruitGPS::RMC_to_Deg(float value) {
+   float fullDegrees = floor(value/100.0);
+   float minutes = value - fullDegrees*100.0;
+   return (fullDegrees + minutes/60.0);
+}
+
+/*void AdafruitGPS::onSerial(){
+  char c = SERIAL_PORTS[channel_]->read();
+  
+  // Ignore null and tab characters
+  if (c == '\0' || c == '\t') {
+    return;
+  }
+  if (c != '\r' && c != '\n' && recv_index_ < DEFAULT_BUFFER_SIZE)
+  {
+    recv_buffer_[recv_index_] = c;
+    ++recv_index_;
+  }
+  else if (recv_index_ > 0)
+  {
+    recv_buffer_[recv_index_] = '\0';
+
+    buf = String(recv_buffer_);
+    String leader = buf.substring(0,6);
+    if (leader.compareTo("$GPRMC") == 0) { 
+      int start = 0;
+      for (int i = 0; i < RMC_WORD_COUNT; i++) { // split by commas and place each substring into the vector
+        int finish = buf.indexOf(',',start);
+        RMCStrings[i] = buf.substring(start,finish); // don't include the trailing comma
+        start = finish + 1;
+      }
+    }
+  
+    latDeg = 0.0;
+    lonDeg = 0.0;
+    // extract the useful information from the RMC sentence after it is parsed
+    if (RMCStrings[STATUS].compareTo(active) != 0) { // there is not a fix
+      fixed = false;
+      return;
+    }
+    fixed = true;  
+    timeStamp = atof(RMCStrings[TIME].c_str());
+    latDeg = RMC_to_Deg(atof(RMCStrings[LATITUDE_RAW].c_str()))*((RMCStrings[LAT_CARDINAL].compareTo(north) == 0) ? 1 : -1);
+    lonDeg = RMC_to_Deg(atof(RMCStrings[LONGITUDE_RAW].c_str()))*((RMCStrings[LON_CARDINAL].compareTo(east) == 0) ? 1 : -1);  
+    //Serial.print("Latitude = "); Serial.print(latDeg,10);
+    //Serial.print("   Longitude = "); Serial.println(lonDeg,10);  
+    if (abs(latDeg) < 1e-6 || abs(lonDeg) < 1e-6) {
+      valid = false;
+    }
+    valid = true;  
+
+    if (recv_index_ >  minDataStringLength_ && valid == true){
+      char output_str[DEFAULT_BUFFER_SIZE + 3];
+      /*snprintf(output_str, DEFAULT_BUFFER_SIZE,
+               "{"
+               "\"s%u\":{"
+               "\"type\":\"%s\","
+               "\"data\":\"%s\""
+               "}"
+               "}",
+               channel_,
+               this->name(),
+               recv_buffer_
+              );*/
+        /*snprintf(output_str,DEFAULT_BUFFER_SIZE,
+        "{"
+        "\"g1\":{"
+        "\"lati\":%.5f,"
+        "\"longi\":%.5f,"
+        "\"time\":%.1f"
+        "}"
+        "}",
+        latDeg,
+        lonDeg,
+        timeStamp
+        );
+      send(output_str);  
+    }
+    
+    memset(recv_buffer_, 0, recv_index_);
+    recv_index_ = 0;
+  }
+}*/
+
 // Known working values: measurementInterval = 1500, minReadTime = 350 (min difference seems to be 1150)
 ES2::ES2(int channel)
   : Sensor(channel), PoweredSensor(channel, false), SerialSensor(channel, 1200, RS232, 3), measurementInterval(1500), minReadTime(350)//minDataLength filters out "q>"
@@ -358,6 +493,8 @@ bool AtlasPH::set(const char* param, const char* value){
 }
 
 void AtlasPH::loop(){
+  //this->setTemp(27.0);
+
   // Enter INIT state if sensor is not fully initialized
   if (state != WAITING && !initialized){
     state = INIT;
@@ -371,9 +508,9 @@ void AtlasPH::loop(){
     } else if (temperature < 0.0){
       lastCommand = GET_TEMP;
     } else {
-      Serial.println(F("Atlas pH Sensor Successfully Initialized!"));
-      Serial.print("Calibration: "); Serial.println(calibrationStatus);
-      Serial.print("Temperature(C): "); Serial.println(temperature);
+      //Serial.println(F("Atlas pH Sensor Successfully Initialized!"));
+      //Serial.print("Calibration: "); Serial.println(calibrationStatus);
+      //Serial.print("Temperature(C): "); Serial.println(temperature);
       initialized = true;
       state = IDLE;
       lastCommand = NONE;
@@ -556,9 +693,6 @@ AtlasDO::AtlasDO(int channel)
 
   // Enter INIT state to read sensor info
   state = INIT;
-
-  // Code to set BAUD rate - eventually implement check for incorrect baud rate
-  //SERIAL_PORTS[channel]->print("SERIAL,115200\r");
   
   // Disable continous sensor polling
   //SERIAL_PORTS[channel]->print("C,0,\r");
@@ -595,11 +729,11 @@ void AtlasDO::setEC(double ec) {
   //Check for salt water and set ec compensation if applicable
   if (ec >= 2500){
     this->ec = ec;
-    lastCommand = SET_TEMP;
+    lastCommand = SET_EC;
     this->sendCommand();
   } else if (this->ec > 0.0){
     this->ec = 0.0;
-    lastCommand = SET_TEMP;
+    lastCommand = SET_EC;
     this->sendCommand();
   }
 }
@@ -665,6 +799,8 @@ void AtlasDO::sendCommand(){
 }
 
 void AtlasDO::loop(){
+  //this->setTemp(27.0);
+  //this->setEC(10000);
   // Enter INIT state if sensor is not fully initialized
   if (state != WAITING && !initialized){
     state = INIT;
@@ -680,10 +816,10 @@ void AtlasDO::loop(){
     } else if (ec < 0.0){
       lastCommand = GET_EC;
     } else {
-      Serial.println(F("Atlas DO Sensor Successfully Initialized!"));
-      Serial.print("Calibration: "); Serial.println(calibrationStatus);
-      Serial.print("Temperature(C): "); Serial.println(temperature);
-      Serial.print("EC(uS): "); Serial.println(ec);
+      //Serial.println(F("Atlas DO Sensor Successfully Initialized!"));
+      //Serial.print("Calibration: "); Serial.println(calibrationStatus);
+      //Serial.print("Temperature(C): "); Serial.println(temperature);
+      //Serial.print("EC(uS): "); Serial.println(ec);
       initialized = true;
       state = IDLE;
       lastCommand = NONE;

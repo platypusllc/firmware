@@ -190,14 +190,27 @@ void setup()
 
   // Start the system in the disconnected state
   system_state = DISCONNECTED;
+
+  //*******************************************************************
+  // Hack to set Adafruit GPS Settings
+  Serial1.begin(9600);
+  Serial1.setTimeout(250);
+  // Set output to RMC only
+  Serial1.println("$PMTK314,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0*29");
+  // Set output rate to 5Hz
+  Serial1.println("$PMTK220,200*2C");
+  // Set fix rate to 5Hz
+  Serial1.println("$PMTK300,200,0,0,0,0*2F");
+  delay(1000);
+  //*******************************************************************
   
   // TODO: replace this with smart hooks.
   // Initialize sensors
   platypus::sensors[0] = new platypus::ServoSensor(0);
-  platypus::sensors[1] = new platypus::GY26Compass(1);
-  platypus::sensors[2] = new platypus::GY26Compass(2);
-  platypus::sensors[3] = new platypus::GY26Compass(3);
-  
+  platypus::sensors[1] = new platypus::AdafruitGPS(1);
+  platypus::sensors[2] = new platypus::AtlasPH(2);
+  platypus::sensors[3] = new platypus::ES2(3);
+
   // Initialize motors
   platypus::motors[0] = new platypus::Dynamite(0);
   platypus::motors[1] = new platypus::Dynamite(1);
@@ -223,13 +236,13 @@ void setup()
   platypus::init();
   
   // Print header indicating that board successfully initialized
-  /*Serial.println(F("------------------------------"));
+  Serial.println(F("------------------------------"));
   Serial.println(companyName);
   Serial.println(url);
   Serial.println(accessoryName);
   Serial.println(versionNumber);
   Serial.println(F("------------------------------"));
-  */
+  
   // Turn LED off
   // TODO: Investigate how this gets turned on in the first place
   rgb_led.set(0, 0, 0);
@@ -489,7 +502,6 @@ void serialConsoleLoop()
     debug_buffer[debug_buffer_idx] = '\0';
     debug_buffer_idx = 0;
 
-    //Serial.println(debug_buffer);
     if (strcmp(debug_buffer, "DOc") == 0){
       platypus::sensors[1]->calibrate(1);
     } else if (strcmp(debug_buffer, "DOc0") == 0){
