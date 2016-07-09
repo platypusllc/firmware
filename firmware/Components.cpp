@@ -350,9 +350,68 @@ char * AtlasPH::name(){
 }
 
 bool AtlasPH::set(const char* param, const char* value){
-  if (strncmp(param, "temp", 4) == 0){
-    this->setTemp(atof(value));
-    return true;
+  if (strncmp(param, "t", 1) == 0){
+    if ( value != NULL )
+    {
+      this->setTemp(atof(value));
+      return true;
+    }
+    //Send temperature compensation value
+    else 
+    {
+      char output_str[DEFAULT_BUFFER_SIZE + 3];
+      snprintf(output_str, DEFAULT_BUFFER_SIZE,
+               "{"
+               "\"s%u\":{"
+               "\"type\":\"%s\","
+               "\"data\":\t,%f\""
+               "}"
+               "}",
+               channel_,
+               this->name(),
+               temperature
+              );
+      send(output_str);
+        
+    }
+  } else if (strncmp(param, "c", 1) == 0){
+      //Get calibration status
+      if (value == NULL)
+      {
+        char output_str[DEFAULT_BUFFER_SIZE + 3];
+      snprintf(output_str, DEFAULT_BUFFER_SIZE,
+               "{"
+               "\"s%u\":{"
+               "\"type\":\"%s\","
+               "\"data\":\"c,%f\""
+               "}"
+               "}",
+               channel_,
+               this->name(),
+               calibrationStatus
+              );
+      send(output_str);
+         
+      }
+      //Calibrate PH lowpoint
+      else if(strncmp(value, "low", 3) == 0)
+      {
+        this->calibrate(-1);
+        return true; 
+      }
+      //Calibrate PH midpoint
+      else if(strncmp(value, "mid", 3) == 0)
+      {
+        this->calibrate(0);
+        return true;
+      }
+      //Calibrate PH highpoint
+      else if(strncmp(value, "high", 4) == 0)
+      {
+        this->calibrate(1);
+        return true;
+      }
+      //Serial.println("trigger calibrate method");
   }
   return false;
 }
@@ -571,21 +630,93 @@ char * AtlasDO::name(){
 }
 
 bool AtlasDO::set(const char* param, const char* value){
-  if (strncmp(param, "ec", 2) == 0){
-    this->setEC(atof(value));
-    return true;
-  } else if (strncmp(param, "temp", 4) == 0){
-    this->setTemp(atof(value));
-    return true;  
-  } else if (strncmp(param, "cal", 3) == 0){
-    //Serial.println("trigger calibrate method");
+  if (strncmp(param, "e", 1) == 0){
+    if ( value != NULL )
+    {
+      this->setEC(atof(value));
+      return true;
+    }
+    else
+    {
+      char output_str[DEFAULT_BUFFER_SIZE + 3];
+      snprintf(output_str, DEFAULT_BUFFER_SIZE,
+               "{"
+               "\"s%u\":{"
+               "\"type\":\"%s\","
+               "\"data\":\e,%f\""
+               "}"
+               "}",
+               channel_,
+               this->name(),
+               ec
+              );
+      send(output_str);
+    }
+  } else if (strncmp(param, "t", 1) == 0){
+    if ( value != NULL )
+    {
+      this->setTemp(atof(value));
+      return true;
+    }
+    //Send temperature compensation value
+    else 
+    {
+      char output_str[DEFAULT_BUFFER_SIZE + 3];
+      snprintf(output_str, DEFAULT_BUFFER_SIZE,
+               "{"
+               "\"s%u\":{"
+               "\"type\":\"%s\","
+               "\"data\":\t,%f\""
+               "}"
+               "}",
+               channel_,
+               this->name(),
+               temperature
+              );
+      send(output_str);
+        
+    }
+  } else if (strncmp(param, "c", 1) == 0){
+      //Get calibration status
+      if (value == NULL)
+      {
+        char output_str[DEFAULT_BUFFER_SIZE + 3];
+      snprintf(output_str, DEFAULT_BUFFER_SIZE,
+               "{"
+               "\"s%u\":{"
+               "\"type\":\"%s\","
+               "\"data\":\"c,%f\""
+               "}"
+               "}",
+               channel_,
+               this->name(),
+               calibrationStatus
+              );
+      send(output_str);
+         
+      }
+      //Zero DO sensor
+      else if(strncmp(value, "zero", 4) == 0)
+      {
+        this->calibrate(0);
+        return true; 
+      }
+      //Calibrate DO sensor to atmospheric pressure
+      else if(strncmp(value, "atm", 3) == 0)
+      {
+        this->calibrate(1);
+        return true;
+      }
+     
+      //Serial.println("trigger calibrate method");
   }
   return false;
 }
 
+//Clamp temperature to range 0,100.0
 void AtlasDO::setTemp(double temp) {
   if (temp > 0.0){
-    this->temperature = temp;
+    this->temperature = min(temp, 100.0);
     lastCommand = SET_TEMP;
     this->sendCommand();
   }
