@@ -154,6 +154,15 @@ namespace platypus
     unsigned int recv_index_;
   };
 
+  class AHRS : public SerialSensor
+  {
+  public:
+    AHRS(int channel);
+    virtual char *name();
+    void loop();
+   };
+
+  
   class AdafruitGPS : public SerialSensor
   {
   private:

@@ -31,6 +31,7 @@ using namespace platypus;
 
 // GPS Settings
 
+
 // different commands to set the update rate from once a second (1 Hz) to 10 times a second (10Hz)
 // Note that these only control the rate at which the position is echoed, to actually speed up the
 // position fix you must also send one of the position fix rate commands below too.
@@ -330,12 +331,32 @@ void SerialSensor::onSerial(){
   }
 }
 
+AHRS::AHRS(int channel): Sensor(channel), SerialSensor(channel, 9600, RS232, 0){
+  
+ 
+}
+
+char * AHRS::name(){
+  return "AHRS";
+}
+
+void AHRS::loop(){
+  
+}
+
 AdafruitGPS::AdafruitGPS(int channel): Sensor(channel), SerialSensor(channel, 9600, RS232, 0){
+  
+ 
   SERIAL_PORTS[channel]->setTimeout(250);
+  // Set output to RMC only
   SERIAL_PORTS[channel]->println(PMTK_SET_NMEA_OUTPUT_RMCONLY);
   SERIAL_PORTS[channel]->flush();
+  // Set output rate to 5Hz
   SERIAL_PORTS[channel]->println(PMTK_API_SET_FIX_CTL_5HZ);
-  SERIAL_PORTS[channel]->println(PMTK_SET_NMEA_UPDATE_200_MILLIHERTZ);
+  // Set fix rate to 5Hz
+  SERIAL_PORTS[channel]->println(PMTK_SET_NMEA_UPDATE_5HZ);
+
+  delay(1000);
 }
 
 char * AdafruitGPS::name(){

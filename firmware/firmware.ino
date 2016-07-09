@@ -208,7 +208,7 @@ void setup()
   // Initialize sensors
   platypus::sensors[0] = new platypus::ServoSensor(0);
   platypus::sensors[1] = new platypus::AdafruitGPS(1);
-  platypus::sensors[2] = new platypus::AtlasPH(2);
+  platypus::sensors[2] = new platypus::AHRS(2);
   platypus::sensors[3] = new platypus::ES2(3);
 
   // Initialize motors
