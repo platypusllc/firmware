@@ -290,6 +290,16 @@ SerialSensor::SerialSensor(int channel, int baudRate, int serialType, int dataSt
     pinMode(board::SENSOR[channel].RS485_232, OUTPUT);
     digitalWrite(board::SENSOR[channel].RS485_232, HIGH);
   }
+  else if (serialType == DIRECT)
+  {
+    //TX signal unable to pass through bypass resistor
+    //Need to enable RS485 driver to succecssfully transmit
+    digitalWrite(board::SENSOR[channel].TX_ENABLE, HIGH);
+    digitalWrite(board::SENSOR[channel].RS485_232, HIGH);
+  }
+  //Short delay allows hardware switching to take place
+  //before configuration signals are sent
+  delay(1); 
   
   SERIAL_PORTS[channel]->begin(baudRate);
 }
@@ -331,7 +341,7 @@ void SerialSensor::onSerial(){
   }
 }
 
-AHRS::AHRS(int channel): Sensor(channel), SerialSensor(channel, 9600, RS232, 0){
+AHRS::AHRS(int channel): Sensor(channel), SerialSensor(channel, 9600, DIRECT, 0){
   
  
 }
@@ -344,7 +354,7 @@ void AHRS::loop(){
   
 }
 
-AdafruitGPS::AdafruitGPS(int channel): Sensor(channel), SerialSensor(channel, 9600, RS232, 0){
+AdafruitGPS::AdafruitGPS(int channel): Sensor(channel), SerialSensor(channel, 9600, DIRECT, 0){
   
  
   SERIAL_PORTS[channel]->setTimeout(250);
@@ -356,7 +366,6 @@ AdafruitGPS::AdafruitGPS(int channel): Sensor(channel), SerialSensor(channel, 96
   // Set fix rate to 5Hz
   SERIAL_PORTS[channel]->println(PMTK_SET_NMEA_UPDATE_5HZ);
 
-  delay(1000);
 }
 
 char * AdafruitGPS::name(){
@@ -489,7 +498,7 @@ void ES2::loop()
 }
 
 AtlasPH::AtlasPH(int channel) 
-  : Sensor(channel), SerialSensor(channel, 9600), measurementInterval(3000)
+  : Sensor(channel), SerialSensor(channel, 9600, RS232), measurementInterval(3000)
 {
   // Initialize internal variables
   lastMeasurementTime = 0;
