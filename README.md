@@ -1,11 +1,14 @@
-Platypus Lutra
-==============
+Platypus Lutra Firmware
+=======================
 
-The Platypus Lutra is a highly-capable, low-cost autonomous watercraft.  
+This repository contains Arduino firmware for Platypus electronics
+control boards. This firmware requires the Arduino IDE v1.6.9+ and the
+following Arduino libraries.
+
+* Arduino SAM Boards
+* Scheduler
+* ArduinoJson
 
 Contents
 --------
-* [User's Guide](./docs) - General instructions on the usage and maintenance of your Lutra.
-* [Electrical](./electrical) - Electrical schematics.
 * [Firmware](./firmware) - Embedded firmware for the Platypus Control Board.
-* [Mechanical](./mechanical) - Mechanical drawings.
