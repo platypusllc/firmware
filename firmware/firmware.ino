@@ -8,7 +8,7 @@
 #include <Scheduler.h>
 
 // JSON parsing library
-#include "jsmn.h"
+#include <ArduinoJson.h>
 
 // TODO: remove me
 #include "Board.h"
@@ -57,7 +57,6 @@ const size_t CONNECTION_TIMEOUT_MS = 500;
 // TODO: move this board.h?
 platypus::Led rgb_led;
 
-
 /**
  * Wrapper for ADK send command that copies data to debug port.
  * Requires a null-terminated char* pointer.
@@ -75,7 +74,7 @@ void send(char *str)
   if (adk.isReady()) adk.write(len, (uint8_t*)str);
   
   // Copy string to debugging console.
-  Serial.print("-> ");
+  //Serial.print("-> ");
   Serial.print(str);
 }
 
@@ -96,175 +95,86 @@ void reportError(const char *error_message, const char *buffer)
 }
 
 /**
- * Constructs a JSON error message related to the parsing of a JSON string.
- */
-void reportJsonError(jsmnerr_t error, const char* buffer)
-{
-  char *error_message;
-  
-  // Fill in the appropriate JSON error description.
-  switch(error) {
-    case JSMN_SUCCESS:
-      // If we were successful, there is nothing to report.
-      return;
-    case JSMN_ERROR_NOMEM:
-      error_message = "Insufficient memory.";
-      break;
-    case JSMN_ERROR_INVAL:
-      error_message = "Invalid JSON string.";
-      break;
-    case JSMN_ERROR_PART:
-      error_message = "Incomplete JSON string.";
-      break;
-    default:
-      error_message = "Unknown JSON error.";
-      break;
-  }
-
-  // Send appropriate error message
-  reportError(error_message, buffer);  
-}
-
-/**
- * Copies a JSON string token into a provided char* buffer.
- */
-void json_string(const jsmntok_t &token, const char *json_str, char *output_str, size_t output_len)
-{
-  size_t len = min(token.end - token.start, output_len - 1);
-  strncpy(output_str, &json_str[token.start], len);
-  output_str[len] = '\0';
-}
-
-/**
  * Handler to respond to incoming JSON commands and dispatch them to
  * configurable hardware components.
  */
-void handleCommand(const char *buffer)
+void handleCommand(char *buffer)
 {
-  // JSON parser structure
-  jsmn_parser json_parser;
-  
-  // JSON token buffer
-  const size_t NUM_JSON_TOKENS = 64;
-  jsmntok_t json_tokens[NUM_JSON_TOKENS];
-  
-  // Result of JSON parsing.
-  jsmnerr_t json_result;
+  // Allocate buffer for JSON parsing
+  StaticJsonBuffer<200> jsonBuffer;
 
-  // Initialize the JSON parser.
-  jsmn_init(&json_parser);
-  
-  // Parse command as JSON string
-  json_result = jsmn_parse(&json_parser, buffer, json_tokens, NUM_JSON_TOKENS);
-  
-  // Check for valid result, report error on failure.
-  if (json_result != JSMN_SUCCESS)
+  // Attempt to parse JSON in buffer
+  JsonObject& command = jsonBuffer.parseObject(buffer);
+
+  // Check for parsing error
+  if (!command.success())
   {
-    reportJsonError(json_result, buffer);
+    // Parsing Failure 
+    reportError("Failed to parse JSON command.", buffer);
     return;
   }
-  
-  // Get the first token and make sure it is a JSON object.
-  jsmntok_t *token = json_tokens;
-  if (token->type != JSMN_OBJECT) 
+
+  for (JsonObject::iterator it=command.begin(); it!=command.end(); ++it)
   {
-    reportError("Commands must be JSON objects.", buffer);
-    return;
-  }
-  
-  // There should always be an even number of key-value pairs
-  if (token->size & 1) {
-    reportError("Command entries must be key-value pairs.", buffer);
-    return;      
-  }
-  
-  // Read each field of the JSON object and act accordingly.
-  size_t num_entries = token->size / 2;
-  for (size_t entry_idx = 0; entry_idx < num_entries; entry_idx++)
-  {
+    const char * key = it->key;
     
-    // Get the name field for this entry.
-    token++;
-    char entry_name[64];
-    if (token->type != JSMN_STRING)
-    {
-      reportError("Expected name field for entry.", buffer);
-      return;
-    }
-    json_string(*token, buffer, entry_name, 64);
-    
-    
-    // Attempt to decode the configurable object for this entry.
-    platypus::Configurable *entry_object;
-    
-    // If it is a motor, it must take the form 'm1'.
-    if (entry_name[0] == 'm')
-    {
-      size_t motor_idx = entry_name[1] - '0';
-      if (motor_idx >= board::NUM_MOTORS || entry_name[2] != '\0') 
-      {
+    platypus::Configurable * target_object;
+    size_t object_index;
+
+    // Determine target object
+    switch (key[0]){
+    case 'm': // Motor command
+      object_index = key[1] - '0';
+
+      if (object_index >= board::NUM_MOTORS){
         reportError("Invalid motor index.", buffer);
         return;
       }
-      entry_object = platypus::motors[motor_idx];
-    }
-    // If it is a sensor, it must take the form 's1'.
-    else if (entry_name[0] == 's')
-    {
-      size_t sensor_idx = entry_name[1] - '0';
-      if (sensor_idx >= board::NUM_SENSORS || entry_name[2] != '\0') 
-      {
+
+      target_object = platypus::motors[object_index];
+      break;
+      
+    case 's': // Sensor command
+      object_index = key[1] - '0';
+
+      if (object_index >= board::NUM_SENSORS){
         reportError("Invalid sensor index.", buffer);
         return;
       }
-      entry_object = platypus::sensors[sensor_idx];
-    }
-    // Report parse error if unable to identify this entry.
-    else {
-      reportError("Unknown command entry.", buffer);
+
+      target_object = platypus::sensors[object_index];
+      break;
+
+    default: // Unrecognized target
+      reportError("Unknown command target.", buffer);
       return;
     }
-    
-    // The following token should always be the entry object.
-    token++;
-    if (token->type != JSMN_OBJECT) {
-      reportError("Command entries must be objects.", buffer);
-      return;      
-    }
 
-    // There should always be an even number of key-value pairs
-    if (token->size & 1) {
-      reportError("Command parameters must be key-value pairs.", buffer);
-      return;      
-    }
-    
-    // Iterate through each parameter.
-    size_t num_params = token->size / 2;
-    for (size_t param_idx = 0; param_idx < num_params; param_idx++)
+    // Extract JsonObject with param:value pairs
+    JsonObject& params = it->value;
+
+    // Todo: Move this parsing to specific components and pass ref to params instead
+    // Iterate over and set parameter:value pairs on target object
+    for (JsonObject::iterator paramIt=params.begin(); paramIt!=params.end(); ++paramIt)
     {
-      // Get the name field for this parameter.
-      token++;
-      char param_name[64];
-      if (token->type != JSMN_STRING)
-      {
-        reportError("Expected name field for parameter.", buffer);
-        return;
-      }
-      
-      json_string(*token, buffer, param_name, 64);
+      const char * param_name = paramIt->key;
+      const char * param_value = paramIt->value;
 
-      // Get the value field for this parameter.
-      token++;
-      char param_value[64];
-      json_string(*token, buffer, param_value, 64);
+      /* Debugging Output
+      Serial.print("Sending command to ");
+      Serial.print(key);
+      Serial.print(": ");
+      Serial.print(param_name);
+      Serial.print(" : ");
+      Serial.println(param_value);
+      */
 
-      // Pass this parameter to the entry object.
-      if (!entry_object->set(param_name, param_value)) {
+      if (!target_object->set(param_name, param_value)) {
         reportError("Invalid parameter set.", buffer);
-        return;
+        continue; // Todo: Should we return or continue?
       }
     }
-  } 
+  }
 }
 
 void setup() 
@@ -284,9 +194,9 @@ void setup()
   // TODO: replace this with smart hooks.
   // Initialize sensors
   platypus::sensors[0] = new platypus::ServoSensor(0);
-  platypus::sensors[1] = new platypus::AtlasDO(1);
-  platypus::sensors[2] = new platypus::HDS(2);
-  platypus::sensors[3] = new platypus::ES2(3);
+  platypus::sensors[1] = new platypus::GY26Compass(1);
+  platypus::sensors[2] = new platypus::GY26Compass(2);
+  platypus::sensors[3] = new platypus::GY26Compass(3);
   
   // Initialize motors
   platypus::motors[0] = new platypus::Dynamite(0);
@@ -306,20 +216,20 @@ void setup()
   
   // Create secondary tasks for system.
   Scheduler.startLoop(motorUpdateLoop);
-  //Scheduler.startLoop(serialConsoleLoop);
+  Scheduler.startLoop(serialConsoleLoop);
   Scheduler.startLoop(batteryUpdateLoop);
 
   // Initialize Platypus library.
   platypus::init();
   
   // Print header indicating that board successfully initialized
-  Serial.println("------------------------------");
+  /*Serial.println(F("------------------------------"));
   Serial.println(companyName);
   Serial.println(url);
   Serial.println(accessoryName);
   Serial.println(versionNumber);
-  Serial.println("------------------------------");
-  
+  Serial.println(F("------------------------------"));
+  */
   // Turn LED off
   // TODO: Investigate how this gets turned on in the first place
   rgb_led.set(0, 0, 0);
@@ -407,15 +317,15 @@ void loop()
   input_buffer[bytes_read] = '\0';
   
   // Copy incoming message to debug console.
-  Serial.print("<- ");
-  Serial.println(input_buffer);
+  //Serial.print("<- ");
+  //Serial.println(input_buffer);
   
   // Attempt to parse command
   handleCommand(input_buffer);
 }
 
 void batteryUpdateLoop()
-{
+{  
   int rawVoltage = analogRead(board::V_BATT);
   double voltageReading = 0.008879*rawVoltage + 0.09791;
 
@@ -433,6 +343,7 @@ void batteryUpdateLoop()
           );
   send(output_str);  
   delay(1000);
+  yield();
 }
 
 /**
@@ -470,9 +381,7 @@ void motorUpdateLoop()
       platypus::Motor* motor = platypus::motors[motor_idx];
       if (motor->enabled())
       {
-        Serial.print("Disabling motor [");
-        Serial.print(motor_idx);
-        Serial.println("]");
+        Serial.print("Disabling motor "); Serial.println(motor_idx);
         motor->disable();
       }
     }
@@ -482,7 +391,7 @@ void motorUpdateLoop()
     for (size_t motor_idx = 0; motor_idx < board::NUM_MOTORS; ++motor_idx) 
     {
       platypus::Motor* motor = platypus::motors[motor_idx];
-      motor->velocity(motor->velocity() * 0.8);
+      motor->set("v", "0.0");
     }
     // NOTE: WE DO NOT BREAK OUT OF THE SWITCH HERE!
   case RUNNING:
@@ -492,11 +401,9 @@ void motorUpdateLoop()
       platypus::Motor* motor = platypus::motors[motor_idx];
       if (!motor->enabled()) 
       {
-        Serial.print("Arming motor [");
-        Serial.print(motor_idx);
-        Serial.println("]");
+        Serial.print("Arming motor "); Serial.print(motor_idx);
         motor->arm();
-        Serial.println("Motor Armed");
+        Serial.println(F("Motor Armed"));
       }
     }
     break;
@@ -555,6 +462,7 @@ void winchUpdateLoop()
       send(output_buffer);
     } 
   }
+  yield();
 }
 
 /**
@@ -568,21 +476,31 @@ void serialConsoleLoop()
   // Wait until characters are received.
   while (!Serial.available()) yield();
 
-  // Put the new character into the buffer.  
+  // Put the new character into the buffer, ignore \n and \r
   char c = Serial.read();
-  debug_buffer[debug_buffer_idx++] = c;
-
+  if (c != '\n' && c != '\r'){
+    debug_buffer[debug_buffer_idx++] = c;
+  }
+  
   // If it is the end of a line, or we are out of space, parse the buffer.
   if (debug_buffer_idx >= INPUT_BUFFER_SIZE || c == '\n' || c == '\r') 
   {
     // Properly null-terminate the buffer.
     debug_buffer[debug_buffer_idx] = '\0';
     debug_buffer_idx = 0;
-    
-    // Echo incoming message on debug console.
-    Serial.print("## ");
-    Serial.println(debug_buffer);
-    
+
+    //Serial.println(debug_buffer);
+    if (strcmp(debug_buffer, "DOc") == 0){
+      platypus::sensors[1]->calibrate(1);
+    } else if (strcmp(debug_buffer, "DOc0") == 0){
+      platypus::sensors[1]->calibrate(0);
+    } else if (strcmp(debug_buffer, "PHcm") == 0){
+      platypus::sensors[2]->calibrate(0.0);
+    } else if (strcmp(debug_buffer, "PHcl") == 0){
+      platypus::sensors[2]->calibrate(-1);
+    } else if (strcmp(debug_buffer, "PHch") == 0){
+      platypus::sensors[2]->calibrate(1);
+    }
     // Attempt to parse command.
     handleCommand(debug_buffer); 
   }

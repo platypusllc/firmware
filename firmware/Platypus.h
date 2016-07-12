@@ -21,7 +21,7 @@ namespace platypus
   class Configurable
   {
   public:     
-    virtual bool set(char *param, char *value);
+    virtual bool set(const char *param, const char *value);
   };
 
   class Led 
@@ -51,7 +51,7 @@ namespace platypus
     virtual ~Motor();
 
     virtual void arm() = 0;
-    virtual bool set(char *param, char *value);
+    virtual bool set(const char *param, const char *value);
     virtual void loop();
     
     void velocity(float velocity);
@@ -76,6 +76,7 @@ namespace platypus
     int servo_ctrl;    
     bool enabled_;
     float velocity_;
+    float desiredVelocity_;
     
   public:
     static void onLoop_(void *data);
@@ -87,7 +88,7 @@ namespace platypus
     Sensor(int channel);
     virtual ~Sensor();
     
-    virtual bool set(char* param, char* value);
+    virtual bool set(const char* param, const char* value);
     virtual char *name() = 0;
     virtual void onSerial();
     virtual void loop();
@@ -99,6 +100,7 @@ namespace platypus
   public:
     static void onSerial_(void *data);
     static void onLoop_(void *data);
+    virtual void calibrate(int flag);
   };
   
   extern platypus::Motor *motors[board::NUM_MOTORS];

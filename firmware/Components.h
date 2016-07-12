@@ -8,6 +8,31 @@ namespace platypus
 {
   const int DEFAULT_BUFFER_SIZE = 128;
 
+  typedef enum 
+  {
+    OFF,
+    INIT,
+    IDLE,
+    WAITING // Awaiting response from sensor
+  } SensorState;
+
+  typedef enum
+  {
+    NONE,
+    STOP_CONTINUOUS, // Stop continuous measurement mode
+    READING, // Take a reading
+    GET_CALIB, // Get calibration status
+    CALIB_ATM, // Atlas DO: Calibrate to atmospheric oxygen levels
+    CALIB_ZERO, // Atlas DO: Calibrate to 0 dissolved oxygen
+    CALIB_LOW, // Atlas pH: Lowpoint Calibration
+    CALIB_MID, // Atlas pH: Midpoint Calibration
+    CALIB_HIGH,// Atlas pH: Highpoint Calibration
+    GET_TEMP, // Get temperature compensation value
+    SET_TEMP, // Set temperature compensation value
+    GET_EC, // Get EC compensation value
+    SET_EC // Set EC compensation value
+  } AtlasCommand;
+
   // ESCs //
   class VaporPro : public Motor 
   {
@@ -50,7 +75,7 @@ namespace platypus
   public:
     AnalogSensor(int channel);
 
-    bool set(char* param, char* value);
+    bool set(const char* param, const char* value);
     virtual char *name() = 0;
     
     void scale(float scale);
@@ -70,7 +95,7 @@ namespace platypus
     ServoSensor(int channel);
     ~ServoSensor();
 
-    bool set(char* param, char* value);
+    bool set(const char* param, const char* value);
     virtual char *name();
     
     void position(float velocity);
@@ -105,8 +130,7 @@ namespace platypus
       RS485
     };
 
-    
-  private:
+  protected:
     int baud_;
     int serialType_;
     int minDataStringLength_;
@@ -117,6 +141,12 @@ namespace platypus
   
   class ES2 : public PoweredSensor, public SerialSensor
   {
+  private:
+    SensorState state;
+    int lastMeasurementTime;
+    const int measurementInterval;
+    const int minReadTime;
+    
   public:
     ES2(int channel);
     virtual char *name();
@@ -125,23 +155,65 @@ namespace platypus
   
   class AtlasPH : public SerialSensor
   {
+  private:
+    const int measurementInterval;
+    int lastMeasurementTime;
+    SensorState state;
+    bool initialized;
+    int calibrationStatus;
+    float temperature;
+    AtlasCommand lastCommand;
+
+    void sendCommand();
+    
   public:
     AtlasPH(int channel);
-    bool set(char * param, char * value);
+    bool set(const char * param, const char * value);
     virtual char * name();
     void setTemp(double temp);
-    void calibrate();
+    void calibrate(int flag);
+    void loop();
+    void onSerial();
   };
 
   class AtlasDO : public SerialSensor
   {
+  private:
+    const int measurementInterval;
+    int lastMeasurementTime;
+    SensorState state;
+    AtlasCommand lastCommand;
+    bool initialized;
+    int calibrationStatus;
+    float temperature;
+    float ec;
+
+    //void updateCalibrationStatus();
+    void sendCommand();
+    
   public:
     AtlasDO(int channel);
-    bool set(char * param, char * value);
+    bool set(const char * param, const char * value);
     virtual char * name();
     void setTemp(double temp);
     void setEC(double EC);
-    void calibrate();
+    void calibrate(int flag);
+    void loop();
+    void onSerial();
+  };
+
+  class GY26Compass : public SerialSensor
+  {
+  private:
+    const int measurementInterval;
+    int lastMeasurementTime;
+    int declinationAngle;
+    
+  public:
+    GY26Compass(int channel);
+    virtual char * name();  
+    void loop();
+    //void onSerial();
   };
   
   class HDS : public PoweredSensor, public SerialSensor
@@ -157,7 +229,7 @@ namespace platypus
   public:
     Winch(int channel, uint8_t address);
     virtual char *name();
-    bool set(char* param, char* value);
+    bool set(const char* param, const char* value);
     
     void reset();
 
