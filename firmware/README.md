@@ -12,6 +12,7 @@ This firmware is used by the Platypus Controller to interface the hardware on th
 5. Install the following libraries:
   - **Scheduler** by **Arduino** [(more info)][2]
   - **USBHost** by **Arduino** [(more info)][3]
+  - **Adafruit Neopixel** by **Adafruit** [(more info)][4]
 
 ## Building/Uploading ##
 
@@ -23,3 +24,4 @@ This firmware is used by the Platypus Controller to interface the hardware on th
 [1]: https://www.arduino.cc/en/Main/Software
 [2]: https://www.arduino.cc/en/Reference/Scheduler
 [3]: https://www.arduino.cc/en/Reference/USBHost
+[4]: https://github.com/adafruit/Adafruit_NeoPixel

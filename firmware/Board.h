@@ -6,14 +6,6 @@
 namespace board 
 {
   
-  // Board type definitions
-  struct LED_t
-  { 
-    int R;
-    int G;
-    int B;
-  };
-  
   struct Motor_t
   { 
     int ENABLE;
@@ -43,7 +35,8 @@ namespace board
   };
   
   // Pin definitions
-  const LED_t LED = { 54, 55, 56 };
+  const int LED = 54;
+  const size_t NUM_LEDS = 4;
 
   const size_t NUM_MOTORS = 2;
 

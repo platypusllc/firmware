@@ -1,4 +1,5 @@
 #include "Platypus.h"
+#include <Adafruit_NeoPixel.h>
 
 using namespace platypus;
 
@@ -10,12 +11,16 @@ constexpr float VELOCITY_THRESHOLD = 0.001;
 platypus::Motor *platypus::motors[board::NUM_MOTORS];
 platypus::Sensor *platypus::sensors[board::NUM_SENSORS];
 
+// LED serial controller.
+Adafruit_NeoPixel pixels = Adafruit_NeoPixel(board::NUM_LEDS, board::LED,
+                                             NEO_GRB + NEO_KHZ800);
+
 // TODO: Switch to using HardwareSerial.
 USARTClass *platypus::SERIAL_PORTS[4] = {
-  NULL,
   &Serial1,
   &Serial2,
   &Serial3,
+  NULL,
 };
 
 SerialHandler_t platypus::SERIAL_HANDLERS[4] = {
@@ -66,7 +71,7 @@ void platypusLoop_()
   // TODO: Parallelize these cooperative loops.
 
   //Serial.println("In Platypus Loop");
-  
+
   // Run each motor loop task once.
   for (int motorIdx = 0; motorIdx < board::NUM_MOTORS; ++motorIdx)
   {
@@ -93,39 +98,33 @@ void platypusLoop_()
 void platypus::init()
 {
   Scheduler.startLoop(platypusLoop_);
+  pixels.begin();
 }
 
 Led::Led()
   : r_(0), g_(0), b_(0)
 {
-  pinMode(board::LED.R, OUTPUT);
-  digitalWrite(board::LED.R, HIGH);
-
-  pinMode(board::LED.G, OUTPUT);
-  digitalWrite(board::LED.G, HIGH);
-
-  pinMode(board::LED.B, OUTPUT);
-  digitalWrite(board::LED.B, HIGH);
 }
 
 Led::~Led()
 {
-  pinMode(board::LED.R, INPUT);
-  pinMode(board::LED.G, INPUT);
-  pinMode(board::LED.B, INPUT);
 }
 
 void Led::set(int red, int green, int blue)
 {
-  R(red);
-  G(green);
-  B(blue);
+  r_ = red;
+  g_ = green;
+  b_ = blue;
+
+  while (!pixels.canShow());
+  for (size_t pixel_idx = 0; pixel_idx < board::NUM_LEDS; ++pixel_idx)
+    pixels.setPixelColor(pixel_idx, r_, g_, b_);
+  pixels.show();
 }
 
 void Led::R(int red)
 {
-  r_ = red;
-  digitalWrite(board::LED.R, !r_);
+  set(red, g_, b_);
 }
 
 int Led::R()
@@ -135,8 +134,7 @@ int Led::R()
 
 void Led::G(int green)
 {
-  g_ = green;
-  digitalWrite(board::LED.G, !g_);
+  set(r_, green, b_);
 }
 
 int Led::G()
@@ -146,8 +144,7 @@ int Led::G()
 
 void Led::B(int blue)
 {
-  b_ = blue;
-  digitalWrite(board::LED.B, !b_);
+  set(r_, g_, blue);
 }
 
 int Led::B()
