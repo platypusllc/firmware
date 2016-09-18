@@ -353,20 +353,23 @@ void motorUpdateLoop()
   // Wait for a fixed time period.
   delay(100);
   
-  // Set the LED for current system state
+  // Set the LED for current system state.
+  unsigned c = (millis() >> 3) & 0xFF;
+  if (c > 128) c = 255 - c;
+
   switch (system_state)
   {
   case DISCONNECTED:
-    // Red blink
-    rgb_led.set((millis() >> 8) & 1, 0, 0);
+    // Red pulse
+    rgb_led.set(c, 0, 0);
     break;
   case CONNECTED:
-    // Green blink
-    rgb_led.set(0, (millis() >> 8) & 1, 0);
+    // Yellow pulse
+    rgb_led.set(c, c/4, 0);
     break;
   case RUNNING:
-    // Solid green
-    rgb_led.set(0, 1, 0);
+    // Green pulse
+    rgb_led.set(0, c, 0);
     break;
   }
   
