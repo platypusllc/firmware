@@ -20,7 +20,7 @@ USARTClass *platypus::SERIAL_PORTS[4] = {
   &Serial1,
   &Serial2,
   &Serial3,
-  NULL,
+  nullptr,
 };
 
 SerialHandler_t platypus::SERIAL_HANDLERS[4] = {
@@ -32,25 +32,25 @@ SerialHandler_t platypus::SERIAL_HANDLERS[4] = {
 
 void serialEvent1() 
 {
-  if (SERIAL_HANDLERS[1].handler != NULL) 
+  if (SERIAL_HANDLERS[0].handler != NULL)
   {
-    (*SERIAL_HANDLERS[1].handler)(SERIAL_HANDLERS[1].data);
+    (*SERIAL_HANDLERS[0].handler)(SERIAL_HANDLERS[0].data);
   }
 }
 
 void serialEvent2() 
 {
-  if (SERIAL_HANDLERS[2].handler != NULL) 
+  if (SERIAL_HANDLERS[1].handler != NULL)
   {
-    (*SERIAL_HANDLERS[2].handler)(SERIAL_HANDLERS[2].data);
+    (*SERIAL_HANDLERS[1].handler)(SERIAL_HANDLERS[1].data);
   }
 }
 
 void serialEvent3() 
 { 
-  if (SERIAL_HANDLERS[3].handler != NULL) 
+  if (SERIAL_HANDLERS[2].handler != NULL)
   {
-    (*SERIAL_HANDLERS[3].handler)(SERIAL_HANDLERS[3].data);
+    (*SERIAL_HANDLERS[2].handler)(SERIAL_HANDLERS[2].data);
   }
 }
 
@@ -99,6 +99,7 @@ void platypus::init()
 {
   Scheduler.startLoop(platypusLoop_);
   pixels.begin();
+  pixels.show();
 }
 
 Led::Led()

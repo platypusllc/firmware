@@ -193,10 +193,10 @@ void setup()
   
   // TODO: replace this with smart hooks.
   // Initialize sensors
-  platypus::sensors[0] = new platypus::ServoSensor(0);
+  platypus::sensors[0] = new platypus::GY26Compass(0);
   platypus::sensors[1] = new platypus::GY26Compass(1);
   platypus::sensors[2] = new platypus::GY26Compass(2);
-  platypus::sensors[3] = new platypus::GY26Compass(3);
+  platypus::sensors[3] = new platypus::ServoSensor(3);
   
   // Initialize motors
   platypus::motors[0] = new platypus::Dynamite(0);
@@ -230,9 +230,8 @@ void setup()
   Serial.println(versionNumber);
   Serial.println(F("------------------------------"));
   */
-  // Turn LED off
-  // TODO: Investigate how this gets turned on in the first place
-  rgb_led.set(0, 0, 0);
+  // Turn LED to startup state.
+  rgb_led.set(255, 0, 255);
   delay(1000);
 }
 
