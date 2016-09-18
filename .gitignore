@@ -13,5 +13,7 @@ software/gen
 # Ignore eclipse generated files
 */.classpath
 */.settings/
-
 */.idea/
+
+# Ignore system caching files.
+.DS_Store
