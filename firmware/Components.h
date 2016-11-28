@@ -3,6 +3,7 @@
 
 #include "Platypus.h"
 #include "RoboClaw.h"
+#include "RC.h"
 
 namespace platypus 
 {
@@ -243,6 +244,13 @@ namespace platypus
     uint32_t desired_position_;
     int32_t desired_velocity_;
     uint32_t desired_acceleration_;
+  };
+
+  class RC : public Sensor, public RC_Controller
+  {
+  public:
+    RC(int channel);
+    char *name();
   };
 }
 
