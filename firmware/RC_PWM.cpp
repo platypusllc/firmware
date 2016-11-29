@@ -1,106 +1,82 @@
 #include "RC_PWM.h"
 
-namespace rc {
-
+namespace rc { // definitions for the externs in the header (had to be done to avoid multiple definitions)
+  
   volatile int OVERRIDE_PIN;
   volatile int THRUST_PIN;
   volatile int RUDDER_PIN;
-
-  volatile uint32_t thrust_pwm = 0;
-  volatile uint32_t rudder_pwm = 0;
-  volatile uint32_t override_pwm = 0;
+  volatile uint32_t thrust_pwm;
+  volatile uint32_t rudder_pwm;
+  volatile uint32_t override_pwm;
+  volatile bool RCoverride;
   
-  volatile bool RCoverride = false;
 
+  //override pin listener
+  void overrideInterrupt(  )
+  {
+    static uint32_t overrideStartTime;
+    //Start timer on rising edge
+    if(digitalRead(rc::OVERRIDE_PIN))
+    {
+      overrideStartTime = micros();
+    }
+    //Stop timer on falling edge
+    else
+    {
+      //Compute pulse duration
+      rc::override_pwm = (uint32_t)(micros() - overrideStartTime);
+    }
+  }
+  
+  //Throttle pin listener
+  void throttleInterrupt(  )
+  {
+    static uint32_t throttleStartTime;
+  
+    if(digitalRead(rc::THRUST_PIN))
+    {
+      throttleStartTime = micros();
+    }
+    else
+    {
+      rc::thrust_pwm = (uint32_t)(micros() - throttleStartTime);
+    }
+  }
+  
+  //Rudder pin listener
+  void rudderInterrupt(  )
+  {
+    static uint32_t rudderStartTime;
+  
+    if(digitalRead(rc::RUDDER_PIN))
+    {
+      rudderStartTime = micros();
+    }
+    else
+    {
+      rc::rudder_pwm = (uint32_t)(micros() - rudderStartTime);
+    }
+  }  
 }
 
-//override pin listener
-void overrideInterrupt(  )
-{
-  static uint32_t overrideStartTime;
-  //Start timer on rising edge
-  if(digitalRead(rc::OVERRIDE_PIN))
-  {
-    overrideStartTime = micros();
-  }
-  //Stop timer on falling edge
-  else
-  {
-    //Compute pulse duration
-    rc::override_pwm = (uint32_t)(micros() - overrideStartTime);
+// RC_PWM::RC_PWM() {}
 
-  }
-}
-
-//Throttle pin listener
-void throttleInterrupt(  )
-{
-  static uint32_t throttleStartTime;
-
-  if(digitalRead(rc::THRUST_PIN))
-  {
-    throttleStartTime = micros();
-  }
-  else
-  {
-    rc::thrust_pwm = (uint32_t)(micros() - throttleStartTime);
-  }
-
-}
-
-//Rudder pin listener
-void rudderInterrupt(  )
-{
-  static uint32_t rudderStartTime;
-
-  if(digitalRead(rc::RUDDER_PIN))
-  {
-    rudderStartTime = micros();
-  }
-  else
-  {
-    rc::rudder_pwm = (uint32_t)(micros() - rudderStartTime);
-  }
-
-}
-
-/**
- * RC_PWM default constructor
- * Enable override, throttle and rudder pins to be used for interrupts
- * Attach interrupt to override pin to listen for manual override
- *
- * Default pins are used as defined in header file unless custom
- * constructor was called
- */
-RC_PWM::RC_PWM()
-: RC_Controller()
-{
-}
-
-/**
- * Custom Constructor to attach Rx module to given pins
- * @param override_pin: Input pin for override channel
- * @param throttle_pin: Input pin for throttle channel
- * @param rudder_pin: Input pin for rudder channel
- */
+/*
 RC_PWM::RC_PWM(int thrust_pin_, int rudder_pin_, int override_pin_)
-: RC_Controller(thrust_pin_, rudder_pin_, override_pin_)
 {
   //Assign global pins for interrupts
-  rc::THRUST_PIN = thrust_pin;
-  rc::RUDDER_PIN = rudder_pin;
-  rc::OVERRIDE_PIN = override_pin;
-  Serial.println("Constructor Started");
-  pinMode(thrust_pin, INPUT); digitalWrite(thrust_pin, LOW);
-  pinMode(rudder_pin, INPUT);   digitalWrite(rudder_pin, LOW);
-  pinMode(override_pin, INPUT); digitalWrite(override_pin, LOW);
-  attachInterrupt(rudder_pin, rudderInterrupt, CHANGE);
-  attachInterrupt(thrust_pin, throttleInterrupt, CHANGE);
-  attachInterrupt(override_pin, overrideInterrupt, CHANGE);
-  Serial.println("Constructor Completed");
+  rc::THRUST_PIN = thrust_pin_;
+  rc::RUDDER_PIN = rudder_pin_;
+  rc::OVERRIDE_PIN = override_pin_;
+  pinMode(thrust_pin_, INPUT); digitalWrite(thrust_pin_, LOW);
+  pinMode(rudder_pin_, INPUT);   digitalWrite(rudder_pin_, LOW);
+  pinMode(override_pin_, INPUT); digitalWrite(override_pin_, LOW);
+  //attachInterrupt(rudder_pin_, rc::rudderInterrupt, CHANGE);
+  //attachInterrupt(thrust_pin_, rc::throttleInterrupt, CHANGE);
+  //attachInterrupt(override_pin_, rc::overrideInterrupt, CHANGE);
 }
-
-
+*/
+/*
 //Velocity mixers
 //Implemented as simple linear mixers. Turn speed is controlled by
 //the position of the throttle stick. Turning angle is linearly proportional
@@ -246,10 +222,9 @@ void RC_PWM::update()
 
       //RC commands are being received - deal with calibration and arming
       if(overrideEnabled)
-      {
-          /*
-           * Arming and calibration
-           */
+      {         
+           // Arming and calibration           
        }
 
 }
+*/

@@ -3,7 +3,19 @@
 
 #include "Platypus.h"
 #include "RoboClaw.h"
-#include "RC.h"
+#include "RC_PWM.h"
+#include "RC_SBUS.h"
+
+namespace rc {
+  enum RC_CHANNEL // note the relation to the board::GPIO enum
+  {
+    THRUST = 0,
+    RUDDER = 1,
+    OVERRIDE = 2,
+    THRUST_SCALE = 3,
+    RUDDER_SCALE = 4
+  };
+}
 
 namespace platypus 
 {
@@ -246,11 +258,51 @@ namespace platypus
     uint32_t desired_acceleration_;
   };
 
-  class RC : public Sensor, public RC_Controller
+  class RC : public Sensor
   {
   public:
     RC(int channel);
     char *name();
+    float getThrust();
+    float getRudder();
+    float getOverride();
+    bool  isOverrideEnabled();
+    virtual void  update(); // instead of using Sensor::loop we will call this in its own parallel thread
+  protected:
+    float getRCChannelValue(int RCchannel);
+    bool  overrideEnabled;
+    float channel_values[16];
+    float thrust_scale;
+    float rudder_scale;
+    int thrust_pin;
+    int rudder_pin;
+    int override_pin;
+  };
+
+  class RC_PWM : public RC {
+  public:
+    RC_PWM(int channel);
+    void update();
+  private:
+    //RC transmitter PWM break points
+    int min_throttle = 1000;
+    int max_throttle = 1975;
+    int mid_throttle = 1471;
+
+    int left_rudder = 1000;
+    int right_rudder = 2000;
+    
+    int override_low = 980*0.95;
+    int override_high = 1966*1.05;
+    int override_threshold_l = 1500*0.9;
+    int override_threshold_h = 1500*1.1;  
+  };
+
+  class RC_SBUS : public RC
+  {
+  public:
+    RC_SBUS(int channel);
+    void update();
   };
 }
 

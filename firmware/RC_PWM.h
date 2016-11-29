@@ -1,7 +1,22 @@
 #ifndef RC_PWM_H
 #define RC_PWM_H
 
-#include "RC.h"
+#include <Arduino.h>
+
+namespace rc { // extern declarations (had to be done to avoid multiple definitions)
+  
+  extern volatile int OVERRIDE_PIN;
+  extern volatile int THRUST_PIN;
+  extern volatile int RUDDER_PIN;
+  extern volatile uint32_t thrust_pwm;
+  extern volatile uint32_t rudder_pwm;
+  extern volatile uint32_t override_pwm;
+  extern volatile bool RCoverride;
+  
+  extern void overrideInterrupt();  
+  extern void throttleInterrupt();  
+  extern void rudderInterrupt();  
+}
 
 /**
  * RC_PWM: Class used to read and handle commands sent by an attached RC controller
@@ -21,7 +36,8 @@
  *                                 Once armed the throttle and rudder commands will be mixed
  *                                 to give a velocity for each motor
  */
-class RC_PWM : public RC_Controller {
+ /*
+class RC_PWM {
   public:
   
     RC_PWM();
@@ -63,7 +79,7 @@ class RC_PWM : public RC_Controller {
 
 
 };
-
+*/
 
 
 #endif // RC_PWM_H

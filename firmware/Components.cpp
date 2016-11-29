@@ -909,15 +909,100 @@ uint32_t Winch::encoder(bool *valid)
 }
 
 RC::RC(int channel)
-: Sensor(channel),
-  RC_Controller( board::SENSOR[channel].GPIO[board::RX_POS],
-                 board::SENSOR[channel].GPIO[board::RX_NEG],
-                 board::SENSOR[channel].GPIO[board::TX_POS] )
-{
+: Sensor(channel), 
+  thrust_pin(board::SENSOR[channel].GPIO[board::RX_POS]),
+  rudder_pin(board::SENSOR[channel].GPIO[board::RX_NEG]),
+  override_pin(board::SENSOR[channel].GPIO[board::TX_POS])
+{  
 }
 
 char * RC::name()
 {
   return "RC_Controller";
+}
+
+bool  RC::isOverrideEnabled() {return overrideEnabled;}
+float RC::getRCChannelValue(int channel) { return channel_values[channel]; }
+float RC::getThrust() { return getRCChannelValue(rc::THRUST); }
+float RC::getRudder() { return getRCChannelValue(rc::RUDDER); }
+float RC::getOverride() { return getRCChannelValue(rc::OVERRIDE); }
+void  RC::update() {/*I'm virtual!*/};
+
+RC_PWM::RC_PWM(int channel)
+: RC(channel)
+{
+  //Assign global pins for interrupts
+  rc::THRUST_PIN = thrust_pin;
+  rc::RUDDER_PIN = rudder_pin;
+  rc::OVERRIDE_PIN = override_pin;
+  pinMode(thrust_pin, INPUT); digitalWrite(thrust_pin, LOW);
+  pinMode(rudder_pin, INPUT);   digitalWrite(rudder_pin, LOW);
+  pinMode(override_pin, INPUT); digitalWrite(override_pin, LOW);
+  attachInterrupt(rudder_pin, rc::rudderInterrupt, CHANGE);
+  attachInterrupt(thrust_pin, rc::throttleInterrupt, CHANGE);
+  attachInterrupt(override_pin, rc::overrideInterrupt, CHANGE);  
+}
+
+void RC_PWM::update()
+{
+  //Turn off interrupts to update local variables
+  noInterrupts();
+
+  //Update local variables
+  channel_values[rc::OVERRIDE] = rc::override_pwm;
+  
+  //override value is below threshold or outside of valid window
+  //set override to false
+  if(channel_values[rc::OVERRIDE] < override_threshold_l || channel_values[rc::OVERRIDE] > override_high)
+  {
+    //If override was previously enabled, then
+    //stop listening to throttle and rudder pins
+    if(overrideEnabled)
+    {
+      channel_values[rc::THRUST] = 0;
+      channel_values[rc::RUDDER] = 0;
+    }
+    overrideEnabled = false;
+  }
+  //override pin is above threshold
+  else if(channel_values[rc::OVERRIDE] > override_threshold_h)
+  {
+    overrideEnabled = true;    
+    //Zero throttle and rudder values to prevent false readings
+    channel_values[rc::THRUST] = 0;
+    channel_values[rc::RUDDER] = 0;
+  }
+  else
+  {
+    interrupts();
+    return;
+  }
+  
+  //Read throttle and rudder values if override pin was high
+  if(overrideEnabled )
+  {
+    channel_values[rc::THRUST] = (float)map(rc::thrust_pwm, min_throttle, max_throttle, -100, 100)/100.0;
+    channel_values[rc::RUDDER]   = (float)map(rc::rudder_pwm,left_rudder, right_rudder, -100, 100)/100.0;
+    if(abs(channel_values[rc::THRUST]) < 0.01) channel_values[rc::THRUST] = 0;
+    if(abs(channel_values[rc::RUDDER]) < 0.01) channel_values[rc::RUDDER] = 0;
+  }
+  
+  //Local update complete - turn on interrupts
+   interrupts();
+
+  //RC commands are being received - deal with calibration and arming
+  if(overrideEnabled)
+  {         
+    // Arming and calibration           
+  }  
+}
+
+RC_SBUS::RC_SBUS(int channel)
+: RC(channel)
+{
+}
+
+void RC_SBUS::update()
+{
 }
 
