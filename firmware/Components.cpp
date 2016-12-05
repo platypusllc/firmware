@@ -913,7 +913,8 @@ RC::RC(int channel)
   thrust_pin(board::SENSOR[channel].GPIO[board::RX_POS]),
   rudder_pin(board::SENSOR[channel].GPIO[board::RX_NEG]),
   override_pin(board::SENSOR[channel].GPIO[board::TX_POS])
-{  
+{
+  memset(raw_channel_values, 0, rc::RAW_CHANNEL_COUNT);
 }
 
 char * RC::name()
@@ -922,14 +923,14 @@ char * RC::name()
 }
 
 bool  RC::isOverrideEnabled() {return overrideEnabled;}
-float RC::getRCChannelValue(int channel) { return channel_values[channel]; }
+float RC::getRCChannelValue(int channel) { return scaled_channel_values[channel]; }
 float RC::getThrust() { return getRCChannelValue(rc::THRUST); }
 float RC::getRudder() { return getRCChannelValue(rc::RUDDER); }
 float RC::getOverride() { return getRCChannelValue(rc::OVERRIDE); }
 void  RC::update() {/*I'm virtual!*/};
 
 RC_PWM::RC_PWM(int channel)
-: RC(channel)
+: Sensor(channel), RC(channel)
 {
   //Assign global pins for interrupts
   rc::THRUST_PIN = thrust_pin;
@@ -949,28 +950,28 @@ void RC_PWM::update()
   noInterrupts();
 
   //Update local variables
-  channel_values[rc::OVERRIDE] = rc::override_pwm;
+  scaled_channel_values[rc::OVERRIDE] = rc::override_pwm;
   
   //override value is below threshold or outside of valid window
   //set override to false
-  if(channel_values[rc::OVERRIDE] < override_threshold_l || channel_values[rc::OVERRIDE] > override_high)
+  if(scaled_channel_values[rc::OVERRIDE] < override_threshold_l || scaled_channel_values[rc::OVERRIDE] > override_high)
   {
     //If override was previously enabled, then
     //stop listening to throttle and rudder pins
     if(overrideEnabled)
     {
-      channel_values[rc::THRUST] = 0;
-      channel_values[rc::RUDDER] = 0;
+      scaled_channel_values[rc::THRUST] = 0;
+      scaled_channel_values[rc::RUDDER] = 0;
     }
     overrideEnabled = false;
   }
   //override pin is above threshold
-  else if(channel_values[rc::OVERRIDE] > override_threshold_h)
+  else if(scaled_channel_values[rc::OVERRIDE] > override_threshold_h)
   {
     overrideEnabled = true;    
     //Zero throttle and rudder values to prevent false readings
-    channel_values[rc::THRUST] = 0;
-    channel_values[rc::RUDDER] = 0;
+    scaled_channel_values[rc::THRUST] = 0;
+    scaled_channel_values[rc::RUDDER] = 0;
   }
   else
   {
@@ -981,10 +982,10 @@ void RC_PWM::update()
   //Read throttle and rudder values if override pin was high
   if(overrideEnabled )
   {
-    channel_values[rc::THRUST] = (float)map(rc::thrust_pwm, min_throttle, max_throttle, -100, 100)/100.0;
-    channel_values[rc::RUDDER]   = (float)map(rc::rudder_pwm,left_rudder, right_rudder, -100, 100)/100.0;
-    if(abs(channel_values[rc::THRUST]) < 0.01) channel_values[rc::THRUST] = 0;
-    if(abs(channel_values[rc::RUDDER]) < 0.01) channel_values[rc::RUDDER] = 0;
+    scaled_channel_values[rc::THRUST] = (float)map(rc::thrust_pwm, min_throttle, max_throttle, -100, 100)/100.0;
+    scaled_channel_values[rc::RUDDER]   = (float)map(rc::rudder_pwm,left_rudder, right_rudder, -100, 100)/100.0;
+    if(abs(scaled_channel_values[rc::THRUST]) < 0.01) scaled_channel_values[rc::THRUST] = 0;
+    if(abs(scaled_channel_values[rc::RUDDER]) < 0.01) scaled_channel_values[rc::RUDDER] = 0;
   }
   
   //Local update complete - turn on interrupts
@@ -998,11 +999,73 @@ void RC_PWM::update()
 }
 
 RC_SBUS::RC_SBUS(int channel)
-: RC(channel)
+: Sensor(channel), SerialSensor(channel, SBUS_BAUDRATE), RC(channel)
 {
+  ////////// IMPORTANT NOTE: in the SBUS library they use "_serial.begin(100000, SERIAL_8E2);"
+  //////////                 Does that config option have to be there? If so, I don't know if I can use SerialSensor.
+}
+
+char * RC_SBUS::name()
+{
+  return "RC_SBUS_Controller";
 }
 
 void RC_SBUS::update()
 {
+  // Update the override status and float channels
+}
+
+void RC_SBUS::onSerial()
+{  
+  char c = SERIAL_PORTS[channel_]->read();
+    
+  if (recv_index_ < DEFAULT_BUFFER_SIZE) // protect against buffer overflow
+  {
+    if (recv_index_ == 0 && c != SBUS_STARTBYTE) // incorrect start byte, out of sync
+    {    
+      return; // throw away the byte until we sync
+    }    
+    recv_buffer_[recv_index_] = c;
+
+    // We are looking for 25 characters that end with SBUS_ENDBYTE, not \r and \n characters
+    if (recv_index_ == 24)
+    {
+      recv_index_ = 0; // reset the index
+      
+      if (recv_buffer_[24] != SBUS_ENDBYTE) // incorrect end byte, out of sync
+      {
+        return; // throw away all 25 bytes
+      }
+  
+      raw_channel_values[0]  = ((recv_buffer_[1]    |recv_buffer_[2]<<8)                       & 0x07FF);
+      raw_channel_values[1]  = ((recv_buffer_[2]>>3 |recv_buffer_[3]<<5)                       & 0x07FF);
+      raw_channel_values[2]  = ((recv_buffer_[3]>>6 |recv_buffer_[4]<<2 |recv_buffer_[5]<<10)  & 0x07FF);
+      raw_channel_values[3]  = ((recv_buffer_[5]>>1 |recv_buffer_[6]<<7)                       & 0x07FF);
+      raw_channel_values[4]  = ((recv_buffer_[6]>>4 |recv_buffer_[7]<<4)                       & 0x07FF);
+      raw_channel_values[5]  = ((recv_buffer_[7]>>7 |recv_buffer_[8]<<1 |recv_buffer_[9]<<9)   & 0x07FF);
+      raw_channel_values[6]  = ((recv_buffer_[9]>>2 |recv_buffer_[10]<<6)                      & 0x07FF);
+      raw_channel_values[7]  = ((recv_buffer_[10]>>5|recv_buffer_[11]<<3)                      & 0x07FF);
+      raw_channel_values[8]  = ((recv_buffer_[12]   |recv_buffer_[13]<<8)                      & 0x07FF);
+      raw_channel_values[9]  = ((recv_buffer_[13]>>3|recv_buffer_[14]<<5)                      & 0x07FF);
+      raw_channel_values[10] = ((recv_buffer_[14]>>6|recv_buffer_[15]<<2|recv_buffer_[16]<<10) & 0x07FF);
+      raw_channel_values[11] = ((recv_buffer_[16]>>1|recv_buffer_[17]<<7)                      & 0x07FF);
+      raw_channel_values[12] = ((recv_buffer_[17]>>4|recv_buffer_[18]<<4)                      & 0x07FF);
+      raw_channel_values[13] = ((recv_buffer_[18]>>7|recv_buffer_[19]<<1|recv_buffer_[20]<<9)  & 0x07FF);
+      raw_channel_values[14] = ((recv_buffer_[20]>>2|recv_buffer_[21]<<6)                      & 0x07FF);
+      raw_channel_values[15] = ((recv_buffer_[21]>>5|recv_buffer_[22]<<3)                      & 0x07FF);
+      
+      ((recv_buffer_[23])      & 0x0001) ? raw_channel_values[16] = 2047: raw_channel_values[16] = 0;
+      ((recv_buffer_[23] >> 1) & 0x0001) ? raw_channel_values[17] = 2047: raw_channel_values[17] = 0;
+  
+      if ((recv_buffer_[23] >> 3) & 0x0001) {
+        failsafe_status = SBUS_FAILSAFE_ACTIVE;
+      } else {
+        failsafe_status = SBUS_FAILSAFE_INACTIVE;
+      }    
+      
+      return;
+    }    
+    ++recv_index_; // keep filling the buffer
+  }   
 }
 

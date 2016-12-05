@@ -21,6 +21,9 @@ char versionNumber[] = "3.0";
 char serialNumber[] = "3";
 char url[] = "http://senseplatypus.com";
 
+// pointer to RC
+platypus::RC * pRC = NULL;
+
 // ADK USB Host
 USBHost Usb;
 ADK adk(&Usb, companyName, applicationName, accessoryName, versionNumber, url, serialNumber);
@@ -56,6 +59,22 @@ const size_t CONNECTION_TIMEOUT_MS = 500;
 // Define the systems on this board
 // TODO: move this board.h?
 platypus::Led rgb_led;
+
+void RC_listener()
+{
+  if (pRC != NULL)
+  {
+    pRC->update();
+    delay(200);
+    if (pRC->isOverrideEnabled())
+    {
+      // set motor velocities
+    }
+    yield();
+  }
+}
+
+
 
 /**
  * Wrapper for ADK send command that copies data to debug port.
@@ -193,10 +212,15 @@ void setup()
   
   // TODO: replace this with smart hooks.
   // Initialize sensors
+   
   platypus::sensors[0] = new platypus::ServoSensor(0);
-  platypus::sensors[1] = new platypus::GY26Compass(1);
-  platypus::sensors[2] = new platypus::GY26Compass(2);
-  platypus::sensors[3] = new platypus::GY26Compass(3);
+  platypus::sensors[1] = new platypus::AtlasDO(1);
+  pRC = (platypus::RC *) new platypus::RC_SBUS(2); // due to -fno-rtti flag I cannot downcast from Sensor to RC, so only upcast
+  platypus::sensors[2] = pRC;
+  platypus::sensors[3] = new platypus::ES2(3);
+
+  // pRC = dynamic_cast<platypus::RC *>(platypus::sensors[2]); // dynamic_cast downcast from Sensor to RC
+  Scheduler.startLoop(RC_listener);
   
   // Initialize motors
   platypus::motors[0] = new platypus::Dynamite(0);

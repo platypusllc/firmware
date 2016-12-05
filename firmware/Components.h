@@ -15,6 +15,8 @@ namespace rc {
     THRUST_SCALE = 3,
     RUDDER_SCALE = 4
   };
+
+  const int RAW_CHANNEL_COUNT = 18;
 }
 
 namespace platypus 
@@ -258,11 +260,11 @@ namespace platypus
     uint32_t desired_acceleration_;
   };
 
-  class RC : public Sensor
+  class RC : virtual public Sensor // virtual inheritance to avoid diamond inheritance problem in RC_SBUS
   {
   public:
     RC(int channel);
-    char *name();
+    virtual char *name();
     float getThrust();
     float getRudder();
     float getOverride();
@@ -271,7 +273,8 @@ namespace platypus
   protected:
     float getRCChannelValue(int RCchannel);
     bool  overrideEnabled;
-    float channel_values[16];
+    int raw_channel_values[rc::RAW_CHANNEL_COUNT];
+    float scaled_channel_values[16];
     float thrust_scale;
     float rudder_scale;
     int thrust_pin;
@@ -285,24 +288,32 @@ namespace platypus
     void update();
   private:
     //RC transmitter PWM break points
-    int min_throttle = 1000;
-    int max_throttle = 1975;
-    int mid_throttle = 1471;
+    const int min_throttle = 1000;
+    const int max_throttle = 1975;
+    const int mid_throttle = 1471;
 
-    int left_rudder = 1000;
-    int right_rudder = 2000;
+    const int left_rudder = 1000;
+    const int right_rudder = 2000;
     
-    int override_low = 980*0.95;
-    int override_high = 1966*1.05;
-    int override_threshold_l = 1500*0.9;
-    int override_threshold_h = 1500*1.1;  
+    const int override_low = 980*0.95;
+    const int override_high = 1966*1.05;
+    const int override_threshold_l = 1500*0.9;
+    const int override_threshold_h = 1500*1.1;  
   };
 
-  class RC_SBUS : public RC
+
+
+  class RC_SBUS : public RC, public SerialSensor
   {
   public:
     RC_SBUS(int channel);
+    char * name();
     void update();
+    void onSerial();
+  
+  private:
+    int failsafe_status;
+    uint8_t sbusData[25];  
   };
 }
 

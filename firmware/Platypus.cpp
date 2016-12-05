@@ -357,8 +357,8 @@ Sensor::Sensor(int channel)
   SERIAL_HANDLERS[channel] = handler;
 }
 
-void Sensor::calibrate(int flag){
-  
+void Sensor::calibrate(int flag)
+{  
 }
 
 Sensor::~Sensor()
