@@ -260,11 +260,10 @@ namespace platypus
     uint32_t desired_acceleration_;
   };
 
-  class RC : virtual public Sensor // virtual inheritance to avoid diamond inheritance problem in RC_SBUS
+  class RC
   {
   public:
     RC(int channel);
-    virtual char *name();
     float getThrust();
     float getRudder();
     float getOverride();
@@ -282,10 +281,11 @@ namespace platypus
     int override_pin;
   };
 
-  class RC_PWM : public RC {
+  class RC_PWM : public RC, public Sensor {
   public:
     RC_PWM(int channel);
-    void update();
+    char * name();
+    void update();    
   private:
     //RC transmitter PWM break points
     const int min_throttle = 1000;

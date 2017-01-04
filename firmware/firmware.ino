@@ -215,13 +215,14 @@ void setup()
    
   platypus::sensors[0] = new platypus::ServoSensor(0);
   platypus::sensors[1] = new platypus::AtlasDO(1);
-  pRC = (platypus::RC *) new platypus::RC_SBUS(2); // due to -fno-rtti flag I cannot downcast from Sensor to RC, so only upcast
-  platypus::sensors[2] = pRC;
-  platypus::sensors[3] = new platypus::ES2(3);
 
-  // pRC = dynamic_cast<platypus::RC *>(platypus::sensors[2]); // dynamic_cast downcast from Sensor to RC
+  platypus::RC_SBUS * ptemp = new platypus::RC_SBUS(2);
+  pRC = ptemp; // need to set the global RC pointer
+  platypus::sensors[2] = ptemp;
   Scheduler.startLoop(RC_listener);
   
+  platypus::sensors[3] = new platypus::ES2(3);
+
   // Initialize motors
   platypus::motors[0] = new platypus::Dynamite(0);
   platypus::motors[1] = new platypus::Dynamite(1);

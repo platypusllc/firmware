@@ -908,18 +908,12 @@ uint32_t Winch::encoder(bool *valid)
   return enc1;
 }
 
-RC::RC(int channel)
-: Sensor(channel), 
-  thrust_pin(board::SENSOR[channel].GPIO[board::RX_POS]),
-  rudder_pin(board::SENSOR[channel].GPIO[board::RX_NEG]),
-  override_pin(board::SENSOR[channel].GPIO[board::TX_POS])
+RC::RC(int channel) 
+:  thrust_pin(board::SENSOR[channel].GPIO[board::RX_POS]),
+   rudder_pin(board::SENSOR[channel].GPIO[board::RX_NEG]),
+   override_pin(board::SENSOR[channel].GPIO[board::TX_POS])
 {
   memset(raw_channel_values, 0, rc::RAW_CHANNEL_COUNT);
-}
-
-char * RC::name()
-{
-  return "RC_Controller";
 }
 
 bool  RC::isOverrideEnabled() {return overrideEnabled;}
@@ -942,6 +936,11 @@ RC_PWM::RC_PWM(int channel)
   attachInterrupt(rudder_pin, rc::rudderInterrupt, CHANGE);
   attachInterrupt(thrust_pin, rc::throttleInterrupt, CHANGE);
   attachInterrupt(override_pin, rc::overrideInterrupt, CHANGE);  
+}
+
+char * RC_PWM::name()
+{
+  return "RC_PWM_Controller";
 }
 
 void RC_PWM::update()
