@@ -146,15 +146,9 @@ void handleCommand(char *buffer)
       break;
 
     case 'i': // Sensor instantiation command
-      delete platypus::sensors[object_index]; // free the memory
-      
-      platypus::sensors[object_index] = NULL; // prevent undefined behavior
-      /* What if this is called after the != NULL checks?
-       * Then every use of the sensor's onLoop would deference a null and explode.
-       * That would be in the middle of the platypusLoop() call.
-       * Is that even possible on a single core like this? 
-       * 
-       */      
+      delete platypus::sensors[object_index]; // free the memory      
+      platypus::sensors[object_index] = &(platypus::Sensor::dummy());
+     
       { // enclosing scope for new objects in switch-case
         const char * sensor_type = it->value;
         if (strcmp(sensor_type, "AtlasDO") == 0)
@@ -172,7 +166,11 @@ void handleCommand(char *buffer)
         else if (strcmp(sensor_type, "GY26Compass") == 0)
         {
           platypus::sensors[object_index] = new platypus::GY26Compass(object_index);
-        }   
+        }  
+        else if (strcmp(sensor_type, "HDS") == 0)
+        {
+          platypus::sensors[object_index] = new platypus::HDS(object_index);
+        }  
       }
       continue;
 

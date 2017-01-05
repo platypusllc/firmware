@@ -311,6 +311,11 @@ void Motor::onLoop_(void *data)
   self->loop();
 }
 
+Sensor::Sensor()
+: channel_(0)
+{  
+}
+
 Sensor::Sensor(int channel) 
 : channel_(channel)
 {  
@@ -371,6 +376,11 @@ bool Sensor::set(const char* param, const char* value)
   return false;
 }
 
+char * Sensor::name()
+{
+  return "dummy";
+}
+
 void Sensor::onSerial() 
 {
   // Default to doing nothing on serial events. 
@@ -394,3 +404,10 @@ void Sensor::onLoop_(void *data)
   Sensor *self = (Sensor*)data;
   self->loop();
 }
+
+Sensor &Sensor::dummy()
+{
+  static Sensor dummy;
+  return dummy;
+}
+

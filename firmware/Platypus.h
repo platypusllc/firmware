@@ -85,11 +85,12 @@ namespace platypus
   class Sensor : public Configurable
   {
   public:
+    Sensor(); // for dummy use only
     Sensor(int channel);
     virtual ~Sensor();
     
     virtual bool set(const char* param, const char* value);
-    virtual char *name() = 0;
+    virtual char *name(); // cannot be purely virtual if we want the static dummy
     virtual void onSerial();
     virtual void loop();
 
@@ -101,6 +102,12 @@ namespace platypus
     static void onSerial_(void *data);
     static void onLoop_(void *data);
     virtual void calibrate(int flag);
+    static Sensor & dummy();
+  };
+
+  class DummySensor : public Sensor
+  {
+   
   };
   
   extern platypus::Motor *motors[board::NUM_MOTORS];
