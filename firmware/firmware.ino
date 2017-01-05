@@ -145,6 +145,37 @@ void handleCommand(char *buffer)
       target_object = platypus::sensors[object_index];
       break;
 
+    case 'i': // Sensor instantiation command
+      delete platypus::sensors[object_index]; // free the memory
+      
+      platypus::sensors[object_index] = NULL; // prevent undefined behavior
+      /* What if this is called after the != NULL checks?
+       * Then every use of the sensor's onLoop would deference a null and explode.
+       * That would be in the middle of the platypusLoop() call.
+       * Is that even possible on a single core like this? 
+       * 
+       */      
+      { // enclosing scope for new objects in switch-case
+        const char * sensor_type = it->value;
+        if (strcmp(sensor_type, "AtlasDO") == 0)
+        {
+          platypus::sensors[object_index] = new platypus::AtlasDO(object_index);
+        }
+        else if (strcmp(sensor_type, "AtlasPH") == 0)
+        {
+          platypus::sensors[object_index] = new platypus::AtlasPH(object_index);
+        }
+        else if (strcmp(sensor_type, "ES2") == 0)
+        {
+          platypus::sensors[object_index] = new platypus::ES2(object_index);
+        }        
+        else if (strcmp(sensor_type, "GY26Compass") == 0)
+        {
+          platypus::sensors[object_index] = new platypus::GY26Compass(object_index);
+        }   
+      }
+      continue;
+
     default: // Unrecognized target
       reportError("Unknown command target.", buffer);
       return;
@@ -153,7 +184,7 @@ void handleCommand(char *buffer)
     // Extract JsonObject with param:value pairs
     JsonObject& params = it->value;
 
-    // Todo: Move this parsing to specific components and pass ref to params instead
+    // TODO: Move this parsing to specific components and pass ref to params instead
     // Iterate over and set parameter:value pairs on target object
     for (JsonObject::iterator paramIt=params.begin(); paramIt!=params.end(); ++paramIt)
     {
@@ -190,13 +221,14 @@ void setup()
 
   // Start the system in the disconnected state
   system_state = DISCONNECTED;
-  
-  // TODO: replace this with smart hooks.
+    
+  /*
   // Initialize sensors
   platypus::sensors[0] = new platypus::ServoSensor(0);
   platypus::sensors[1] = new platypus::GY26Compass(1);
   platypus::sensors[2] = new platypus::GY26Compass(2);
   platypus::sensors[3] = new platypus::GY26Compass(3);
+  */
   
   // Initialize motors
   platypus::motors[0] = new platypus::Dynamite(0);
