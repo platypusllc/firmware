@@ -297,7 +297,7 @@ void SerialSensor::onSerial(){
 
 // Known working values: measurementInterval = 1500, minReadTime = 350 (min difference seems to be 1150)
 ES2::ES2(int channel)
-  : Sensor(channel), PoweredSensor(channel, false), SerialSensor(channel, 1200, RS232, 3), measurementInterval(1500), minReadTime(350)//minDataLength filters out "q>"
+  : Sensor(channel), PoweredSensor(channel, false), SerialSensor(channel, 1200, RS232, 3), measurementInterval(3000), minReadTime(700)//minDataLength filters out "q>"
 {
   lastMeasurementTime = 0;
   state = OFF;
@@ -310,7 +310,6 @@ char* ES2::name()
 
 void ES2::loop()
 {
-
   switch (state){
     case IDLE:
     // Sensor should not enter this state
