@@ -100,14 +100,10 @@ namespace platypus
     
   public:
     static void onSerial_(void *data);
+    static void onSerialDummy_(void *data);
     static void onLoop_(void *data);
     virtual void calibrate(int flag);
     static Sensor & dummy();
-  };
-
-  class DummySensor : public Sensor
-  {
-   
   };
   
   extern platypus::Motor *motors[board::NUM_MOTORS];

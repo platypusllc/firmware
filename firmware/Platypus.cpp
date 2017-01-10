@@ -358,7 +358,7 @@ Sensor::Sensor(int channel)
   digitalWrite(board::SENSOR[channel].PWR_ENABLE, LOW);
   
   // Register serial event handler
-  SerialHandler_t handler = {Sensor::onSerial_, this}; 
+  SerialHandler_t handler = {Sensor::onSerial_, this};
   SERIAL_HANDLERS[channel] = handler;
 }
 
@@ -391,6 +391,11 @@ void Sensor::onSerial_(void *data)
   // Resolve self-reference and call member function.
   Sensor *self = (Sensor*)data;
   self->onSerial();
+}
+
+void Sensor::onSerialDummy_(void *data)
+{
+  
 }
 
 void Sensor::loop()

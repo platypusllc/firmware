@@ -156,6 +156,8 @@ void handleCommand(char *buffer)
         Serial.println("   Not a dummy sensor. Freeing the memory.");
         delete platypus::sensors[object_index]; // free the memory      
         platypus::sensors[object_index] = &(platypus::Sensor::dummy()); // temporarily point to the dummy sensor again
+        platypus::SerialHandler_t handler = {platypus::Sensor::onSerialDummy_, platypus::sensors[object_index]};
+        platypus::SERIAL_HANDLERS[object_index] = handler;
       }      
       { // enclosing scope for new objects in switch-case
         const char * sensor_type = it->value;
