@@ -2,6 +2,11 @@
 #include "Components.h"
 #include <adk.h>
 
+//////////////////////////////////////////////////////////////////////////////////////
+#include <malloc.h>
+#include <stdlib.h>
+//////////////////////////////////////////////////////////////////////////////////////
+
 // Arduino headers used in Platypus.h
 // (informs the IDE to link these libraries)
 #include <Servo.h>
@@ -20,6 +25,52 @@ char companyName[] = "Platypus LLC";
 char versionNumber[] = "3.0";
 char serialNumber[] = "3";
 char url[] = "http://senseplatypus.com";
+
+
+//////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////
+extern char _end;
+extern "C" char *sbrk(int i);
+char *ramstart=(char *)0x20070000;
+char *ramend=(char *)0x20088000;
+
+void ShowMemory(void)
+{
+  struct mallinfo mi=mallinfo();
+
+  char *heapend=sbrk(0);
+  register char * stack_ptr asm("sp");
+  Serial.println("*********************************************");
+  Serial.print("    arena = "); Serial.println(mi.arena);
+  Serial.print("    ordblks = "); Serial.println(mi.ordblks);
+  Serial.print("    uordblks = "); Serial.println(mi.uordblks);
+  Serial.print("    fordblks = "); Serial.println(mi.fordblks);
+  Serial.print("    keepcost = "); Serial.println(mi.keepcost);
+  Serial.print("    RAM Start = "); Serial.println((unsigned long)ramstart);
+  Serial.print("    Data/Bss end = "); Serial.println((unsigned long)&_end);
+  Serial.print("    Heap End = "); Serial.println((unsigned long)heapend);
+  Serial.print("    Stack Ptr = "); Serial.println((unsigned long)stack_ptr);
+  Serial.print("    RAM End = "); Serial.println((unsigned long)ramend);
+  Serial.print("    Heap RAM Used = "); Serial.println(mi.uordblks);
+  Serial.print("    Program RAM Used = "); Serial.println(&_end - ramstart);
+  Serial.print("    Stack RAM Used = "); Serial.println(ramend - stack_ptr);
+  Serial.print("    Estimated Free RAM = "); Serial.println(stack_ptr - heapend + mi.fordblks);
+  Serial.println("*********************************************");
+}
+void memoryWatch()
+{
+  while(1)
+  {
+    ShowMemory();
+    delay(5000);
+  }
+}
+//////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////
+
+
 
 // ADK USB Host
 USBHost Usb;
@@ -74,8 +125,7 @@ void send(char *str)
   if (adk.isReady()) adk.write(len, (uint8_t*)str);
   
   // Copy string to debugging console.
-  //Serial.print("-> ");
-  Serial.print(str);
+  // Serial.print(str);
 }
 
 /**
@@ -266,6 +316,9 @@ void setup()
   Scheduler.startLoop(motorUpdateLoop);
   Scheduler.startLoop(serialConsoleLoop);
   Scheduler.startLoop(batteryUpdateLoop);
+  /////////////////////////////////////////////////////////////////////////////////////////
+  Scheduler.startLoop(memoryWatch);
+  /////////////////////////////////////////////////////////////////////////////////////////
 
   // Initialize Platypus library.
   platypus::init();
