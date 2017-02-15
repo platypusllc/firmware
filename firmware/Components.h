@@ -16,7 +16,7 @@ namespace rc {
     RUDDER_SCALE = 4
   };
 
-  const int RAW_CHANNEL_COUNT = 18;
+  const int CHANNEL_COUNT = 16;
 }
 
 namespace platypus 
@@ -136,7 +136,7 @@ namespace platypus
   class SerialSensor : virtual public Sensor
   {
   public:
-    SerialSensor(int channel, int baudRate, int serialType = RS232, int dataStringLength = 0, UARTClass::UARTModes serialConfig = SERIAL_8N1);
+    SerialSensor(int channel, int baudRate, int serialType = RS232, int dataStringLength = 0);
     virtual char * name() = 0;
     void onSerial();
 
@@ -272,8 +272,8 @@ namespace platypus
   protected:
     float getRCChannelValue(int RCchannel);
     bool  overrideEnabled;
-    int raw_channel_values[rc::RAW_CHANNEL_COUNT];
-    float scaled_channel_values[16];
+    uint16_t raw_channel_values[rc::CHANNEL_COUNT];
+    float scaled_channel_values[rc::CHANNEL_COUNT];
     float thrust_scale;
     float rudder_scale;
     int thrust_pin;
@@ -314,7 +314,7 @@ namespace platypus
   private:
     int failsafe_status;
     uint8_t packet[SBUS_FRAME_SIZE];
-    uint8_t sbusData[SBUS_FRAME_SIZE];  
+    unsigned long old_time;
   };
 }
 

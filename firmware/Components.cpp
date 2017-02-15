@@ -230,7 +230,7 @@ bool PoweredSensor::powerOff(){
   }
 }
 
-SerialSensor::SerialSensor(int channel, int baudRate, int serialType, int dataStringLength, UARTClass::UARTModes serialConfig) 
+SerialSensor::SerialSensor(int channel, int baudRate, int serialType, int dataStringLength) 
   : Sensor(channel), recv_index_(0)
 {
   baud_ = baudRate;
@@ -255,7 +255,7 @@ SerialSensor::SerialSensor(int channel, int baudRate, int serialType, int dataSt
     digitalWrite(board::SENSOR[channel].RS485_232, HIGH);
   }
   
-  SERIAL_PORTS[channel]->begin(baudRate, serialConfig);
+  SERIAL_PORTS[channel]->begin(baudRate);
 }
 
 void SerialSensor::onSerial(){
@@ -913,7 +913,7 @@ RC::RC(int channel)
    rudder_pin(board::SENSOR[channel].GPIO[board::RX_NEG]),
    override_pin(board::SENSOR[channel].GPIO[board::TX_POS])
 {
-  memset(raw_channel_values, 0, rc::RAW_CHANNEL_COUNT*sizeof(int));
+  memset(raw_channel_values, 0, rc::CHANNEL_COUNT*sizeof(uint8_t));
 }
 
 bool  RC::isOverrideEnabled() {return overrideEnabled;}
@@ -998,9 +998,13 @@ void RC_PWM::update()
 }
 
 RC_SBUS::RC_SBUS(int channel)
-: Sensor(channel), SerialSensor(channel, SBUS_BAUDRATE, 0, SERIAL_8E2), RC(channel)
+: Sensor(channel), SerialSensor(channel, SBUS_BAUDRATE), RC(channel)
 {
   ////////// IMPORTANT NOTE: in the SBUS library they use "_serial.begin(100000, SERIAL_8E2);"
+  recv_index_ = 0;
+  old_time = millis();
+  //SERIAL_PORTS[channel]->end();
+  SERIAL_PORTS[channel]->begin(SBUS_BAUDRATE, SERIAL_8E2);
 }
 
 char * RC_SBUS::name()
@@ -1011,8 +1015,8 @@ char * RC_SBUS::name()
 void RC_SBUS::update()
 {
   // Update the override status and float channels
-  //Serial.println("RC raw channel values: ");
-  //for (int i = 0; i < rc::RAW_CHANNEL_COUNT; i++)
+
+  /*
   raw_channel_values[0]  = ((sbusData[1]    |sbusData[2]<<8)                       & 0x07FF);
   Serial.println("");
   Serial.print("r1 = "); Serial.println(sbusData[1], BIN);
@@ -1021,86 +1025,66 @@ void RC_SBUS::update()
   Serial.print("0x07FF = "); Serial.println(0x07FF, BIN);
   Serial.print("r1|r2 & 0x07FF = "); Serial.println(raw_channel_values[0], BIN);
   Serial.print("dec value = "); Serial.println(raw_channel_values[0], DEC);
+  */
 }
 
 void RC_SBUS::onSerial()
 {  
   uint8_t c = SERIAL_PORTS[channel_]->read();
-  
-    
-  if (recv_index_ < DEFAULT_BUFFER_SIZE) // protect against buffer overflow
+  if (recv_index_ < SBUS_FRAME_SIZE)
   {
-    if (recv_index_ == 0 && c != SBUS_STARTBYTE) // incorrect start byte, out of sync
-    {    
-      //Serial.println("RC_SBUS: incorrect start byte, out of sync");
-      return; // throw away the byte until we sync
-    }    
-    packet[recv_index_] = c;
-
-    // We are looking for 25 characters that end with SBUS_ENDBYTE, not \r and \n characters
-    if (recv_index_ == SBUS_FRAME_SIZE-1)
-    {           
-      if (packet[SBUS_FRAME_SIZE-1] != SBUS_ENDBYTE) // incorrect end byte, out of sync
-      {
-        //Serial.println("RC_SBUS: incorrect end byte, out of sync");
-        //memset(packet, 0, SBUS_FRAME_SIZE);        
-        recv_index_ = 0; // reset the index
-        return; // throw away all 25 bytes
-      }
-
-      /*
-      for (int i = 0; i < SBUS_FRAME_SIZE; i++)
-      {
-        Serial.print("  "); Serial.print(recv_buffer_[i], HEX);
-      }
-      Serial.println("");
-      */      
-
-      /*
-      //Serial.println("RC_SBUS: received SBUS chunk. Parsing...");
-      raw_channel_values[0]  = ((recv_buffer_[1]    |recv_buffer_[2]<<8)                       & 0x07FF);
-      raw_channel_values[1]  = ((recv_buffer_[2]>>3 |recv_buffer_[3]<<5)                       & 0x07FF);
-      raw_channel_values[2]  = ((recv_buffer_[3]>>6 |recv_buffer_[4]<<2 |recv_buffer_[5]<<10)  & 0x07FF);
-      raw_channel_values[3]  = ((recv_buffer_[5]>>1 |recv_buffer_[6]<<7)                       & 0x07FF);
-      raw_channel_values[4]  = ((recv_buffer_[6]>>4 |recv_buffer_[7]<<4)                       & 0x07FF);
-      raw_channel_values[5]  = ((recv_buffer_[7]>>7 |recv_buffer_[8]<<1 |recv_buffer_[9]<<9)   & 0x07FF);
-      raw_channel_values[6]  = ((recv_buffer_[9]>>2 |recv_buffer_[10]<<6)                      & 0x07FF);
-      raw_channel_values[7]  = ((recv_buffer_[10]>>5|recv_buffer_[11]<<3)                      & 0x07FF);
-      raw_channel_values[8]  = ((recv_buffer_[12]   |recv_buffer_[13]<<8)                      & 0x07FF);
-      raw_channel_values[9]  = ((recv_buffer_[13]>>3|recv_buffer_[14]<<5)                      & 0x07FF);
-      raw_channel_values[10] = ((recv_buffer_[14]>>6|recv_buffer_[15]<<2|recv_buffer_[16]<<10) & 0x07FF);
-      raw_channel_values[11] = ((recv_buffer_[16]>>1|recv_buffer_[17]<<7)                      & 0x07FF);
-      raw_channel_values[12] = ((recv_buffer_[17]>>4|recv_buffer_[18]<<4)                      & 0x07FF);
-      raw_channel_values[13] = ((recv_buffer_[18]>>7|recv_buffer_[19]<<1|recv_buffer_[20]<<9)  & 0x07FF);
-      raw_channel_values[14] = ((recv_buffer_[20]>>2|recv_buffer_[21]<<6)                      & 0x07FF);
-      raw_channel_values[15] = ((recv_buffer_[21]>>5|recv_buffer_[22]<<3)                      & 0x07FF);
-      
-      ((recv_buffer_[23])      & 0x0001) ? raw_channel_values[16] = 2047: raw_channel_values[16] = 0;
-      ((recv_buffer_[23] >> 1) & 0x0001) ? raw_channel_values[17] = 2047: raw_channel_values[17] = 0;
-  
-      if ((recv_buffer_[23] >> 3) & 0x0001) {
-        failsafe_status = SBUS_FAILSAFE_ACTIVE;
-      } else {
-        failsafe_status = SBUS_FAILSAFE_INACTIVE;
-      }    
-      */
-      memcpy(sbusData, packet, SBUS_FRAME_SIZE);     
-      //memset(packet, 0, SBUS_FRAME_SIZE);
-      recv_index_ = 0; // reset the index
-
-      /*
-      for (int i = 0; i < 4; i++)
-      {
-        //int value = lround(raw_channel_values[i]/9.92) - 100.;
-        int value = raw_channel_values[i];
-        Serial.print("  "); Serial.print(i+1); Serial.print(" = "); Serial.print(value);
-      }
-      Serial.println("");      
-      */
-      
+    if (recv_index_ == 0 && c != SBUS_STARTBYTE)
+    {
       return;
-    }    
-    ++recv_index_; // keep filling the buffer
-  }   
+    }
+    /*
+    else if (recv_index_ == 0 && c == SBUS_STARTBYTE)
+    {
+      Serial.println("RC_SBUS:  sync'd START");
+    }
+    */
+
+    packet[recv_index_] = c;
+    if (recv_index_ == (SBUS_FRAME_SIZE-1))
+    {
+      recv_index_ = 0;
+      if (packet[SBUS_FRAME_SIZE-1] != SBUS_ENDBYTE)
+      {
+        return;
+      }
+
+      uint16_t ch[] = 
+      {
+        ((packet[1] | packet[2]<<8) & 0x07FF),
+        ((packet[2]>>3 |packet[3]<<5) & 0x07FF),
+        ((packet[3]>>6 |packet[4]<<2 |packet[5]<<10)  & 0x07FF),
+        ((packet[5]>>1 |packet[6]<<7)  & 0x07FF),
+        ((packet[6]>>4 |packet[7]<<4) & 0x07FF)        
+      };
+
+      int valid_count = 0;
+      for (int i = 0; i < 5; i++)
+      {
+        if (ch[i] < 150 || ch[i] > 1820) continue;
+        valid_count++;
+        raw_channel_values[i] = ch[i];
+        Serial.print("    ch"); Serial.print(i); Serial.print(" = "); Serial.print(raw_channel_values[i], DEC);
+      }
+      if (valid_count)
+      {
+        unsigned long t = millis();
+        Serial.print("    "); Serial.print(t - old_time); Serial.println(" ms since last valid update");
+        old_time = t;        
+      }
+    }
+    else
+    {
+      recv_index_++;
+    }
+  }
+  else
+  {
+    recv_index_ = 0; // went into buffer overflow territory -- this should never occur
+  }
 }
 
