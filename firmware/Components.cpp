@@ -230,7 +230,7 @@ bool PoweredSensor::powerOff(){
   }
 }
 
-SerialSensor::SerialSensor(int channel, int baudRate, int serialType, int dataStringLength) 
+SerialSensor::SerialSensor(int channel, int baudRate, int serialType, int dataStringLength, UARTClass::UARTModes serialConfig) 
   : Sensor(channel), recv_index_(0)
 {
   baud_ = baudRate;
@@ -255,7 +255,7 @@ SerialSensor::SerialSensor(int channel, int baudRate, int serialType, int dataSt
     digitalWrite(board::SENSOR[channel].RS485_232, HIGH);
   }
   
-  SERIAL_PORTS[channel]->begin(baudRate);
+  SERIAL_PORTS[channel]->begin(baudRate, serialConfig);
 }
 
 void SerialSensor::onSerial(){
@@ -913,7 +913,7 @@ RC::RC(int channel)
    rudder_pin(board::SENSOR[channel].GPIO[board::RX_NEG]),
    override_pin(board::SENSOR[channel].GPIO[board::TX_POS])
 {
-  memset(raw_channel_values, 0, rc::RAW_CHANNEL_COUNT);
+  memset(raw_channel_values, 0, rc::RAW_CHANNEL_COUNT*sizeof(int));
 }
 
 bool  RC::isOverrideEnabled() {return overrideEnabled;}
@@ -998,10 +998,9 @@ void RC_PWM::update()
 }
 
 RC_SBUS::RC_SBUS(int channel)
-: Sensor(channel), SerialSensor(channel, SBUS_BAUDRATE), RC(channel)
+: Sensor(channel), SerialSensor(channel, SBUS_BAUDRATE, 0, SERIAL_8E2), RC(channel)
 {
   ////////// IMPORTANT NOTE: in the SBUS library they use "_serial.begin(100000, SERIAL_8E2);"
-  //////////                 Does that config option have to be there? If so, I don't know if I can use SerialSensor.
 }
 
 char * RC_SBUS::name()
@@ -1012,30 +1011,53 @@ char * RC_SBUS::name()
 void RC_SBUS::update()
 {
   // Update the override status and float channels
+  //Serial.println("RC raw channel values: ");
+  //for (int i = 0; i < rc::RAW_CHANNEL_COUNT; i++)
+  raw_channel_values[0]  = ((sbusData[1]    |sbusData[2]<<8)                       & 0x07FF);
+  Serial.println("");
+  Serial.print("r1 = "); Serial.println(sbusData[1], BIN);
+  Serial.print("r2 = "); Serial.println(sbusData[2]<<8, BIN);
+  Serial.print("r1|r2 = "); Serial.println((sbusData[1]    |sbusData[2]<<8), BIN);
+  Serial.print("0x07FF = "); Serial.println(0x07FF, BIN);
+  Serial.print("r1|r2 & 0x07FF = "); Serial.println(raw_channel_values[0], BIN);
+  Serial.print("dec value = "); Serial.println(raw_channel_values[0], DEC);
 }
 
 void RC_SBUS::onSerial()
 {  
-  char c = SERIAL_PORTS[channel_]->read();
+  uint8_t c = SERIAL_PORTS[channel_]->read();
+  
     
   if (recv_index_ < DEFAULT_BUFFER_SIZE) // protect against buffer overflow
   {
     if (recv_index_ == 0 && c != SBUS_STARTBYTE) // incorrect start byte, out of sync
     {    
+      //Serial.println("RC_SBUS: incorrect start byte, out of sync");
       return; // throw away the byte until we sync
     }    
-    recv_buffer_[recv_index_] = c;
+    packet[recv_index_] = c;
 
     // We are looking for 25 characters that end with SBUS_ENDBYTE, not \r and \n characters
-    if (recv_index_ == 24)
-    {
-      recv_index_ = 0; // reset the index
-      
-      if (recv_buffer_[24] != SBUS_ENDBYTE) // incorrect end byte, out of sync
+    if (recv_index_ == SBUS_FRAME_SIZE-1)
+    {           
+      if (packet[SBUS_FRAME_SIZE-1] != SBUS_ENDBYTE) // incorrect end byte, out of sync
       {
+        //Serial.println("RC_SBUS: incorrect end byte, out of sync");
+        //memset(packet, 0, SBUS_FRAME_SIZE);        
+        recv_index_ = 0; // reset the index
         return; // throw away all 25 bytes
       }
-  
+
+      /*
+      for (int i = 0; i < SBUS_FRAME_SIZE; i++)
+      {
+        Serial.print("  "); Serial.print(recv_buffer_[i], HEX);
+      }
+      Serial.println("");
+      */      
+
+      /*
+      //Serial.println("RC_SBUS: received SBUS chunk. Parsing...");
       raw_channel_values[0]  = ((recv_buffer_[1]    |recv_buffer_[2]<<8)                       & 0x07FF);
       raw_channel_values[1]  = ((recv_buffer_[2]>>3 |recv_buffer_[3]<<5)                       & 0x07FF);
       raw_channel_values[2]  = ((recv_buffer_[3]>>6 |recv_buffer_[4]<<2 |recv_buffer_[5]<<10)  & 0x07FF);
@@ -1061,6 +1083,20 @@ void RC_SBUS::onSerial()
       } else {
         failsafe_status = SBUS_FAILSAFE_INACTIVE;
       }    
+      */
+      memcpy(sbusData, packet, SBUS_FRAME_SIZE);     
+      //memset(packet, 0, SBUS_FRAME_SIZE);
+      recv_index_ = 0; // reset the index
+
+      /*
+      for (int i = 0; i < 4; i++)
+      {
+        //int value = lround(raw_channel_values[i]/9.92) - 100.;
+        int value = raw_channel_values[i];
+        Serial.print("  "); Serial.print(i+1); Serial.print(" = "); Serial.print(value);
+      }
+      Serial.println("");      
+      */
       
       return;
     }    

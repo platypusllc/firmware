@@ -136,7 +136,7 @@ namespace platypus
   class SerialSensor : virtual public Sensor
   {
   public:
-    SerialSensor(int channel, int baudRate, int serialType = RS232, int dataStringLength = 0);
+    SerialSensor(int channel, int baudRate, int serialType = RS232, int dataStringLength = 0, UARTClass::UARTModes serialConfig = SERIAL_8N1);
     virtual char * name() = 0;
     void onSerial();
 
@@ -313,7 +313,8 @@ namespace platypus
   
   private:
     int failsafe_status;
-    uint8_t sbusData[25];  
+    uint8_t packet[SBUS_FRAME_SIZE];
+    uint8_t sbusData[SBUS_FRAME_SIZE];  
   };
 }
 
