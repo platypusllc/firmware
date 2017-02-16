@@ -65,10 +65,13 @@ void RC_listener()
   if (pRC != NULL)
   {
     pRC->update();
-    delay(200);
+    delay(100);
     if (pRC->isOverrideEnabled())
     {
+      if(!platypus::motors[0]->enabled()) platypus::motors[0]->enable();
+      if(!platypus::motors[1]->enabled()) platypus::motors[1]->enable();
       // set motor velocities
+      pRC->motorSignals();
     }
     yield();
   }
@@ -150,6 +153,11 @@ void handleCommand(char *buffer)
         return;
       }
 
+      if (pRC != NULL)
+      {
+        if (pRC->isOverrideEnabled()) continue; // ignore motor signals from the phone if RC is enabled
+      }
+
       target_object = platypus::motors[object_index];
       break;
       
@@ -163,6 +171,21 @@ void handleCommand(char *buffer)
 
       target_object = platypus::sensors[object_index];
       break;
+
+    case 't': // vehicle type command
+      { // enclosing scope for new objects in switch-case
+        const char * type = it->value;
+        if (strcmp(type, "Prop") == 0)
+        {
+          rc::vehicle_type = rc::VehicleType::PROP;
+        }
+        else if (strcmp(type, "Air") == 0)
+        {
+          rc::vehicle_type = rc::VehicleType::AIR;
+        }
+        Serial.println("");
+      }
+      continue;
 
     default: // Unrecognized target
       reportError("Unknown command target.", buffer);
@@ -248,13 +271,13 @@ void setup()
   platypus::init();
   
   // Print header indicating that board successfully initialized
-  /*Serial.println(F("------------------------------"));
+  Serial.println(F("------------------------------"));
   Serial.println(companyName);
   Serial.println(url);
   Serial.println(accessoryName);
   Serial.println(versionNumber);
   Serial.println(F("------------------------------"));
-  */
+  
   // Turn LED off
   // TODO: Investigate how this gets turned on in the first place
   rgb_led.set(0, 0, 0);
@@ -404,10 +427,21 @@ void motorUpdateLoop()
     for (size_t motor_idx = 0; motor_idx < board::NUM_MOTORS; ++motor_idx) 
     {
       platypus::Motor* motor = platypus::motors[motor_idx];
-      if (motor->enabled())
+      bool should_disable = true;
+      if (pRC != NULL)
       {
-        Serial.print("Disabling motor "); Serial.println(motor_idx);
-        motor->disable();
+        if (pRC->isOverrideEnabled())
+        {
+          should_disable = false;
+        }
+      }
+      if (should_disable)
+      {
+        if (motor->enabled())
+        {
+          Serial.print("Disabling motor "); Serial.println(motor_idx);
+          motor->disable();
+        }              
       }
     }
     break;

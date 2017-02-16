@@ -2,6 +2,11 @@
 
 using namespace platypus;
 
+namespace rc
+{
+  rc::VehicleType vehicle_type = rc::VehicleType::PROP; // default is a prop boat
+}
+
 #define WAIT_FOR_CONDITION(condition, timeout_ms) for (unsigned int j = 0; j < (timeout_ms) && !(condition); ++j) delay(1);
 
 // TODO: move these somewhere reasonable
@@ -916,12 +921,38 @@ RC::RC(int channel)
   memset(raw_channel_values, 0, rc::CHANNEL_COUNT*sizeof(uint8_t));
 }
 
-bool  RC::isOverrideEnabled() {return overrideEnabled;}
-float RC::getRCChannelValue(int channel) { return scaled_channel_values[channel]; }
-float RC::getThrust() { return getRCChannelValue(rc::THRUST); }
-float RC::getRudder() { return getRCChannelValue(rc::RUDDER); }
-float RC::getOverride() { return getRCChannelValue(rc::OVERRIDE); }
-void  RC::update() {/*I'm virtual!*/};
+bool RC::isOverrideEnabled() {return override_enabled;}
+void RC::motorSignals()
+{
+  float thrust_fraction = scaled_channel_values[rc::THRUST_FRACTION]*thrust_scale;
+  float heading_fraction = scaled_channel_values[rc::HEADING_FRACTION];
+  if (rc::vehicle_type == rc::VehicleType::PROP)
+  {    
+    m0 = thrust_fraction + heading_fraction;
+    m1 = thrust_fraction - heading_fraction;
+    float motor_overage = 0;
+    if (abs(m0) > 1.0) motor_overage = sign(m0)*(abs(m0) - 1.0);
+    if (abs(m1) > 1.0) motor_overage = sign(m1)*(abs(m1) - 1.0);
+    float corrected_thrust_fraction = thrust_fraction - motor_overage;
+    m0 = corrected_thrust_fraction + heading_fraction;
+    m1 = corrected_thrust_fraction - heading_fraction;
+  }
+  else if (rc::vehicle_type == rc::VehicleType::AIR)
+  {
+    m0 = thrust_fraction;
+    m1 = heading_fraction;
+  }
+
+  Serial.print("m0 = "); Serial.print(m0);
+  Serial.print("    m1 = "); Serial.println(m1);
+
+  char m[8];
+  sprintf(m, "%.4f", m0);
+  platypus::motors[0]->set("v", m);
+  sprintf(m, "%.4f", m1);
+  platypus::motors[1]->set("v", m);
+}
+void RC::update() {/*I'm virtual!*/};
 
 RC_PWM::RC_PWM(int channel)
 : Sensor(channel), RC(channel)
@@ -957,20 +988,20 @@ void RC_PWM::update()
   {
     //If override was previously enabled, then
     //stop listening to throttle and rudder pins
-    if(overrideEnabled)
+    if(override_enabled)
     {
-      scaled_channel_values[rc::THRUST] = 0;
-      scaled_channel_values[rc::RUDDER] = 0;
+      //scaled_channel_values[rc::THRUST] = 0;
+      //scaled_channel_values[rc::RUDDER] = 0;
     }
-    overrideEnabled = false;
+    override_enabled = false;
   }
   //override pin is above threshold
   else if(scaled_channel_values[rc::OVERRIDE] > override_threshold_h)
   {
-    overrideEnabled = true;    
+    override_enabled = true;    
     //Zero throttle and rudder values to prevent false readings
-    scaled_channel_values[rc::THRUST] = 0;
-    scaled_channel_values[rc::RUDDER] = 0;
+    //scaled_channel_values[rc::THRUST] = 0;
+    //scaled_channel_values[rc::RUDDER] = 0;
   }
   else
   {
@@ -979,19 +1010,19 @@ void RC_PWM::update()
   }
   
   //Read throttle and rudder values if override pin was high
-  if(overrideEnabled )
+  if(override_enabled)
   {
-    scaled_channel_values[rc::THRUST] = (float)map(rc::thrust_pwm, min_throttle, max_throttle, -100, 100)/100.0;
-    scaled_channel_values[rc::RUDDER]   = (float)map(rc::rudder_pwm,left_rudder, right_rudder, -100, 100)/100.0;
-    if(abs(scaled_channel_values[rc::THRUST]) < 0.01) scaled_channel_values[rc::THRUST] = 0;
-    if(abs(scaled_channel_values[rc::RUDDER]) < 0.01) scaled_channel_values[rc::RUDDER] = 0;
+    //scaled_channel_values[rc::THRUST] = (float)map(rc::thrust_pwm, min_throttle, max_throttle, -100, 100)/100.0;
+    //scaled_channel_values[rc::RUDDER]   = (float)map(rc::rudder_pwm,left_rudder, right_rudder, -100, 100)/100.0;
+    //if(abs(scaled_channel_values[rc::THRUST]) < 0.01) scaled_channel_values[rc::THRUST] = 0;
+    //if(abs(scaled_channel_values[rc::RUDDER]) < 0.01) scaled_channel_values[rc::RUDDER] = 0;
   }
   
   //Local update complete - turn on interrupts
    interrupts();
 
   //RC commands are being received - deal with calibration and arming
-  if(overrideEnabled)
+  if(override_enabled)
   {         
     // Arming and calibration           
   }  
@@ -1000,11 +1031,9 @@ void RC_PWM::update()
 RC_SBUS::RC_SBUS(int channel)
 : Sensor(channel), SerialSensor(channel, SBUS_BAUDRATE), RC(channel)
 {
-  ////////// IMPORTANT NOTE: in the SBUS library they use "_serial.begin(100000, SERIAL_8E2);"
   recv_index_ = 0;
   old_time = millis();
-  //SERIAL_PORTS[channel]->end();
-  SERIAL_PORTS[channel]->begin(SBUS_BAUDRATE, SERIAL_8E2);
+  SERIAL_PORTS[channel]->begin(SBUS_BAUDRATE, SERIAL_8E2); // SBUS requires this serial config option!!!
 }
 
 char * RC_SBUS::name()
@@ -1014,18 +1043,30 @@ char * RC_SBUS::name()
 
 void RC_SBUS::update()
 {
-  // Update the override status and float channels
-
-  /*
-  raw_channel_values[0]  = ((sbusData[1]    |sbusData[2]<<8)                       & 0x07FF);
-  Serial.println("");
-  Serial.print("r1 = "); Serial.println(sbusData[1], BIN);
-  Serial.print("r2 = "); Serial.println(sbusData[2]<<8, BIN);
-  Serial.print("r1|r2 = "); Serial.println((sbusData[1]    |sbusData[2]<<8), BIN);
-  Serial.print("0x07FF = "); Serial.println(0x07FF, BIN);
-  Serial.print("r1|r2 & 0x07FF = "); Serial.println(raw_channel_values[0], BIN);
-  Serial.print("dec value = "); Serial.println(raw_channel_values[0], DEC);
-  */
+  // Update the override status and float channels using the raw channels
+  for (int i = 0; i < rc::USED_CHANNELS; i++)
+  {    
+    if (raw_channel_values[i] < SBUS_MIN) raw_channel_values[i] = SBUS_MIN;
+    if (raw_channel_values[i] > SBUS_MAX) raw_channel_values[i] = SBUS_MAX;
+    scaled_channel_values[i] = -1.0 + 2.0*float(raw_channel_values[i] - SBUS_MIN)/float(SBUS_MAX - SBUS_MIN);
+    //Serial.print("  ch"); Serial.print(i); Serial.print(" = "); Serial.print(scaled_channel_values[i]);
+  }
+  //Serial.println("");
+  bool old_override = override_enabled;
+  override_enabled = (scaled_channel_values[rc::OVERRIDE] > 0);  
+  if (old_override != override_enabled)
+  {
+    Serial.print("RC OVERRIDE");
+    if (override_enabled)
+    {
+      Serial.println(":  ENABLED");
+    }
+    else
+    {
+      Serial.println(":  DISABLED");
+    }
+  }
+  thrust_scale = (scaled_channel_values[rc::THRUST_SCALE] + 1.0)/2.0; // 0-1 scale
 }
 
 void RC_SBUS::onSerial()
@@ -1037,12 +1078,6 @@ void RC_SBUS::onSerial()
     {
       return;
     }
-    /*
-    else if (recv_index_ == 0 && c == SBUS_STARTBYTE)
-    {
-      Serial.println("RC_SBUS:  sync'd START");
-    }
-    */
 
     packet[recv_index_] = c;
     if (recv_index_ == (SBUS_FRAME_SIZE-1))
@@ -1059,22 +1094,24 @@ void RC_SBUS::onSerial()
         ((packet[2]>>3 |packet[3]<<5) & 0x07FF),
         ((packet[3]>>6 |packet[4]<<2 |packet[5]<<10)  & 0x07FF),
         ((packet[5]>>1 |packet[6]<<7)  & 0x07FF),
-        ((packet[6]>>4 |packet[7]<<4) & 0x07FF)        
+        ((packet[6]>>4 |packet[7]<<4) & 0x07FF),
+        ((packet[7]>>7|packet[8]<<1|packet[9]<<9) & 0x07FF),
+        ((packet[9]>>2|packet[10]<<6) & 0x07FF),
+        ((packet[10]>>5|packet[11]<<3) & 0x07FF),
+        ((packet[12]|packet[13]<< 8) & 0x07FF),
+        ((packet[13]>>3|packet[14]<<5) & 0x07FF),
+        ((packet[14]>>6|packet[15]<<2|packet[16]<<10) & 0x07FF),
+        ((packet[16]>>1|packet[17]<<7) & 0x07FF),
+        ((packet[17]>>4|packet[18]<<4) & 0x07FF),
+        ((packet[18]>>7|packet[19]<<1|packet[20]<<9) & 0x07FF),
+        ((packet[20]>>2|packet[21]<<6) & 0x07FF),
+        ((packet[21]>>5|packet[22]<<3) & 0x07FF)
       };
 
-      int valid_count = 0;
-      for (int i = 0; i < 5; i++)
+      for (int i = 0; i < rc::CHANNEL_COUNT; i++)
       {
         if (ch[i] < 150 || ch[i] > 1820) continue;
-        valid_count++;
         raw_channel_values[i] = ch[i];
-        Serial.print("    ch"); Serial.print(i); Serial.print(" = "); Serial.print(raw_channel_values[i], DEC);
-      }
-      if (valid_count)
-      {
-        unsigned long t = millis();
-        Serial.print("    "); Serial.print(t - old_time); Serial.println(" ms since last valid update");
-        old_time = t;        
       }
     }
     else

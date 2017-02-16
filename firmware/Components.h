@@ -6,17 +6,31 @@
 #include "RC_PWM.h"
 #include "RC_SBUS.h"
 
+inline int sign(float x)
+{
+  if (x < 0) return -1.0;
+  return 1.0;
+}
+
 namespace rc {
-  enum RC_CHANNEL // note the relation to the board::GPIO enum
+  enum RC_CHANNEL
   {
-    THRUST = 0,
-    RUDDER = 1,
+    THRUST_FRACTION = 0,
+    HEADING_FRACTION = 1,
     OVERRIDE = 2,
     THRUST_SCALE = 3,
-    RUDDER_SCALE = 4
   };
 
   const int CHANNEL_COUNT = 16;
+  const int USED_CHANNELS = 4;
+
+  enum VehicleType
+  {
+    PROP = 0,
+    AIR = 1    
+  };
+
+  extern VehicleType vehicle_type;  
 }
 
 namespace platypus 
@@ -264,18 +278,16 @@ namespace platypus
   {
   public:
     RC(int channel);
-    float getThrust();
-    float getRudder();
-    float getOverride();
     bool  isOverrideEnabled();
+    void motorSignals();
     virtual void  update(); // instead of using Sensor::loop we will call this in its own parallel thread
   protected:
-    float getRCChannelValue(int RCchannel);
-    bool  overrideEnabled;
+    bool  override_enabled = false;
+    float m0 = 0;
+    float m1 = 0;
+    float thrust_scale = 1.0;
     uint16_t raw_channel_values[rc::CHANNEL_COUNT];
-    float scaled_channel_values[rc::CHANNEL_COUNT];
-    float thrust_scale;
-    float rudder_scale;
+    float scaled_channel_values[rc::USED_CHANNELS];    
     int thrust_pin;
     int rudder_pin;
     int override_pin;
