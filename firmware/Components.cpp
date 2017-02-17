@@ -933,7 +933,7 @@ void RC::motorSignals()
     float motor_overage = 0;
     if (abs(m0) > 1.0) motor_overage = sign(m0)*(abs(m0) - 1.0);
     if (abs(m1) > 1.0) motor_overage = sign(m1)*(abs(m1) - 1.0);
-    float corrected_thrust_fraction = thrust_fraction - motor_overage;
+    float corrected_thrust_fraction = thrust_fraction - motor_overage; // prioritize heading over thrust
     m0 = corrected_thrust_fraction + heading_fraction;
     m1 = corrected_thrust_fraction - heading_fraction;
   }
@@ -1074,9 +1074,10 @@ void RC_SBUS::onSerial()
   uint8_t c = SERIAL_PORTS[channel_]->read();
   if (recv_index_ < SBUS_FRAME_SIZE)
   {
-    if (recv_index_ == 0 && c != SBUS_STARTBYTE)
+    if (recv_index_ == 0)    
     {
-      return;
+      if (c != SBUS_STARTBYTE) return;
+      //Serial.println("SBUS frame sync START");
     }
 
     packet[recv_index_] = c;
@@ -1085,6 +1086,7 @@ void RC_SBUS::onSerial()
       recv_index_ = 0;
       if (packet[SBUS_FRAME_SIZE-1] != SBUS_ENDBYTE)
       {
+        //Serial.println("SBUS frame DEsync END");
         return;
       }
 
