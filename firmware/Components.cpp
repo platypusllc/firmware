@@ -4,7 +4,7 @@ using namespace platypus;
 
 namespace rc
 {
-  rc::VehicleType vehicle_type = rc::VehicleType::PROP; // default is a prop boat
+  rc::VehicleType vehicle_type = rc::VehicleType::AIR; // default is a prop boat
 }
 
 #define WAIT_FOR_CONDITION(condition, timeout_ms) for (unsigned int j = 0; j < (timeout_ms) && !(condition); ++j) delay(1);
@@ -924,6 +924,7 @@ RC::RC(int channel)
 bool RC::isOverrideEnabled() {return override_enabled;}
 void RC::motorSignals()
 {
+  char m[8];
   float thrust_fraction = scaled_channel_values[rc::THRUST_FRACTION]*thrust_scale;
   float heading_fraction = scaled_channel_values[rc::HEADING_FRACTION];
   if (rc::vehicle_type == rc::VehicleType::PROP)
@@ -936,21 +937,20 @@ void RC::motorSignals()
     float corrected_thrust_fraction = thrust_fraction - motor_overage; // prioritize heading over thrust
     m0 = corrected_thrust_fraction + heading_fraction;
     m1 = corrected_thrust_fraction - heading_fraction;
+    sprintf(m, "%.4f", m0);
+    platypus::motors[0]->set("v", m);
+    sprintf(m, "%.4f", m1);
+    platypus::motors[1]->set("v", m);    
   }
   else if (rc::vehicle_type == rc::VehicleType::AIR)
   {
     m0 = thrust_fraction;
     m1 = heading_fraction;
+    sprintf(m, "%.4f", m0);
+    platypus::motors[0]->set("v", m);
+    sprintf(m, "%.4f", m1);
+    platypus::sensors[0]->set("p", m);
   }
-
-  Serial.print("m0 = "); Serial.print(m0);
-  Serial.print("    m1 = "); Serial.println(m1);
-
-  char m[8];
-  sprintf(m, "%.4f", m0);
-  platypus::motors[0]->set("v", m);
-  sprintf(m, "%.4f", m1);
-  platypus::motors[1]->set("v", m);
 }
 void RC::update() {/*I'm virtual!*/};
 

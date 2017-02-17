@@ -70,8 +70,7 @@ void RC_listener()
     {
       if(!platypus::motors[0]->enabled()) platypus::motors[0]->enable();
       if(!platypus::motors[1]->enabled()) platypus::motors[1]->enable();
-      // set motor velocities
-      pRC->motorSignals();
+      pRC->motorSignals(); // set motor velocities
     }
     yield();
   }
