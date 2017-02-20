@@ -76,8 +76,6 @@ void RC_listener()
   }
 }
 
-
-
 /**
  * Wrapper for ADK send command that copies data to debug port.
  * Requires a null-terminated char* pointer.
@@ -96,7 +94,7 @@ void send(char *str)
   
   // Copy string to debugging console.
   //Serial.print("-> ");
-  //Serial.print(str);
+  Serial.print(str);
 }
 
 /**

@@ -914,9 +914,11 @@ uint32_t Winch::encoder(bool *valid)
 }
 
 RC::RC(int channel) 
-:  thrust_pin(board::SENSOR[channel].GPIO[board::RX_POS]),
-   rudder_pin(board::SENSOR[channel].GPIO[board::RX_NEG]),
-   override_pin(board::SENSOR[channel].GPIO[board::TX_POS])
+: 
+  thrust_fraction_pin(board::SENSOR[channel].GPIO[board::RX_POS]),
+  heading_fraction_pin(board::SENSOR[channel].GPIO[board::RX_NEG]),
+  override_pin(board::SENSOR[channel].GPIO[board::TX_POS]), 
+  thrust_scale_pin(board::SENSOR[channel].GPIO[board::TX_NEG])
 {
   memset(raw_channel_values, 0, rc::CHANNEL_COUNT*sizeof(uint8_t));
 }
@@ -958,15 +960,18 @@ RC_PWM::RC_PWM(int channel)
 : Sensor(channel), RC(channel)
 {
   //Assign global pins for interrupts
-  rc::THRUST_PIN = thrust_pin;
-  rc::RUDDER_PIN = rudder_pin;
   rc::OVERRIDE_PIN = override_pin;
-  pinMode(thrust_pin, INPUT); digitalWrite(thrust_pin, LOW);
-  pinMode(rudder_pin, INPUT);   digitalWrite(rudder_pin, LOW);
+  rc::THRUST_SCALE_PIN = thrust_scale_pin;
+  rc::THRUST_FRACTION_PIN = thrust_fraction_pin;
+  rc::HEADING_FRACTION_PIN = heading_fraction_pin;
   pinMode(override_pin, INPUT); digitalWrite(override_pin, LOW);
-  attachInterrupt(rudder_pin, rc::rudderInterrupt, CHANGE);
-  attachInterrupt(thrust_pin, rc::throttleInterrupt, CHANGE);
-  attachInterrupt(override_pin, rc::overrideInterrupt, CHANGE);  
+  pinMode(thrust_scale_pin, INPUT); digitalWrite(thrust_scale_pin, LOW);
+  pinMode(thrust_fraction_pin, INPUT); digitalWrite(thrust_fraction_pin, LOW);
+  pinMode(heading_fraction_pin, INPUT);   digitalWrite(heading_fraction_pin, LOW);
+  attachInterrupt(override_pin, rc::overrideInterrupt, CHANGE);
+  attachInterrupt(heading_fraction_pin, rc::headingFractionInterrupt, CHANGE);
+  attachInterrupt(thrust_fraction_pin, rc::thrustFractionInterrupt, CHANGE);
+  attachInterrupt(thrust_scale_pin, rc::thrustScaleInterrupt, CHANGE);
 }
 
 char * RC_PWM::name()
@@ -975,64 +980,60 @@ char * RC_PWM::name()
 }
 
 void RC_PWM::update()
-{
-  //Turn off interrupts to update local variables
-  noInterrupts();
+{  
+  noInterrupts(); // Turn off interrupts to update local variables
 
-  //Update local variables
-  scaled_channel_values[rc::OVERRIDE] = rc::override_pwm;
+  raw_channel_values[rc::OVERRIDE] = rc::override_pwm;
+  raw_channel_values[rc::THRUST_FRACTION] = rc::thrust_fraction_pwm;
+  raw_channel_values[rc::THRUST_SCALE] = rc::thrust_scale_pwm;
+  raw_channel_values[rc::HEADING_FRACTION] = rc::heading_fraction_pwm;
+  
+  interrupts(); // Local update complete - turn on interrupts
   
   //override value is below threshold or outside of valid window
   //set override to false
-  if(scaled_channel_values[rc::OVERRIDE] < override_threshold_l || scaled_channel_values[rc::OVERRIDE] > override_high)
+  if(raw_channel_values[rc::OVERRIDE] < override_threshold_l || raw_channel_values[rc::OVERRIDE] > override_high)
   {
     //If override was previously enabled, then
     //stop listening to throttle and rudder pins
     if(override_enabled)
     {
-      //scaled_channel_values[rc::THRUST] = 0;
-      //scaled_channel_values[rc::RUDDER] = 0;
+      scaled_channel_values[rc::THRUST_SCALE] = 0.0;
+      scaled_channel_values[rc::THRUST_FRACTION] = 0.0;
+      scaled_channel_values[rc::HEADING_FRACTION] = 0.0;
     }
     override_enabled = false;
   }
   //override pin is above threshold
-  else if(scaled_channel_values[rc::OVERRIDE] > override_threshold_h)
+  else if(raw_channel_values[rc::OVERRIDE] > override_threshold_h)
   {
     override_enabled = true;    
     //Zero throttle and rudder values to prevent false readings
-    //scaled_channel_values[rc::THRUST] = 0;
-    //scaled_channel_values[rc::RUDDER] = 0;
+    scaled_channel_values[rc::THRUST_SCALE] = 0.0;
+    scaled_channel_values[rc::THRUST_FRACTION] = 0.0;
+    scaled_channel_values[rc::HEADING_FRACTION] = 0.0;
   }
-  else
+  else 
   {
-    interrupts();
     return;
   }
   
-  //Read throttle and rudder values if override pin was high
+  //Read throttle and heading values if override pin was high
   if(override_enabled)
   {
-    //scaled_channel_values[rc::THRUST] = (float)map(rc::thrust_pwm, min_throttle, max_throttle, -100, 100)/100.0;
-    //scaled_channel_values[rc::RUDDER]   = (float)map(rc::rudder_pwm,left_rudder, right_rudder, -100, 100)/100.0;
-    //if(abs(scaled_channel_values[rc::THRUST]) < 0.01) scaled_channel_values[rc::THRUST] = 0;
-    //if(abs(scaled_channel_values[rc::RUDDER]) < 0.01) scaled_channel_values[rc::RUDDER] = 0;
+    scaled_channel_values[rc::THRUST_SCALE] = 
+      float(raw_channel_values[rc::THRUST_SCALE] - pwm_min)/float(pwm_max - pwm_min);
+    scaled_channel_values[rc::THRUST_FRACTION] = 
+      -1.0 + 2.0*float(raw_channel_values[rc::THRUST_FRACTION] - pwm_min)/float(pwm_max - pwm_min);    
+    scaled_channel_values[rc::HEADING_FRACTION] = 
+      -1.0 + 2.0*float(raw_channel_values[rc::HEADING_FRACTION] - pwm_min)/float(pwm_max - pwm_min);    
   }
-  
-  //Local update complete - turn on interrupts
-   interrupts();
-
-  //RC commands are being received - deal with calibration and arming
-  if(override_enabled)
-  {         
-    // Arming and calibration           
-  }  
 }
 
 RC_SBUS::RC_SBUS(int channel)
 : Sensor(channel), SerialSensor(channel, SBUS_BAUDRATE), RC(channel)
 {
   recv_index_ = 0;
-  old_time = millis();
   SERIAL_PORTS[channel]->begin(SBUS_BAUDRATE, SERIAL_8E2); // SBUS requires this serial config option!!!
 }
 

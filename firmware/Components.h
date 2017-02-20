@@ -288,9 +288,10 @@ namespace platypus
     float thrust_scale = 1.0;
     uint16_t raw_channel_values[rc::CHANNEL_COUNT];
     float scaled_channel_values[rc::USED_CHANNELS];    
-    int thrust_pin;
-    int rudder_pin;
     int override_pin;
+    int thrust_scale_pin;
+    int thrust_fraction_pin;
+    int heading_fraction_pin;
   };
 
   class RC_PWM : public RC, public Sensor {
@@ -300,19 +301,14 @@ namespace platypus
     void update();    
   private:
     //RC transmitter PWM break points
-    const int min_throttle = 1000;
-    const int max_throttle = 1975;
-    const int mid_throttle = 1471;
-
-    const int left_rudder = 1000;
-    const int right_rudder = 2000;
+    const int pwm_min = 1000;
+    const int pwm_max = 2000;
     
     const int override_low = 980*0.95;
     const int override_high = 1966*1.05;
     const int override_threshold_l = 1500*0.9;
     const int override_threshold_h = 1500*1.1;  
   };
-
 
 
   class RC_SBUS : public RC, public SerialSensor
@@ -324,9 +320,7 @@ namespace platypus
     void onSerial();
   
   private:
-    int failsafe_status;
     uint8_t packet[SBUS_FRAME_SIZE];
-    unsigned long old_time;
   };
 }
 
