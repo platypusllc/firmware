@@ -177,6 +177,12 @@ void handleCommand(char *buffer)
       if (strcmp(platypus::sensors[object_index]->name(), "dummy") != 0)
       {
         Serial.println("   Not a dummy sensor. Freeing the memory.");
+        if ((strcmp(platypus::sensors[object_index]->name(), "RC_SBUS") == 0)
+           ||
+           (strcmp(platypus::sensors[object_index]->name(), "RC_PWM") == 0))
+        {
+          pRC = NULL;
+        }
         delete platypus::sensors[object_index]; // free the memory      
         platypus::sensors[object_index] = &(platypus::Sensor::dummy()); // temporarily point to the dummy sensor again
         platypus::SerialHandler_t handler = {platypus::Sensor::onSerialDummy_, platypus::sensors[object_index]};
@@ -202,11 +208,27 @@ void handleCommand(char *buffer)
         else if (strcmp(sensor_type, "GY26Compass") == 0)
         {
           platypus::sensors[object_index] = new platypus::GY26Compass(object_index);
+          Serial.print("    S"); Serial.print(object_index); Serial.println(" is now GY26Compass");
         }  
         else if (strcmp(sensor_type, "HDS") == 0)
         {
           platypus::sensors[object_index] = new platypus::HDS(object_index);
+          Serial.print("    S"); Serial.print(object_index); Serial.println(" is now HDS");
         }  
+        else if (strcmp(sensor_type, "RC_SBUS") == 0)
+        {
+          platypus::RC_SBUS * ptemp = new platypus::RC_SBUS(object_index);
+          pRC = ptemp;          
+          platypus::sensors[object_index] = ptemp;          
+          Serial.print("    S"); Serial.print(object_index); Serial.println(" is now RC_SBUS");
+        }
+        else if (strcmp(sensor_type, "RC_PWM") == 0)
+        {
+          platypus::RC_PWM * ptemp = new platypus::RC_PWM(object_index);
+          pRC = ptemp;          
+          platypus::sensors[object_index] = ptemp;
+          Serial.print("    S"); Serial.print(object_index); Serial.println(" is now RC_PWM");
+        }        
       }
       continue;    
 
@@ -273,7 +295,6 @@ void setup()
     
   
   // Initialize sensors
-<<<<<<< HEAD
   for (int i = 0; i < 4; i++)
   {
     platypus::sensors[i] = &(platypus::Sensor::dummy());
@@ -284,18 +305,6 @@ void setup()
   platypus::sensors[2] = new platypus::GY26Compass(2);
   platypus::sensors[3] = new platypus::GY26Compass(3);
   */
-=======
-   
-  platypus::sensors[0] = new platypus::ServoSensor(0);
-  platypus::sensors[1] = new platypus::AtlasDO(1);
-
-  platypus::RC_SBUS * ptemp = new platypus::RC_SBUS(2);
-  pRC = ptemp; // need to set the global RC pointer
-  platypus::sensors[2] = ptemp;
-  Scheduler.startLoop(RC_listener);
->>>>>>> origin/feature/RC_SBUS
-  
-  platypus::sensors[3] = new platypus::ES2(3);
 
   // Initialize motors
   platypus::motors[0] = new platypus::Dynamite(0);
@@ -317,6 +326,7 @@ void setup()
   Scheduler.startLoop(motorUpdateLoop);
   Scheduler.startLoop(serialConsoleLoop);
   Scheduler.startLoop(batteryUpdateLoop);
+  Scheduler.startLoop(RC_listener);
 
   // Initialize Platypus library.
   platypus::init();

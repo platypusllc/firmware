@@ -6,7 +6,7 @@ namespace rc { // definitions for the externs in the header (had to be done to a
   volatile int THRUST_FRACTION_PIN;
   volatile int HEADING_FRACTION_PIN;
   
-  volatile uint32_t override_scale_pwm;
+  volatile uint32_t override_pwm;
   volatile uint32_t thrust_scale_pwm;
   volatile uint32_t thrust_fraction_pwm;
   volatile uint32_t heading_fraction_pwm;  

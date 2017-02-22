@@ -4,7 +4,7 @@ using namespace platypus;
 
 namespace rc
 {
-  rc::VehicleType vehicle_type = rc::VehicleType::AIR; // default is a prop boat
+  rc::VehicleType vehicle_type = rc::VehicleType::PROP; // default is a prop boat
 }
 
 #define WAIT_FOR_CONDITION(condition, timeout_ms) for (unsigned int j = 0; j < (timeout_ms) && !(condition); ++j) delay(1);
@@ -975,7 +975,7 @@ RC_PWM::RC_PWM(int channel)
 
 char * RC_PWM::name()
 {
-  return "RC_PWM_Controller";
+  return "RC_PWM";
 }
 
 void RC_PWM::update()
@@ -1038,7 +1038,7 @@ RC_SBUS::RC_SBUS(int channel)
 
 char * RC_SBUS::name()
 {
-  return "RC_SBUS_Controller";
+  return "RC_SBUS";
 }
 
 void RC_SBUS::update()
