@@ -2,6 +2,11 @@
 
 using namespace platypus;
 
+namespace rc
+{
+  rc::VehicleType vehicle_type = rc::VehicleType::AIR; // default is a prop boat
+}
+
 #define WAIT_FOR_CONDITION(condition, timeout_ms) for (unsigned int j = 0; j < (timeout_ms) && !(condition); ++j) delay(1);
 
 // TODO: move these somewhere reasonable
@@ -905,5 +910,220 @@ uint32_t Winch::encoder(bool *valid)
 {
   uint32_t enc1 = roboclaw_.ReadEncM1(addr, NULL, valid);
   return enc1;
+}
+
+RC::RC(int channel) 
+: 
+  thrust_fraction_pin(board::SENSOR[channel].GPIO[board::RX_POS]),
+  heading_fraction_pin(board::SENSOR[channel].GPIO[board::RX_NEG]),
+  override_pin(board::SENSOR[channel].GPIO[board::TX_POS]), 
+  thrust_scale_pin(board::SENSOR[channel].GPIO[board::TX_NEG])
+{
+  memset(raw_channel_values, 0, rc::CHANNEL_COUNT*sizeof(uint8_t));
+}
+
+bool RC::isOverrideEnabled() {return override_enabled;}
+void RC::motorSignals()
+{
+  char m[8];
+  float thrust_fraction = scaled_channel_values[rc::THRUST_FRACTION]*thrust_scale;
+  float heading_fraction = scaled_channel_values[rc::HEADING_FRACTION];
+  if (rc::vehicle_type == rc::VehicleType::PROP)
+  {    
+    m0 = thrust_fraction + heading_fraction;
+    m1 = thrust_fraction - heading_fraction;
+    float motor_overage = 0;
+    if (abs(m0) > 1.0) motor_overage = sign(m0)*(abs(m0) - 1.0);
+    if (abs(m1) > 1.0) motor_overage = sign(m1)*(abs(m1) - 1.0);
+    float corrected_thrust_fraction = thrust_fraction - motor_overage; // prioritize heading over thrust
+    m0 = corrected_thrust_fraction + heading_fraction;
+    m1 = corrected_thrust_fraction - heading_fraction;
+    sprintf(m, "%.4f", m0);
+    platypus::motors[0]->set("v", m);
+    sprintf(m, "%.4f", m1);
+    platypus::motors[1]->set("v", m);    
+  }
+  else if (rc::vehicle_type == rc::VehicleType::AIR)
+  {
+    m0 = thrust_fraction;
+    m1 = heading_fraction;
+    sprintf(m, "%.4f", m0);
+    platypus::motors[0]->set("v", m);
+    sprintf(m, "%.4f", m1);
+    platypus::sensors[0]->set("p", m);
+  }
+}
+void RC::update() {/*I'm virtual!*/};
+
+RC_PWM::RC_PWM(int channel)
+: Sensor(channel), RC(channel)
+{
+  //Assign global pins for interrupts
+  rc::OVERRIDE_PIN = override_pin;
+  rc::THRUST_SCALE_PIN = thrust_scale_pin;
+  rc::THRUST_FRACTION_PIN = thrust_fraction_pin;
+  rc::HEADING_FRACTION_PIN = heading_fraction_pin;
+  pinMode(override_pin, INPUT); digitalWrite(override_pin, LOW);
+  pinMode(thrust_scale_pin, INPUT); digitalWrite(thrust_scale_pin, LOW);
+  pinMode(thrust_fraction_pin, INPUT); digitalWrite(thrust_fraction_pin, LOW);
+  pinMode(heading_fraction_pin, INPUT);   digitalWrite(heading_fraction_pin, LOW);
+  attachInterrupt(override_pin, rc::overrideInterrupt, CHANGE);
+  attachInterrupt(heading_fraction_pin, rc::headingFractionInterrupt, CHANGE);
+  attachInterrupt(thrust_fraction_pin, rc::thrustFractionInterrupt, CHANGE);
+  attachInterrupt(thrust_scale_pin, rc::thrustScaleInterrupt, CHANGE);
+}
+
+char * RC_PWM::name()
+{
+  return "RC_PWM_Controller";
+}
+
+void RC_PWM::update()
+{  
+  noInterrupts(); // Turn off interrupts to update local variables
+
+  raw_channel_values[rc::OVERRIDE] = rc::override_pwm;
+  raw_channel_values[rc::THRUST_FRACTION] = rc::thrust_fraction_pwm;
+  raw_channel_values[rc::THRUST_SCALE] = rc::thrust_scale_pwm;
+  raw_channel_values[rc::HEADING_FRACTION] = rc::heading_fraction_pwm;
+  
+  interrupts(); // Local update complete - turn on interrupts
+  
+  //override value is below threshold or outside of valid window
+  //set override to false
+  if(raw_channel_values[rc::OVERRIDE] < override_threshold_l || raw_channel_values[rc::OVERRIDE] > override_high)
+  {
+    //If override was previously enabled, then
+    //stop listening to throttle and rudder pins
+    if(override_enabled)
+    {
+      scaled_channel_values[rc::THRUST_SCALE] = 0.0;
+      scaled_channel_values[rc::THRUST_FRACTION] = 0.0;
+      scaled_channel_values[rc::HEADING_FRACTION] = 0.0;
+    }
+    override_enabled = false;
+  }
+  //override pin is above threshold
+  else if(raw_channel_values[rc::OVERRIDE] > override_threshold_h)
+  {
+    override_enabled = true;    
+    //Zero throttle and rudder values to prevent false readings
+    scaled_channel_values[rc::THRUST_SCALE] = 0.0;
+    scaled_channel_values[rc::THRUST_FRACTION] = 0.0;
+    scaled_channel_values[rc::HEADING_FRACTION] = 0.0;
+  }
+  else 
+  {
+    return;
+  }
+  
+  //Read throttle and heading values if override pin was high
+  if(override_enabled)
+  {
+    scaled_channel_values[rc::THRUST_SCALE] = 
+      float(raw_channel_values[rc::THRUST_SCALE] - pwm_min)/float(pwm_max - pwm_min);
+    scaled_channel_values[rc::THRUST_FRACTION] = 
+      -1.0 + 2.0*float(raw_channel_values[rc::THRUST_FRACTION] - pwm_min)/float(pwm_max - pwm_min);    
+    scaled_channel_values[rc::HEADING_FRACTION] = 
+      -1.0 + 2.0*float(raw_channel_values[rc::HEADING_FRACTION] - pwm_min)/float(pwm_max - pwm_min);    
+  }
+}
+
+RC_SBUS::RC_SBUS(int channel)
+: Sensor(channel), SerialSensor(channel, SBUS_BAUDRATE), RC(channel)
+{
+  recv_index_ = 0;
+  SERIAL_PORTS[channel]->begin(SBUS_BAUDRATE, SERIAL_8E2); // SBUS requires this serial config option!!!
+}
+
+char * RC_SBUS::name()
+{
+  return "RC_SBUS_Controller";
+}
+
+void RC_SBUS::update()
+{
+  // Update the override status and float channels using the raw channels
+  for (int i = 0; i < rc::USED_CHANNELS; i++)
+  {    
+    if (raw_channel_values[i] < SBUS_MIN) raw_channel_values[i] = SBUS_MIN;
+    if (raw_channel_values[i] > SBUS_MAX) raw_channel_values[i] = SBUS_MAX;
+    scaled_channel_values[i] = -1.0 + 2.0*float(raw_channel_values[i] - SBUS_MIN)/float(SBUS_MAX - SBUS_MIN);
+    //Serial.print("  ch"); Serial.print(i); Serial.print(" = "); Serial.print(scaled_channel_values[i]);
+  }
+  //Serial.println("");
+  bool old_override = override_enabled;
+  override_enabled = (scaled_channel_values[rc::OVERRIDE] > 0);  
+  if (old_override != override_enabled)
+  {
+    Serial.print("RC OVERRIDE");
+    if (override_enabled)
+    {
+      Serial.println(":  ENABLED");
+    }
+    else
+    {
+      Serial.println(":  DISABLED");
+    }
+  }
+  thrust_scale = (scaled_channel_values[rc::THRUST_SCALE] + 1.0)/2.0; // 0-1 scale
+}
+
+void RC_SBUS::onSerial()
+{  
+  uint8_t c = SERIAL_PORTS[channel_]->read();
+  if (recv_index_ < SBUS_FRAME_SIZE)
+  {
+    if (recv_index_ == 0)    
+    {
+      if (c != SBUS_STARTBYTE) return;
+      //Serial.println("SBUS frame sync START");
+    }
+
+    packet[recv_index_] = c;
+    if (recv_index_ == (SBUS_FRAME_SIZE-1))
+    {
+      recv_index_ = 0;
+      if (packet[SBUS_FRAME_SIZE-1] != SBUS_ENDBYTE)
+      {
+        //Serial.println("SBUS frame DEsync END");
+        return;
+      }
+
+      uint16_t ch[] = 
+      {
+        ((packet[1] | packet[2]<<8) & 0x07FF),
+        ((packet[2]>>3 |packet[3]<<5) & 0x07FF),
+        ((packet[3]>>6 |packet[4]<<2 |packet[5]<<10)  & 0x07FF),
+        ((packet[5]>>1 |packet[6]<<7)  & 0x07FF),
+        ((packet[6]>>4 |packet[7]<<4) & 0x07FF),
+        ((packet[7]>>7|packet[8]<<1|packet[9]<<9) & 0x07FF),
+        ((packet[9]>>2|packet[10]<<6) & 0x07FF),
+        ((packet[10]>>5|packet[11]<<3) & 0x07FF),
+        ((packet[12]|packet[13]<< 8) & 0x07FF),
+        ((packet[13]>>3|packet[14]<<5) & 0x07FF),
+        ((packet[14]>>6|packet[15]<<2|packet[16]<<10) & 0x07FF),
+        ((packet[16]>>1|packet[17]<<7) & 0x07FF),
+        ((packet[17]>>4|packet[18]<<4) & 0x07FF),
+        ((packet[18]>>7|packet[19]<<1|packet[20]<<9) & 0x07FF),
+        ((packet[20]>>2|packet[21]<<6) & 0x07FF),
+        ((packet[21]>>5|packet[22]<<3) & 0x07FF)
+      };
+
+      for (int i = 0; i < rc::CHANNEL_COUNT; i++)
+      {
+        if (ch[i] < 150 || ch[i] > 1820) continue;
+        raw_channel_values[i] = ch[i];
+      }
+    }
+    else
+    {
+      recv_index_++;
+    }
+  }
+  else
+  {
+    recv_index_ = 0; // went into buffer overflow territory -- this should never occur
+  }
 }
 
