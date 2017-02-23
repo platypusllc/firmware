@@ -71,9 +71,9 @@ void RC_listener()
       if(!platypus::motors[0]->enabled()) platypus::motors[0]->enable();
       if(!platypus::motors[1]->enabled()) platypus::motors[1]->enable();
       pRC->motorSignals(); // set motor velocities
-    }
-    yield();
+    }    
   }
+  yield();
 }
 
 /**
@@ -299,6 +299,10 @@ void setup()
   {
     platypus::sensors[i] = &(platypus::Sensor::dummy());
   }
+  // RC_SBUS on s2 by default (for running the boat without a phone)
+  platypus::RC_SBUS * ptemp = new platypus::RC_SBUS(2);
+  pRC = ptemp;          
+  platypus::sensors[2] = ptemp;
   /*
   platypus::sensors[0] = new platypus::ServoSensor(0);
   platypus::sensors[1] = new platypus::GY26Compass(1);
