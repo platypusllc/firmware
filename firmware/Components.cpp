@@ -4,7 +4,7 @@ using namespace platypus;
 
 namespace rc
 {
-  rc::VehicleType vehicle_type = rc::VehicleType::AIR; // default is a prop boat
+  rc::VehicleType vehicle_type = rc::VehicleType::PROP; // default is a prop boat
 }
 
 #define WAIT_FOR_CONDITION(condition, timeout_ms) for (unsigned int j = 0; j < (timeout_ms) && !(condition); ++j) delay(1);
@@ -1044,6 +1044,7 @@ char * RC_SBUS::name()
 
 void RC_SBUS::update()
 {
+  //Serial.println("RC_SBUS::update() ...");
   // Update the override status and float channels using the raw channels
   for (int i = 0; i < rc::USED_CHANNELS; i++)
   {    
@@ -1086,8 +1087,27 @@ void RC_SBUS::onSerial()
     {
       recv_index_ = 0;
       if (packet[SBUS_FRAME_SIZE-1] != SBUS_ENDBYTE)
-      {
-        //Serial.println("SBUS frame DEsync END");
+      {        
+        //Serial.print("SBUS frame DEsync END = "); Serial.println(packet[SBUS_FRAME_SIZE-1], HEX);
+
+        // set override to false to be safe
+        override_enabled = false;
+        
+        // find next SBUS_STARTBYTE in packet
+        for (int i = 1; i < SBUS_FRAME_SIZE; i++)
+        {
+          if (packet[i] == SBUS_STARTBYTE)
+          {
+            //Serial.print("   found new startbyte at i = "); Serial.println(i);
+            int shifting_size = SBUS_FRAME_SIZE - i;
+            uint8_t shifting_packet[shifting_size];
+            memcpy(shifting_packet, packet + i, sizeof(uint8_t)*shifting_size);
+            memcpy(packet, shifting_packet, sizeof(uint8_t)*shifting_size);
+            recv_index_ = shifting_size; 
+            break;
+          }
+        }
+        
         return;
       }
 
