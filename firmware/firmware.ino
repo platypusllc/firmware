@@ -62,6 +62,7 @@ platypus::Led rgb_led;
 
 void RC_listener()
 {
+  //Serial.println("RC_listener loop...");
   if (pRC != NULL)
   {
     pRC->update();
@@ -71,7 +72,7 @@ void RC_listener()
       if(!platypus::motors[0]->enabled()) platypus::motors[0]->enable();
       if(!platypus::motors[1]->enabled()) platypus::motors[1]->enable();
       pRC->motorSignals(); // set motor velocities
-    }    
+    }
   }
   yield();
 }
@@ -94,7 +95,7 @@ void send(char *str)
   
   // Copy string to debugging console.
   //Serial.print("-> ");
-  Serial.print(str);
+  //Serial.print(str);
 }
 
 /**
