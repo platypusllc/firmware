@@ -121,7 +121,7 @@ namespace platypus
   class SerialSensor : virtual public Sensor
   {
   public:
-    SerialSensor(int channel, int baudRate, int serialType = DIRECT, int dataStringLength = 0);
+    SerialSensor(int channel, int baudRate, int serialType = RS232, int dataStringLength = 0);
     virtual char * name() = 0;
     void onSerial();
 
