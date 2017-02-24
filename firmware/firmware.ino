@@ -356,7 +356,7 @@ void motorUpdateLoop()
   // Set the LED for current system state.
   unsigned c = (millis() >> 3) & 0xFF;
   if (c > 128) c = 255 - c;
-
+ 
   switch (system_state)
   {
   case DISCONNECTED:
