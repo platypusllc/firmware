@@ -194,9 +194,9 @@ void setup()
   // TODO: replace this with smart hooks.
   // Initialize sensors
   platypus::sensors[0] = new platypus::ServoSensor(0);
-  platypus::sensors[1] = new platypus::GY26Compass(1);
-  platypus::sensors[2] = new platypus::GY26Compass(2);
-  platypus::sensors[3] = new platypus::GY26Compass(3);
+  platypus::sensors[1] = new platypus::AtlasDO(1);
+  platypus::sensors[2] = new platypus::AtlasPH(2);
+  platypus::sensors[3] = new platypus::GrabSampler(3);
   
   // Initialize motors
   platypus::motors[0] = new platypus::Dynamite(0);
