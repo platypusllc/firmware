@@ -121,13 +121,14 @@ namespace platypus
   class SerialSensor : virtual public Sensor
   {
   public:
-    SerialSensor(int channel, int baudRate, int serialType = RS232, int dataStringLength = 0);
+    SerialSensor(int channel, int baudRate, int serialType = DIRECT, int dataStringLength = 0);
     virtual char * name() = 0;
     void onSerial();
 
     enum SERIAL_TYPE{
       RS232,
-      RS485
+      RS485,
+      DIRECT
     };
 
   protected:
@@ -243,6 +244,16 @@ namespace platypus
     uint32_t desired_position_;
     int32_t desired_velocity_;
     uint32_t desired_acceleration_;
+  };
+
+  class JSONPassThrough : public SerialSensor
+  {
+  public:
+    JSONPassThrough(int channel);
+    bool set(const char * param, const char * value);
+    virtual char * name();
+    void loop();
+    void onSerial();
   };
 }
 
