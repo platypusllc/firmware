@@ -235,16 +235,11 @@ void setup()
     
   
   // Initialize sensors
-  for (int i = 0; i < 4; i++)
+  platypus::sensors[0] = new platypus::ServoSensor(0);
+  for (int i = 1; i < 4; i++)
   {
     platypus::sensors[i] = &(platypus::Sensor::dummy());
   }
-  /*
-  platypus::sensors[0] = new platypus::ServoSensor(0);
-  platypus::sensors[1] = new platypus::GY26Compass(1);
-  platypus::sensors[2] = new platypus::GY26Compass(2);
-  platypus::sensors[3] = new platypus::GY26Compass(3);
-  */
   
   // Initialize motors
   platypus::motors[0] = new platypus::Dynamite(0);
