@@ -167,6 +167,14 @@ void handleCommand(char *buffer)
         return;
       }
 
+      if (object_index == 0) // the airboat ServoSensor
+      {
+        if (pRC != NULL)
+        {
+          if (pRC->isOverrideEnabled()) continue; // ignore servo signals from the phone if RC is enabled
+        } 
+      }     
+
       target_object = platypus::sensors[object_index];
       break;
 
@@ -176,18 +184,24 @@ void handleCommand(char *buffer)
         if (strcmp(type, "Prop") == 0)
         {
           rc::vehicle_type = rc::VehicleType::PROP;
+          Serial.println("Changed vehicle type to propboat");
         }
         else if (strcmp(type, "Air") == 0)
         {
           rc::vehicle_type = rc::VehicleType::AIR;
+          Serial.println("Changed vehicle type to airboat");
+        }    
+        else
+        {
+          Serial.print("WARNING: unknown vehicle type: "); Serial.println(type); 
         }
-        Serial.println("");
       }
       continue;
 
     default: // Unrecognized target
       reportError("Unknown command target.", buffer);
-      return;
+      //return; // needs to be continue so we don't throw away a JSON that may have other valid commands in it
+      continue;
     }
 
     // Extract JsonObject with param:value pairs
