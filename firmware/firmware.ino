@@ -74,7 +74,7 @@ void send(char *str)
   if (adk.isReady()) adk.write(len, (uint8_t*)str);
   
   // Copy string to debugging console.
-  //Serial.print("-> ");
+  Serial.print("-> ");
   Serial.print(str);
 }
 
@@ -195,7 +195,7 @@ void setup()
   // Initialize sensors
   platypus::sensors[0] = new platypus::ServoSensor(0);
   platypus::sensors[1] = new platypus::JSONPassThrough(1);
-  platypus::sensors[2] = new platypus::GY26Compass(2);
+  platypus::sensors[2] = new platypus::WinchPassThrough(2);
   platypus::sensors[3] = new platypus::GY26Compass(3);
   
   // Initialize motors
@@ -317,8 +317,8 @@ void loop()
   input_buffer[bytes_read] = '\0';
   
   // Copy incoming message to debug console.
-  //Serial.print("<- ");
-  //Serial.println(input_buffer);
+  Serial.print("<- ");
+  Serial.println(input_buffer);
   
   // Attempt to parse command
   handleCommand(input_buffer);

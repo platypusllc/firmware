@@ -255,6 +255,15 @@ namespace platypus
     void loop();
     void onSerial();
   };
+  class WinchPassThrough : public SerialSensor
+  {
+  public:
+    WinchPassThrough(int channel);
+    bool set(const char * param, const char * value);
+    virtual char * name();
+    void loop();
+    void onSerial();
+  };
 }
 
 #endif //COMPONENTS_H

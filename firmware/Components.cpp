@@ -916,7 +916,6 @@ uint32_t Winch::encoder(bool *valid)
   uint32_t enc1 = roboclaw_.ReadEncM1(addr, NULL, valid);
   return enc1;
 }
-
 JSONPassThrough::JSONPassThrough(int channel):Sensor(channel),SerialSensor(channel, 9600, DIRECT)
 {
   
@@ -968,5 +967,64 @@ char * JSONPassThrough::name() {
   return "json_pass_through";
 }
 void JSONPassThrough::loop(){
+}
+/*The winch pass through code is the same as the JSON pass through but formats the set command differently */
+WinchPassThrough::WinchPassThrough(int channel):Sensor(channel),SerialSensor(channel, 9600, DIRECT)
+{
+  
+}
+
+void WinchPassThrough::onSerial() {
+  
+  char c = SERIAL_PORTS[channel_]->read();
+  
+  // Ignore null and tab characters
+  if (c == '\0' || c == '\t') {
+    return;
+  }
+  if (c != '\r' && c != '\n' && recv_index_ < DEFAULT_BUFFER_SIZE)
+  {
+    recv_buffer_[recv_index_] = c;
+    ++recv_index_;
+  }
+  else if (recv_index_ > 0)
+  {
+    recv_buffer_[recv_index_] = '\0';
+    //Serial.print(String("Raw Sensor Input:") + recv_buffer_);
+    
+    
+    char output_str[DEFAULT_BUFFER_SIZE + 3];
+    snprintf(output_str, DEFAULT_BUFFER_SIZE,
+             "{"
+             "\"s%u\":"
+              "%s"
+             "}\r",
+             recv_buffer_
+            );
+    send(output_str);
+    memset(recv_buffer_, 0, recv_index_);
+    recv_index_ = 0;
+  }       
+}
+
+bool WinchPassThrough::set(const char* param, const char* value){
+    
+    char output_str[DEFAULT_BUFFER_SIZE + 3];
+    snprintf(output_str, DEFAULT_BUFFER_SIZE,
+             "{"
+             "\"%s\":"
+             "%s"
+             "}\r",
+             param,
+             value
+            );
+    SERIAL_PORTS[channel_]->println(output_str);  
+}
+
+
+char * WinchPassThrough::name() {
+  return "winch_pass_through";
+}
+void WinchPassThrough::loop(){
 }
 
