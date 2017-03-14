@@ -98,8 +98,8 @@ void platypusLoop_()
 void platypus::init()
 {
   Scheduler.startLoop(platypusLoop_);
-  pixels.begin();
-  pixels.show();
+  //pixels.begin();
+  //pixels.show();
 }
 
 Led::Led()
@@ -116,11 +116,11 @@ void Led::set(int red, int green, int blue)
   r_ = red;
   g_ = green;
   b_ = blue;
-
+  /*
   while (!pixels.canShow());
   for (size_t pixel_idx = 0; pixel_idx < board::NUM_LEDS; ++pixel_idx)
     pixels.setPixelColor(pixel_idx, r_, g_, b_);
-  pixels.show();
+  pixels.show();*/
 }
 
 void Led::R(int red)
