@@ -435,39 +435,6 @@ void motorUpdateLoop()
 }
 
 /**
- * Periodically sends winch position updates.
- */
-void winchUpdateLoop()
-{
-  // Wait for a fixed time period.
-  delay(300);
-  
-  // Send status updates while connected to server.
-  if (system_state == RUNNING)
-  {  
-    // TODO: Remove this hack
-    // Send encoder status update over USB
-    bool valid = false;
-    long pos = ((platypus::Winch*)platypus::sensors[2])->encoder(&valid);
-    
-    if (valid)
-    {
-      snprintf(output_buffer, OUTPUT_BUFFER_SIZE,
-        "{"
-          "\"s2\":{"
-            "\"type\":\"winch\","
-            "\"depth\":%ld"
-          "}"
-        "}",
-        pos
-      );
-      send(output_buffer);
-    } 
-  }
-  yield();
-}
-
-/**
  * Reads from serial debugging console and attempts to execute commands.
  */
 void serialConsoleLoop()
