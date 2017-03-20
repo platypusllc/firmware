@@ -108,9 +108,16 @@ void BatterySensor::loop()
 }
 
 IMU::IMU(int channel)
-  : Sensor(channel), measurementInterval(200)
+  : Sensor(channel), measurementInterval(200), bno(55)
 {
   lastMeasurementTime = 0;
+
+  if (!bno.begin()){
+    Serial.println("Could not initialize IMU");
+  }
+
+  delay(1000);
+  bno.setExtCrystalUse(true);
 }
 
 char* IMU::name()
@@ -120,7 +127,25 @@ char* IMU::name()
 
 void IMU::loop()
 {
+  if (millis() - lastMeasurementTime > measurementInterval)
+  {
+    sensors_event_t event;
+    bno.getEvent(&event);
 
+    char output_str[DEFAULT_BUFFER_SIZE + 3];
+    snprintf(output_str, DEFAULT_BUFFER_SIZE,
+             "{"
+             "\"s%u\":{"
+             "\"type\":\"%s\","
+             "\"data\":\"%f\""
+             "}"
+             "}",
+             channel_,
+             this->name(),
+             event.orientation.x
+            );
+    send(output_str); 
+  }
 }
 
 

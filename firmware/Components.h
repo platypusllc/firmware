@@ -1,6 +1,10 @@
 #ifndef COMPONENTS_H
 #define COMPONENTS_H
 
+#include <Wire.h>
+#include <Adafruit_Sensor.h>
+#include <Adafruit_BNO055.h>
+
 #include "Platypus.h"
 
 namespace platypus 
@@ -91,6 +95,7 @@ namespace platypus
   private:
     const int measurementInterval;
     int lastMeasurementTime;
+    Adafruit_BNO055 bno;
   };
   
   // External Sensors //
