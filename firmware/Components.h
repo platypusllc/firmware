@@ -1,4 +1,4 @@
-#ifndef COMPONENTS_H
+  #ifndef COMPONENTS_H
 #define COMPONENTS_H
 
 #include "Platypus.h"
@@ -263,6 +263,7 @@ namespace platypus
     virtual char * name();
     void loop();
     void onSerial();
+    int counter = 0;
   };
 }
 

@@ -969,46 +969,53 @@ char * JSONPassThrough::name() {
 void JSONPassThrough::loop(){
 }
 /*The winch pass through code is the same as the JSON pass through but formats the set command differently */
-WinchPassThrough::WinchPassThrough(int channel):Sensor(channel),SerialSensor(channel, 9600, DIRECT)
+//default baud is 9600
+WinchPassThrough::WinchPassThrough(int channel):Sensor(channel),SerialSensor(channel, 9600 , DIRECT)
 {
   
 }
 
 void WinchPassThrough::onSerial() {
-  
+   
+
   char c = SERIAL_PORTS[channel_]->read();
-  
+
   // Ignore null and tab characters
   if (c == '\0' || c == '\t') {
     return;
   }
-  if (c != '\r' && c != '\n' && recv_index_ < DEFAULT_BUFFER_SIZE)
+  if (c != '\r' && c != '\n' && recv_index_ < 204)
   {
     recv_buffer_[recv_index_] = c;
+    //Serial.print(c);
     ++recv_index_;
   }
   else if (recv_index_ > 0)
   {
     recv_buffer_[recv_index_] = '\0';
-    //Serial.print(String("Raw Sensor Input:") + recv_buffer_);
-    
-    
-    char output_str[DEFAULT_BUFFER_SIZE + 3];
-    snprintf(output_str, DEFAULT_BUFFER_SIZE,
-             "{"
-             "\"s%u\":"
-              "%s"
-             "}\r",
-             recv_buffer_
+    Serial.flush();
+    char output_str[204  + 3];
+    snprintf(output_str, 204,
+	     "{\"s2\":"
+	     "%s"
+	     "}\r",
+    	     recv_buffer_
             );
-    send(output_str);
+    
+    if (recv_buffer_[0] != '\0'); //dont send empty recieved messages 
+    {
+      send(output_str);
+    }
+    recv_buffer_[0] = '\0';
+
     memset(recv_buffer_, 0, recv_index_);
     recv_index_ = 0;
+    
   }       
 }
 
 bool WinchPassThrough::set(const char* param, const char* value){
-    
+  Serial.println("COMMAND SENT TO WINCH");
     char output_str[DEFAULT_BUFFER_SIZE + 3];
     snprintf(output_str, DEFAULT_BUFFER_SIZE,
              "{"
@@ -1018,7 +1025,7 @@ bool WinchPassThrough::set(const char* param, const char* value){
              param,
              value
             );
-    SERIAL_PORTS[channel_]->println(output_str);  
+   SERIAL_PORTS[channel_]->println(output_str);
 }
 
 
@@ -1026,5 +1033,18 @@ char * WinchPassThrough::name() {
   return "winch_pass_through";
 }
 void WinchPassThrough::loop(){
+ 
+ char output_str[DEFAULT_BUFFER_SIZE + 100];
+    snprintf(output_str, DEFAULT_BUFFER_SIZE,
+             "{"
+             "\"%s\":"
+             "%s"
+             "}\r",
+             "g",
+             "depth"
+            );
+    SERIAL_PORTS[channel_]->println(output_str);
+    delay(3000);
+
 }
 
