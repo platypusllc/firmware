@@ -123,51 +123,6 @@ void IMU::loop()
 
 }
 
-AnalogSensor::AnalogSensor(int channel)
-  : Sensor(channel), scale_(1.0f), offset_(0.0f) {}
-
-bool AnalogSensor::set(const char* param, const char* value)
-{
-  // Set analog scale.
-  if (!strncmp("scale", param, 6))
-  {
-    float s = atof(value);
-    scale(s);
-    return true;
-  }
-  // Set analog offset.
-  else if (!strncmp("offset", param, 7))
-  {
-    float o = atof(value);
-    offset(o);
-    return true;
-  }
-  // Return false for unknown command.
-  else
-  {
-    return false;
-  }
-}
-
-void AnalogSensor::scale(float scale)
-{
-  scale_ = scale;
-}
-
-float AnalogSensor::scale()
-{
-  return scale_;
-}
-
-void AnalogSensor::offset(float offset)
-{
-  offset = offset_;
-}
-
-float AnalogSensor::offset()
-{
-  return offset_;
-}
 
 ServoSensor::ServoSensor(int channel) : Sensor(channel)
 {
@@ -213,110 +168,6 @@ bool ServoSensor::set(const char *param, const char *value)
 char* ServoSensor::name()
 {
   return "servo";
-}
-
-PoweredSensor::PoweredSensor(int channel, bool poweredOn)
-  : Sensor(channel), state_(true)
-{
-  //PowerOff to be sure sensor is off
-  powerOff();
-  
-  if (poweredOn){
-    powerOn();
-  } else {
-    powerOff();
-  }
-}
-
-// Turn 12v pin on. Returns true if successful, false if power was already on
-bool PoweredSensor::powerOn(){
-  if (state_){
-    //Serial.println("Power On Failure, sensor already powered on");
-    return false;
-  } else {
-    pinMode(board::SENSOR_PORT[channel_].PWR_ENABLE, OUTPUT);
-    digitalWrite(board::SENSOR_PORT[channel_].PWR_ENABLE, HIGH);
-    state_ = true;
-    return true;
-  }
-}
-
-// Turn 12v pin off. Returns true if successful, false if power was already off
-bool PoweredSensor::powerOff(){
-  if (state_){
-    pinMode(board::SENSOR_PORT[channel_].PWR_ENABLE, OUTPUT);
-    digitalWrite(board::SENSOR_PORT[channel_].PWR_ENABLE, LOW);
-    state_ = false;
-    return true;
-  } else {
-    //Serial.println("Power Off Failure, sensor already powered off");
-    return false;
-  }
-}
-
-SerialSensor::SerialSensor(int channel, int baudRate, int serialType, int dataStringLength) 
-  : Sensor(channel), recv_index_(0)
-{
-  baud_ = baudRate;
-  serialType_ = serialType;
-  minDataStringLength_ = dataStringLength;
-
-  if (serialType == RS485){
-    // Enable RSxxx receiver
-    pinMode(board::SENSOR_PORT[channel].RX_DISABLE, OUTPUT);
-    digitalWrite(board::SENSOR_PORT[channel].RX_DISABLE, LOW);
-    
-    // Enable RSxxx transmitter
-    pinMode(board::SENSOR_PORT[channel].TX_ENABLE, OUTPUT);
-    digitalWrite(board::SENSOR_PORT[channel].TX_ENABLE, HIGH);
-    
-    // Enable RS485 termination resistor
-    pinMode(board::SENSOR_PORT[channel].RS485_TE, OUTPUT);
-    digitalWrite(board::SENSOR_PORT[channel].RS485_TE, HIGH);
-    
-    // Select RS485 (deselect RS232)
-    pinMode(board::SENSOR_PORT[channel].RS485_232, OUTPUT);
-    digitalWrite(board::SENSOR_PORT[channel].RS485_232, HIGH);
-  }
-  
-  SERIAL_PORTS[channel]->begin(baudRate);
-}
-
-void SerialSensor::onSerial(){
-  char c = SERIAL_PORTS[channel_]->read();
-  
-  // Ignore null and tab characters
-  if (c == '\0' || c == '\t') {
-    return;
-  }
-  if (c != '\r' && c != '\n' && recv_index_ < DEFAULT_BUFFER_SIZE)
-  {
-    recv_buffer_[recv_index_] = c;
-    ++recv_index_;
-  }
-  else if (recv_index_ > 0)
-  {
-    recv_buffer_[recv_index_] = '\0';
-
-    if (recv_index_ >  minDataStringLength_){
-      char output_str[DEFAULT_BUFFER_SIZE + 3];
-      snprintf(output_str, DEFAULT_BUFFER_SIZE,
-               "{"
-               "\"s%u\":{"
-               "\"type\":\"%s\","
-               "\"data\":\"%s\""
-               "}"
-               "}",
-               channel_,
-               this->name(),
-               recv_buffer_
-              );
-      send(output_str);  
-    }
-    
-    memset(recv_buffer_, 0, recv_index_);
-    recv_index_ = 0;
-  }
 }
 
 // Known working values: measurementInterval = 1500, minReadTime = 350 (min difference seems to be 1150)
@@ -819,25 +670,6 @@ void AtlasDO::onSerial(){
     recv_index_ = 0;
   }
 }
-
-GY26Compass::GY26Compass(int channel) : Sensor(channel), SerialSensor(channel, 9600, 0), measurementInterval(5000)
-{
-  lastMeasurementTime = 0;
-  declinationAngle = 93; 
-}
-
-char * GY26Compass::name(){
-  return "GY26Compass";
-}
-
-void GY26Compass::loop(){
-  if (millis() - lastMeasurementTime > measurementInterval){
-    SERIAL_PORTS[channel_]->write(0x31);
-    lastMeasurementTime = millis();
-    //Serial.println("requested compass measurement");
-  }
-}
-
 
 HDS::HDS(int channel)
   : Sensor(channel), PoweredSensor(channel, true), SerialSensor(channel, 4800, RS485)

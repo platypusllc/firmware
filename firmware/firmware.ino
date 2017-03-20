@@ -191,11 +191,14 @@ void setup()
   // Start the system in the disconnected state
   system_state = DISCONNECTED;
   
+  // Set ADC Precision:
+  analogReadResolution(12);
+
   // TODO: replace this with smart hooks.
   // Initialize External sensors
-  platypus::sensors[0] = new platypus::GY26Compass(0);
-  platypus::sensors[1] = new platypus::GY26Compass(1);
-  platypus::sensors[2] = new platypus::GY26Compass(2);
+  platypus::sensors[0] = new platypus::ES2(0);
+  platypus::sensors[1] = new platypus::ES2(1);
+  platypus::sensors[2] = new platypus::ES2(2);
   platypus::sensors[3] = new platypus::ServoSensor(3);
 
   // Initialize Internal sensors
@@ -214,14 +217,10 @@ void setup()
   debug_buffer[INPUT_BUFFER_SIZE] = '\0';
   input_buffer[INPUT_BUFFER_SIZE] = '\0';
   output_buffer[OUTPUT_BUFFER_SIZE] = '\0';
-
-  // Set ADC Precision:
-  analogReadResolution(12);
   
   // Create secondary tasks for system.
   Scheduler.startLoop(motorUpdateLoop);
   Scheduler.startLoop(serialConsoleLoop);
-  //Scheduler.startLoop(batteryUpdateLoop);
 
   // Initialize Platypus library.
   platypus::init();
@@ -325,28 +324,6 @@ void loop()
   
   // Attempt to parse command
   handleCommand(input_buffer);
-}
-
-void batteryUpdateLoop()
-{  
-  int rawVoltage = analogRead(board::V_BATT);
-  double voltageReading = 0.008879*rawVoltage + 0.09791;
-
-  char output_str[128];
-  snprintf(output_str, 128,
-           "{"
-           "\"s4\":{"
-           "\"type\":\"battery\","
-           "\"data\":\"%.3f %f %f\""
-           "}"
-           "}",
-           voltageReading, 
-           platypus::motors[0]->velocity(),
-           platypus::motors[1]->velocity()
-          );
-  send(output_str);  
-  delay(1000);
-  yield();
 }
 
 /**

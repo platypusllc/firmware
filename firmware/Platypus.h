@@ -15,6 +15,8 @@ extern void send(char *str);
 
 namespace platypus 
 {  
+  const int DEFAULT_BUFFER_SIZE = 128;
+
   // Main library initialization function.
   void init();
   
@@ -120,6 +122,59 @@ namespace platypus
     virtual void calibrate(int flag){};
   };
   
+  class AnalogSensor : public Sensor 
+  {
+  public:
+    AnalogSensor(int channel);
+
+    bool set(const char* param, const char* value);
+    virtual char *name() = 0;
+    
+    void scale(float scale);
+    float scale(){ return scale_; };
+    
+    void offset(float offset);
+    float offset(){ return offset_; };
+    
+  private:
+    float scale_;
+    float offset_;
+  };
+  
+  class PoweredSensor : virtual public Sensor 
+  {
+  public:
+    PoweredSensor(int channel, bool poweredOn=true);
+    virtual char *name() = 0;
+    bool powerOn();
+    bool powerOff();
+
+  private:
+    bool state_;
+  };
+
+  class SerialSensor : virtual public Sensor
+  {
+  public:
+    SerialSensor(int channel, int baudRate, int serialType = RS232, int dataStringLength = 0);
+    virtual char * name() = 0;
+    void onSerial();
+
+    enum SERIAL_TYPE{
+      RS232,
+      RS485
+    };
+
+  protected:
+    int baud_;
+    int serialType_;
+    int minDataStringLength_;
+    char recv_buffer_[DEFAULT_BUFFER_SIZE];
+    unsigned int recv_index_;
+  };
+
+  
+
   extern platypus::Motor *motors[board::NUM_MOTORS];
   extern platypus::Sensor *sensors[board::NUM_SENSORS];
   extern platypus::Peripheral *peripherals[board::NUM_PERIPHERALS];

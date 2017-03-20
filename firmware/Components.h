@@ -5,7 +5,6 @@
 
 namespace platypus 
 {
-  const int DEFAULT_BUFFER_SIZE = 128;
 
   typedef enum 
   {
@@ -93,64 +92,8 @@ namespace platypus
     const int measurementInterval;
     int lastMeasurementTime;
   };
-
-
-  // External Sensor Base Classes //
-  class AnalogSensor : public Sensor 
-  {
-  public:
-    AnalogSensor(int channel);
-
-    bool set(const char* param, const char* value);
-    virtual char *name() = 0;
-    
-    void scale(float scale);
-    float scale();
-    
-    void offset(float offset);
-    float offset();
-    
-  private:
-    float scale_;
-    float offset_;
-  };
-  
-  class PoweredSensor : virtual public Sensor 
-  {
-  public:
-    PoweredSensor(int channel, bool poweredOn=true);
-    virtual char *name() = 0;
-    bool powerOn();
-    bool powerOff();
-
-  private:
-    bool state_;
-  };
-
-  class SerialSensor : virtual public Sensor
-  {
-  public:
-    SerialSensor(int channel, int baudRate, int serialType = RS232, int dataStringLength = 0);
-    virtual char * name() = 0;
-    void onSerial();
-
-    enum SERIAL_TYPE{
-      RS232,
-      RS485
-    };
-
-  protected:
-    int baud_;
-    int serialType_;
-    int minDataStringLength_;
-    char recv_buffer_[DEFAULT_BUFFER_SIZE];
-    unsigned int recv_index_;
-  };
-
   
   // External Sensors //
-
-
   class ServoSensor : public Sensor 
   {
   public:
@@ -229,20 +172,6 @@ namespace platypus
     void calibrate(int flag);
     void loop();
     void onSerial();
-  };
-
-  class GY26Compass : public SerialSensor
-  {
-  private:
-    const int measurementInterval;
-    int lastMeasurementTime;
-    int declinationAngle;
-    
-  public:
-    GY26Compass(int channel);
-    virtual char * name();  
-    void loop();
-    //void onSerial();
   };
   
   class HDS : public PoweredSensor, public SerialSensor
