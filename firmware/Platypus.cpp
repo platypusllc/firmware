@@ -8,6 +8,7 @@ constexpr float VELOCITY_ALPHA = 0.1;
 constexpr float VELOCITY_THRESHOLD = 0.001;
 
 // TODO: Correct default initialization of these sensors.
+platypus::Peripheral *platypus::peripherals[board::NUM_PERIPHERALS];
 platypus::Motor *platypus::motors[board::NUM_MOTORS];
 platypus::Sensor *platypus::sensors[board::NUM_SENSORS];
 
@@ -153,25 +154,48 @@ int Led::B()
   return b_;
 }
 
-Motor::Motor(int channel)
-  : enable_(board::MOTOR[channel].ENABLE), enabled_(false), velocity_(0), servo_ctrl(board::MOTOR[channel].SERVO_CTRL)
+Peripheral::Peripheral(int channel, bool enabled)
+  : channel_(channel), enable_(board::PERIPHERAL[channel].ENABLE)
 {
-  channel_ = channel;
-  servo_.attach(board::MOTOR[channel_].SERVO);
   pinMode(enable_, OUTPUT);
-  // Initialize with power output on
-  digitalWrite(enable_, HIGH);
+  enable(enabled);
+}
+
+Peripheral::~Peripheral()
+{
+  disable();
+  pinMode(enable_, INPUT);
+}
+
+void Peripheral::enable(bool enabled)
+{
+  enabled_ = enabled;
+  digitalWrite(enable_, enabled);
+}
+
+float Peripheral::current()
+{
+  float vsense = analogRead(board::PERIPHERAL[channel_].CURRENT);
+  //V sense is measured across a 330 Ohm resistor, I = V/R
+  //I sense is ~1/5000 of output current
+  return vsense*5000.0/330.0;
+}
+
+Motor::Motor(int channel)
+  : channel_(channel), enable_(board::MOTOR[channel].ENABLE)
+{
   // Initialize with ESC softswitch off
-  pinMode(servo_ctrl,OUTPUT);
-  digitalWrite(servo_ctrl,HIGH);
+  pinMode(enable_, OUTPUT);
+  disable();
+
+  // Attach Servo object to signal pin
+  servo_.attach(board::MOTOR[channel_].SERVO);
 }
 
 Motor::~Motor()
 {
+  disable();
   pinMode(enable_, INPUT);
-  digitalWrite(enable_, LOW);
-  pinMode(servo_ctrl,INPUT);
-  digitalWrite(servo_ctrl,HIGH);  
   servo_.detach();
 }
 
@@ -191,50 +215,16 @@ void Motor::velocity(float velocity)
   servo_.writeMicroseconds(command);
 }
 
-float Motor::velocity()
-{
-  return velocity_;
-}
-
-void Motor::enablePower(bool enabled)
-{
-  digitalWrite(enable_, enabled);
-}
-
 // Deals with ESC softswitch exclusively
 void Motor::enable(bool enabled)
 {
   enabled_ = enabled;
-  digitalWrite(servo_ctrl, !enabled_);
+  digitalWrite(enable_, !enabled_);
 
   if (!enabled_)
   {
     velocity(0.0);
   }
-}
-
-bool Motor::enabled()
-{
-  return enabled_;
-}
-
-void Motor::enable()
-{
-  enable(true);
-}
-
-void Motor::disable()
-{
-  enable(false);
-}
-
-float Motor::current()
-{
-  //Will no longer work with battery directly powering esc?
-  float vsense = analogRead(board::MOTOR[channel_].CURRENT);
-  //V sense is measured across a 330 Ohm resistor, I = V/R
-  //I sense is ~1/5000 of output current
-  return vsense*5000.0/330.0;
 }
 
 bool Motor::set(const char *param, const char *value)
@@ -312,7 +302,46 @@ void Motor::onLoop_(void *data)
 Sensor::Sensor(int channel) 
 : channel_(channel)
 {  
-  // Disable RSxxx receiver
+  // Should not be instantiated
+}
+
+Sensor::~Sensor()
+{
+  // TODO: fill me in
+}
+
+bool Sensor::set(const char* param, const char* value)
+{
+  return false;
+}
+
+void Sensor::onSerial() 
+{
+  // Default to doing nothing on serial events. 
+}
+
+void Sensor::onSerial_(void *data)
+{
+  // Resolve self-reference and call member function.
+  Sensor *self = (Sensor*)data;
+  self->onSerial();
+}
+
+void Sensor::loop()
+{
+  // Default to doring nothing during loop function.
+}
+
+void Sensor::onLoop_(void *data)
+{ 
+  // Resolve self-reference and call member function.
+  Sensor *self = (Sensor*)data;
+  self->loop();
+}
+
+/*
+
+// Disable RSxxx receiver
   pinMode(board::SENSOR[channel].RX_DISABLE, OUTPUT);
   digitalWrite(board::SENSOR[channel].RX_DISABLE, HIGH);
 
@@ -353,42 +382,5 @@ Sensor::Sensor(int channel)
   // Register serial event handler
   SerialHandler_t handler = {Sensor::onSerial_, this}; 
   SERIAL_HANDLERS[channel] = handler;
-}
 
-void Sensor::calibrate(int flag){
-  
-}
-
-Sensor::~Sensor()
-{
-  // TODO: fill me in
-}
-
-bool Sensor::set(const char* param, const char* value)
-{
-  return false;
-}
-
-void Sensor::onSerial() 
-{
-  // Default to doing nothing on serial events. 
-}
-
-void Sensor::onSerial_(void *data)
-{
-  // Resolve self-reference and call member function.
-  Sensor *self = (Sensor*)data;
-  self->onSerial();
-}
-
-void Sensor::loop()
-{
-  // Do nothing.
-}
-
-void Sensor::onLoop_(void *data)
-{ 
-  // Resolve self-reference and call member function.
-  Sensor *self = (Sensor*)data;
-  self->loop();
-}
+  */

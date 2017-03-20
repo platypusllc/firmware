@@ -74,7 +74,7 @@ void send(char *str)
   if (adk.isReady()) adk.write(len, (uint8_t*)str);
   
   // Copy string to debugging console.
-  //Serial.print("-> ");
+  Serial.print("-> ");
   Serial.print(str);
 }
 
@@ -192,19 +192,23 @@ void setup()
   system_state = DISCONNECTED;
   
   // TODO: replace this with smart hooks.
-  // Initialize sensors
+  // Initialize External sensors
   platypus::sensors[0] = new platypus::GY26Compass(0);
   platypus::sensors[1] = new platypus::GY26Compass(1);
   platypus::sensors[2] = new platypus::GY26Compass(2);
   platypus::sensors[3] = new platypus::ServoSensor(3);
+
+  // Initialize Internal sensors
+  platypus::sensors[4] = new platypus::BatterySensor(4);
+  platypus::sensors[5] = new platypus::IMU(5);
   
   // Initialize motors
   platypus::motors[0] = new platypus::Dynamite(0);
   platypus::motors[1] = new platypus::Dynamite(1);
 
-  // Power all peripherals
-  platypus::motors[0]->enablePower(true);
-  platypus::motors[1]->enablePower(true);
+  // Initialize and power all peripherals
+  platypus::peripherals[0] = new platypus::Peripheral(0, true);
+  platypus::peripherals[1] = new platypus::Peripheral(1, true);
 
   // Make the ADK buffers into null terminated string.
   debug_buffer[INPUT_BUFFER_SIZE] = '\0';
@@ -217,19 +221,19 @@ void setup()
   // Create secondary tasks for system.
   Scheduler.startLoop(motorUpdateLoop);
   Scheduler.startLoop(serialConsoleLoop);
-  Scheduler.startLoop(batteryUpdateLoop);
+  //Scheduler.startLoop(batteryUpdateLoop);
 
   // Initialize Platypus library.
   platypus::init();
   
   // Print header indicating that board successfully initialized
-  /*Serial.println(F("------------------------------"));
+  Serial.println(F("------------------------------"));
   Serial.println(companyName);
   Serial.println(url);
   Serial.println(accessoryName);
   Serial.println(versionNumber);
   Serial.println(F("------------------------------"));
-  */
+  
   // Turn LED to startup state.
   rgb_led.set(255, 0, 255);
   delay(1000);
@@ -427,8 +431,8 @@ void motorUpdateLoop()
           "\"c\":%f"
         "}"
       "}",
-      platypus::motors[0]->velocity(), platypus::motors[0]->current(),
-      platypus::motors[1]->velocity(), platypus::motors[1]->current()
+      platypus::motors[0]->velocity(), platypus::motors[0]->velocity(),
+      platypus::motors[1]->velocity(), platypus::motors[1]->velocity()
     );
     send(output_buffer);
   }

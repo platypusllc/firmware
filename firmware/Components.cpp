@@ -4,31 +4,6 @@ using namespace platypus;
 
 #define WAIT_FOR_CONDITION(condition, timeout_ms) for (unsigned int j = 0; j < (timeout_ms) && !(condition); ++j) delay(1);
 
-// TODO: move these somewhere reasonable
-// Default gains for the Roboclaw.
-/*#define Kp 0x00010000
-#define Ki 0x00008000
-#define Kd 0x00004000
-#define Qpps 44000
-*/
-//Velocity PID coefficients
-#define Kp 2
-#define Ki 4
-#define Kd 0
-#define Qpps 44000 //3600
-
-//Position PID coefficients
-#define PosKp 2500
-#define PosKi 0
-#define PosKd 20000
-#define KikMax 0
-#define kDeadZone 5 //10
-#define kMin 50
-#define kMax 1950
-
-
-#define addr 0x80
-
 void VaporPro::arm()
 {
   disable();
@@ -94,6 +69,60 @@ void Dynamite::arm()
   delay(3000);
 }
 
+BatterySensor::BatterySensor(int channel) 
+  : Sensor(channel), measurementInterval(5000)
+{
+  lastMeasurementTime = 0;
+  lastReading = 0.0;
+}
+
+char* BatterySensor::name()
+{
+  return "battery";
+}
+
+void BatterySensor::loop()
+{
+  if (millis() - lastMeasurementTime > measurementInterval){
+    // Take a measurement
+    int rawVoltage = analogRead(board::V_BATT);
+    lastReading = board::V_SCALE * rawVoltage + board::V_OFFSET;
+    lastMeasurementTime = millis();
+
+    char output_str[DEFAULT_BUFFER_SIZE + 3];
+    snprintf(output_str, DEFAULT_BUFFER_SIZE,
+             "{"
+             "\"s%u\":{"
+             "\"type\":\"%s\","
+             "\"data\":\"%.3f %f %d\""
+             "}"
+             "}",
+             channel_,
+             this->name(),
+             lastReading,
+             0.0,
+             0.0
+            );
+    send(output_str);  
+  }
+}
+
+IMU::IMU(int channel)
+  : Sensor(channel), measurementInterval(200)
+{
+  lastMeasurementTime = 0;
+}
+
+char* IMU::name()
+{
+  return "imu";
+}
+
+void IMU::loop()
+{
+
+}
+
 AnalogSensor::AnalogSensor(int channel)
   : Sensor(channel), scale_(1.0f), offset_(0.0f) {}
 
@@ -140,10 +169,10 @@ float AnalogSensor::offset()
   return offset_;
 }
 
-ServoSensor::ServoSensor(int channel)
-  : Sensor(channel), position_(0.0)
+ServoSensor::ServoSensor(int channel) : Sensor(channel)
 {
-  servo_.attach(board::SENSOR[channel].GPIO[board::TX_NEG]);
+  position_ = 0.0;
+  servo_.attach(board::SENSOR_PORT[channel].GPIO[board::TX_NEG]);
 }
 
 ServoSensor::~ServoSensor()
@@ -163,11 +192,6 @@ void ServoSensor::position(float position)
 
   float command = (position_ * 600) + 1500;
   servo_.writeMicroseconds(command);
-}
-
-float ServoSensor::position()
-{
-  return position_;
 }
 
 bool ServoSensor::set(const char *param, const char *value)
@@ -210,8 +234,8 @@ bool PoweredSensor::powerOn(){
     //Serial.println("Power On Failure, sensor already powered on");
     return false;
   } else {
-    pinMode(board::SENSOR[channel_].PWR_ENABLE, OUTPUT);
-    digitalWrite(board::SENSOR[channel_].PWR_ENABLE, HIGH);
+    pinMode(board::SENSOR_PORT[channel_].PWR_ENABLE, OUTPUT);
+    digitalWrite(board::SENSOR_PORT[channel_].PWR_ENABLE, HIGH);
     state_ = true;
     return true;
   }
@@ -220,8 +244,8 @@ bool PoweredSensor::powerOn(){
 // Turn 12v pin off. Returns true if successful, false if power was already off
 bool PoweredSensor::powerOff(){
   if (state_){
-    pinMode(board::SENSOR[channel_].PWR_ENABLE, OUTPUT);
-    digitalWrite(board::SENSOR[channel_].PWR_ENABLE, LOW);
+    pinMode(board::SENSOR_PORT[channel_].PWR_ENABLE, OUTPUT);
+    digitalWrite(board::SENSOR_PORT[channel_].PWR_ENABLE, LOW);
     state_ = false;
     return true;
   } else {
@@ -239,20 +263,20 @@ SerialSensor::SerialSensor(int channel, int baudRate, int serialType, int dataSt
 
   if (serialType == RS485){
     // Enable RSxxx receiver
-    pinMode(board::SENSOR[channel].RX_DISABLE, OUTPUT);
-    digitalWrite(board::SENSOR[channel].RX_DISABLE, LOW);
+    pinMode(board::SENSOR_PORT[channel].RX_DISABLE, OUTPUT);
+    digitalWrite(board::SENSOR_PORT[channel].RX_DISABLE, LOW);
     
     // Enable RSxxx transmitter
-    pinMode(board::SENSOR[channel].TX_ENABLE, OUTPUT);
-    digitalWrite(board::SENSOR[channel].TX_ENABLE, HIGH);
+    pinMode(board::SENSOR_PORT[channel].TX_ENABLE, OUTPUT);
+    digitalWrite(board::SENSOR_PORT[channel].TX_ENABLE, HIGH);
     
     // Enable RS485 termination resistor
-    pinMode(board::SENSOR[channel].RS485_TE, OUTPUT);
-    digitalWrite(board::SENSOR[channel].RS485_TE, HIGH);
+    pinMode(board::SENSOR_PORT[channel].RS485_TE, OUTPUT);
+    digitalWrite(board::SENSOR_PORT[channel].RS485_TE, HIGH);
     
     // Select RS485 (deselect RS232)
-    pinMode(board::SENSOR[channel].RS485_232, OUTPUT);
-    digitalWrite(board::SENSOR[channel].RS485_232, HIGH);
+    pinMode(board::SENSOR_PORT[channel].RS485_232, OUTPUT);
+    digitalWrite(board::SENSOR_PORT[channel].RS485_232, HIGH);
   }
   
   SERIAL_PORTS[channel]->begin(baudRate);

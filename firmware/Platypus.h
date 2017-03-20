@@ -43,6 +43,29 @@ namespace platypus
     
     int r_, g_, b_;
   };
+
+  class Peripheral
+  {
+  public:
+    // Initialize with power off by default
+    Peripheral(int channel, bool enabled = false);
+    virtual ~Peripheral();
+
+    // Functions to turn peripheral power on/off
+    void enable(bool enabled);
+    bool enabled(){ return enabled_; };
+
+    void enable(){ enable(true); };
+    void disable(){ enable(false); };
+
+    // Get peripheral current use
+    float current();
+
+  private:
+    const int channel_;
+    const int enable_;
+    bool enabled_;
+  };
   
   class Motor : public Configurable
   { 
@@ -55,25 +78,19 @@ namespace platypus
     virtual void loop();
     
     void velocity(float velocity);
-    float velocity();
-
-    // Enable motor power output on board for pump/wifi
-    void enablePower(bool enabled);
+    float velocity(){ return velocity_; };
 
     // Enable ESCs (softswitch)
     void enable(bool enabled);
-    bool enabled();
+    bool enabled(){ return enabled_; };
     
-    void enable();
-    void disable();
-    
-    float current();
+    void enable(){ enable(true); };
+    void disable(){ enable(false); };
     
   private:
     Servo servo_;
-    int channel_;
-    int enable_;
-    int servo_ctrl;    
+    const int channel_;
+    const int enable_;
     bool enabled_;
     float velocity_;
     float desiredVelocity_;
@@ -100,11 +117,12 @@ namespace platypus
   public:
     static void onSerial_(void *data);
     static void onLoop_(void *data);
-    virtual void calibrate(int flag);
+    virtual void calibrate(int flag){};
   };
   
   extern platypus::Motor *motors[board::NUM_MOTORS];
   extern platypus::Sensor *sensors[board::NUM_SENSORS];
+  extern platypus::Peripheral *peripherals[board::NUM_PERIPHERALS];
   
     // Callbacks structure for serial events
   typedef struct {

@@ -68,7 +68,34 @@ namespace platypus
     void arm();
   };
 
-  // Sensors //
+  // Internal Sensors //
+  class BatterySensor : public Sensor
+  {
+  public:
+    BatterySensor(int channel);
+    virtual char* name();
+    void loop();
+
+  private:
+    const int measurementInterval;
+    int lastMeasurementTime;
+    double lastReading;
+  };
+
+  class IMU : public Sensor
+  {
+  public:
+    IMU(int channel);
+    virtual char* name();
+    void loop();
+
+  private:
+    const int measurementInterval;
+    int lastMeasurementTime;
+  };
+
+
+  // External Sensor Base Classes //
   class AnalogSensor : public Sensor 
   {
   public:
@@ -88,23 +115,6 @@ namespace platypus
     float offset_;
   };
   
-  class ServoSensor : public Sensor 
-  {
-  public:
-    ServoSensor(int channel);
-    ~ServoSensor();
-
-    bool set(const char* param, const char* value);
-    virtual char *name();
-    
-    void position(float velocity);
-    float position();
-    
-  private:
-    Servo servo_;
-    float position_;
-  };
-
   class PoweredSensor : virtual public Sensor 
   {
   public:
@@ -138,6 +148,26 @@ namespace platypus
   };
 
   
+  // External Sensors //
+
+
+  class ServoSensor : public Sensor 
+  {
+  public:
+    ServoSensor(int channel);
+    ~ServoSensor();
+
+    bool set(const char* param, const char* value);
+    virtual char *name();
+    
+    void position(float velocity);
+    float position(){ return position_; };
+    
+  private:
+    Servo servo_;
+    float position_;
+  };
+
   class ES2 : public PoweredSensor, public SerialSensor
   {
   private:
