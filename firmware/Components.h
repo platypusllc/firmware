@@ -263,7 +263,7 @@ namespace platypus
     virtual char * name();
     void loop();
     void onSerial();
-    int counter = 0;
+    int time;
   };
 }
 

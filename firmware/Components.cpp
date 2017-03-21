@@ -972,7 +972,7 @@ void JSONPassThrough::loop(){
 //default baud is 9600
 WinchPassThrough::WinchPassThrough(int channel):Sensor(channel),SerialSensor(channel, 9600 , DIRECT)
 {
-  
+  time = millis();
 }
 
 void WinchPassThrough::onSerial() {
@@ -984,19 +984,17 @@ void WinchPassThrough::onSerial() {
   if (c == '\0' || c == '\t') {
     return;
   }
-  if (c != '\r' && c != '\n' && recv_index_ < 204)
+  if (c != '\r' && c != '\n' && recv_index_ < DEFAULT_BUFFER_SIZE)
   {
     recv_buffer_[recv_index_] = c;
-    //Serial.print(c);
     ++recv_index_;
   }
   else if (recv_index_ > 0)
   {
     recv_buffer_[recv_index_] = '\0';
-    Serial.flush();
-    char output_str[204  + 3];
-    snprintf(output_str, 204,
-	     "{\"s2\":"
+    char output_str[DEFAULT_BUFFER_SIZE + 3];
+    snprintf(output_str, DEFAULT_BUFFER_SIZE,
+	     "{\"winch\":" //change this to winch
 	     "%s"
 	     "}\r",
     	     recv_buffer_
@@ -1015,7 +1013,6 @@ void WinchPassThrough::onSerial() {
 }
 
 bool WinchPassThrough::set(const char* param, const char* value){
-  Serial.println("COMMAND SENT TO WINCH");
     char output_str[DEFAULT_BUFFER_SIZE + 3];
     snprintf(output_str, DEFAULT_BUFFER_SIZE,
              "{"
@@ -1033,9 +1030,10 @@ char * WinchPassThrough::name() {
   return "winch_pass_through";
 }
 void WinchPassThrough::loop(){
- 
- char output_str[DEFAULT_BUFFER_SIZE + 100];
-    snprintf(output_str, DEFAULT_BUFFER_SIZE,
+ if (millis() - time >= 1000)
+ {
+     char output_str[DEFAULT_BUFFER_SIZE + 100];
+     snprintf(output_str, DEFAULT_BUFFER_SIZE,
              "{"
              "\"%s\":"
              "%s"
@@ -1044,7 +1042,9 @@ void WinchPassThrough::loop(){
              "depth"
             );
     SERIAL_PORTS[channel_]->println(output_str);
-    delay(3000);
+    time = millis();
 
+ }
+   
 }
 
