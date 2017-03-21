@@ -299,10 +299,9 @@ void Motor::onLoop_(void *data)
   self->loop();
 }
 
-Sensor::Sensor(int channel) 
-: channel_(channel)
+Sensor::Sensor(int id) : id_(id)
 {  
-  // Should not be instantiated
+  // Abstract Class - should not be instantiated
 }
 
 Sensor::~Sensor()
@@ -313,18 +312,6 @@ Sensor::~Sensor()
 bool Sensor::set(const char* param, const char* value)
 {
   return false;
-}
-
-void Sensor::onSerial() 
-{
-  // Default to doing nothing on serial events. 
-}
-
-void Sensor::onSerial_(void *data)
-{
-  // Resolve self-reference and call member function.
-  Sensor *self = (Sensor*)data;
-  self->onSerial();
 }
 
 void Sensor::loop()
@@ -339,9 +326,52 @@ void Sensor::onLoop_(void *data)
   self->loop();
 }
 
+ExternalSensor::ExternalSensor(int id, int port) : Sensor(id), port_(port) 
+{
+  //Unknown if following code is necessary...
 
-AnalogSensor::AnalogSensor(int channel)
-  : Sensor(channel), scale_(1.0f), offset_(0.0f) {}
+  // Disable RSxxx receiver
+  pinMode(board::SENSOR_PORT[port].RX_DISABLE, OUTPUT);
+  digitalWrite(board::SENSOR_PORT[port].RX_DISABLE, HIGH);
+
+  // Disable RSxxx transmitter
+  pinMode(board::SENSOR_PORT[port].TX_ENABLE, OUTPUT);
+  digitalWrite(board::SENSOR_PORT[port].TX_ENABLE, LOW);
+
+  // Disable RS485 termination resistor
+  pinMode(board::SENSOR_PORT[port].RS485_TE, OUTPUT);
+  digitalWrite(board::SENSOR_PORT[port].RS485_TE, LOW);
+
+  // Select RS232 (deselect RS485)
+  pinMode(board::SENSOR_PORT[port].RS485_232, OUTPUT);
+  digitalWrite(board::SENSOR_PORT[port].RS485_232, LOW);
+
+  // TODO: deconflict this!
+  if (port < 2)
+  {
+    // Disable half-duplex
+    pinMode(board::HALF_DUPLEX01, OUTPUT);
+    digitalWrite(board::HALF_DUPLEX01, LOW);
+  } 
+  else 
+  {
+    // Disable half-duplex
+    pinMode(board::HALF_DUPLEX23, OUTPUT);
+    digitalWrite(board::HALF_DUPLEX23, LOW);
+  }
+  
+  // Disable loopback test
+  pinMode(board::LOOPBACK, OUTPUT);
+  digitalWrite(board::LOOPBACK, LOW);
+  
+  // Disable 12V output
+  pinMode(board::SENSOR_PORT[port].PWR_ENABLE, OUTPUT);
+  digitalWrite(board::SENSOR_PORT[port].PWR_ENABLE, LOW);
+}
+
+
+AnalogSensor::AnalogSensor(int id, int port)
+  : ExternalSensor(id, port), scale_(1.0f), offset_(0.0f) {}
 
 bool AnalogSensor::set(const char* param, const char* value)
 {
@@ -376,8 +406,8 @@ void AnalogSensor::offset(float offset)
   offset = offset_;
 }
 
-PoweredSensor::PoweredSensor(int channel, bool poweredOn)
-  : Sensor(channel), state_(true)
+PoweredSensor::PoweredSensor(int id, int port, bool poweredOn)
+  : ExternalSensor(id, port), state_(true)
 {
   //PowerOff to be sure sensor is off
   powerOff();
@@ -395,8 +425,8 @@ bool PoweredSensor::powerOn(){
     //Serial.println("Power On Failure, sensor already powered on");
     return false;
   } else {
-    pinMode(board::SENSOR_PORT[channel_].PWR_ENABLE, OUTPUT);
-    digitalWrite(board::SENSOR_PORT[channel_].PWR_ENABLE, HIGH);
+    pinMode(board::SENSOR_PORT[port_].PWR_ENABLE, OUTPUT);
+    digitalWrite(board::SENSOR_PORT[port_].PWR_ENABLE, HIGH);
     state_ = true;
     return true;
   }
@@ -405,8 +435,8 @@ bool PoweredSensor::powerOn(){
 // Turn 12v pin off. Returns true if successful, false if power was already off
 bool PoweredSensor::powerOff(){
   if (state_){
-    pinMode(board::SENSOR_PORT[channel_].PWR_ENABLE, OUTPUT);
-    digitalWrite(board::SENSOR_PORT[channel_].PWR_ENABLE, LOW);
+    pinMode(board::SENSOR_PORT[port_].PWR_ENABLE, OUTPUT);
+    digitalWrite(board::SENSOR_PORT[port_].PWR_ENABLE, LOW);
     state_ = false;
     return true;
   } else {
@@ -415,34 +445,38 @@ bool PoweredSensor::powerOff(){
   }
 }
 
-SerialSensor::SerialSensor(int channel, int baudRate, int serialType, int dataStringLength) 
-  : Sensor(channel), recv_index_(0), baud_(baudRate), serialType_(serialType)
+SerialSensor::SerialSensor(int id, int port, int baud, int type, int dataLength) 
+  : ExternalSensor(id, port), recv_index_(0), baudRate_(baud), serialType_(type)
 {
-  minDataStringLength_ = dataStringLength;
+  minDataStringLength_ = dataLength;
 
-  if (serialType == RS485){
+  if (type == RS485){
     // Enable RSxxx receiver
-    pinMode(board::SENSOR_PORT[channel].RX_DISABLE, OUTPUT);
-    digitalWrite(board::SENSOR_PORT[channel].RX_DISABLE, LOW);
+    pinMode(board::SENSOR_PORT[port].RX_DISABLE, OUTPUT);
+    digitalWrite(board::SENSOR_PORT[port].RX_DISABLE, LOW);
     
     // Enable RSxxx transmitter
-    pinMode(board::SENSOR_PORT[channel].TX_ENABLE, OUTPUT);
-    digitalWrite(board::SENSOR_PORT[channel].TX_ENABLE, HIGH);
+    pinMode(board::SENSOR_PORT[port].TX_ENABLE, OUTPUT);
+    digitalWrite(board::SENSOR_PORT[port].TX_ENABLE, HIGH);
     
     // Enable RS485 termination resistor
-    pinMode(board::SENSOR_PORT[channel].RS485_TE, OUTPUT);
-    digitalWrite(board::SENSOR_PORT[channel].RS485_TE, HIGH);
+    pinMode(board::SENSOR_PORT[port].RS485_TE, OUTPUT);
+    digitalWrite(board::SENSOR_PORT[port].RS485_TE, HIGH);
     
     // Select RS485 (deselect RS232)
-    pinMode(board::SENSOR_PORT[channel].RS485_232, OUTPUT);
-    digitalWrite(board::SENSOR_PORT[channel].RS485_232, HIGH);
+    pinMode(board::SENSOR_PORT[port].RS485_232, OUTPUT);
+    digitalWrite(board::SENSOR_PORT[port].RS485_232, HIGH);
   }
   
-  SERIAL_PORTS[channel]->begin(baudRate);
+  // Register serial event handler
+  SerialHandler_t handler = {SerialSensor::onSerial_, this}; 
+  SERIAL_HANDLERS[port] = handler;
+
+  SERIAL_PORTS[port]->begin(baud);
 }
 
 void SerialSensor::onSerial(){
-  char c = SERIAL_PORTS[channel_]->read();
+  char c = SERIAL_PORTS[port_]->read();
   
   // Ignore null and tab characters
   if (c == '\0' || c == '\t') {
@@ -466,7 +500,7 @@ void SerialSensor::onSerial(){
                "\"data\":\"%s\""
                "}"
                "}",
-               channel_,
+               id_,
                this->name(),
                recv_buffer_
               );
@@ -478,48 +512,9 @@ void SerialSensor::onSerial(){
   }
 }
 
-/*
-
-// Disable RSxxx receiver
-  pinMode(board::SENSOR[channel].RX_DISABLE, OUTPUT);
-  digitalWrite(board::SENSOR[channel].RX_DISABLE, HIGH);
-
-  // Disable RSxxx transmitter
-  pinMode(board::SENSOR[channel].TX_ENABLE, OUTPUT);
-  digitalWrite(board::SENSOR[channel].TX_ENABLE, LOW);
-
-  // Disable RS485 termination resistor
-  pinMode(board::SENSOR[channel].RS485_TE, OUTPUT);
-  digitalWrite(board::SENSOR[channel].RS485_TE, LOW);
-
-  // Select RS232 (deselect RS485)
-  pinMode(board::SENSOR[channel].RS485_232, OUTPUT);
-  digitalWrite(board::SENSOR[channel].RS485_232, LOW);
-
-  // TODO: deconflict this!
-  if (channel < 2)
-  {
-    // Disable half-duplex
-    pinMode(board::HALF_DUPLEX01, OUTPUT);
-    digitalWrite(board::HALF_DUPLEX01, LOW);
-  } 
-  else 
-  {
-    // Disable half-duplex
-    pinMode(board::HALF_DUPLEX23, OUTPUT);
-    digitalWrite(board::HALF_DUPLEX23, LOW);
-  }
-  
-  // Disable loopback test
-  pinMode(board::LOOPBACK, OUTPUT);
-  digitalWrite(board::LOOPBACK, LOW);
-  
-  // Disable 12V output
-  pinMode(board::SENSOR[channel].PWR_ENABLE, OUTPUT);
-  digitalWrite(board::SENSOR[channel].PWR_ENABLE, LOW);
-  
-  // Register serial event handler
-  SerialHandler_t handler = {Sensor::onSerial_, this}; 
-  SERIAL_HANDLERS[channel] = handler;
-
-  */
+void SerialSensor::onSerial_(void *data)
+{
+  // Resolve self-reference and call member function.
+  SerialSensor *self = (SerialSensor*)data;
+  self->onSerial();
+}

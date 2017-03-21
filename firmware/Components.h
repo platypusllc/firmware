@@ -75,7 +75,7 @@ namespace platypus
   class BatterySensor : public Sensor
   {
   public:
-    BatterySensor(int channel);
+    BatterySensor(int id);
     virtual char* name();
     void loop();
 
@@ -88,7 +88,7 @@ namespace platypus
   class IMU : public Sensor
   {
   public:
-    IMU(int channel);
+    IMU(int id);
     virtual char* name();
     void loop();
 
@@ -104,10 +104,11 @@ namespace platypus
   };
   
   // External Sensors //
-  class ServoSensor : public Sensor 
+  class ServoSensor : public ExternalSensor 
   {
   public:
-    ServoSensor(int channel);
+    ServoSensor(int id) : ServoSensor(id, id){};
+    ServoSensor(int id, int port);
     ~ServoSensor();
 
     bool set(const char* param, const char* value);
@@ -123,20 +124,31 @@ namespace platypus
 
   class ES2 : public PoweredSensor, public SerialSensor
   {
+  public:
+    ES2(int id) : ES2(id, id){};
+    ES2(int id, int port);
+    virtual char *name();
+    void loop();
+
   private:
     SensorState state;
     int lastMeasurementTime;
     const int measurementInterval;
     const int minReadTime;
-    
-  public:
-    ES2(int channel);
-    virtual char *name();
-    void loop();
   };
   
   class AtlasPH : public SerialSensor
   {
+  public:
+    AtlasPH(int id) : AtlasPH(id, id){};
+    AtlasPH(int id, int port);
+    bool set(const char * param, const char * value);
+    virtual char * name();
+    void setTemp(double temp);
+    void calibrate(int flag);
+    void loop();
+    void onSerial();
+
   private:
     const int measurementInterval;
     int lastMeasurementTime;
@@ -147,19 +159,21 @@ namespace platypus
     AtlasCommand lastCommand;
 
     void sendCommand();
-    
-  public:
-    AtlasPH(int channel);
-    bool set(const char * param, const char * value);
-    virtual char * name();
-    void setTemp(double temp);
-    void calibrate(int flag);
-    void loop();
-    void onSerial();
   };
 
   class AtlasDO : public SerialSensor
-  {
+  {    
+  public:
+    AtlasDO(int id) : AtlasDO(id, id){};
+    AtlasDO(int id, int port);
+    bool set(const char * param, const char * value);
+    virtual char * name();
+    void setTemp(double temp);
+    void setEC(double EC);
+    void calibrate(int flag);
+    void loop();
+    void onSerial();
+
   private:
     const int measurementInterval;
     int lastMeasurementTime;
@@ -172,22 +186,14 @@ namespace platypus
 
     //void updateCalibrationStatus();
     void sendCommand();
-    
-  public:
-    AtlasDO(int channel);
-    bool set(const char * param, const char * value);
-    virtual char * name();
-    void setTemp(double temp);
-    void setEC(double EC);
-    void calibrate(int flag);
-    void loop();
-    void onSerial();
+
   };
   
   class HDS : public PoweredSensor, public SerialSensor
   {
   public:
-    HDS(int channel);
+    HDS(int id) : HDS(id, id){};
+    HDS(int id, int port);
     virtual char *name();
     //void onSerial();
   };

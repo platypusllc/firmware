@@ -104,28 +104,38 @@ namespace platypus
   class Sensor : public Configurable
   {
   public:
-    Sensor(int channel);
+    Sensor(int id);
     virtual ~Sensor();
     
     virtual bool set(const char* param, const char* value);
     virtual char *name() = 0;
-    virtual void onSerial();
+    //virtual void onSerial();
     virtual void loop();
 
   protected:
-    // TODO: Change from channel to struct reference?
-    const int channel_;
+    const int id_;
     
   public:
-    static void onSerial_(void *data);
+    //static void onSerial_(void *data);
     static void onLoop_(void *data);
     virtual void calibrate(int flag){};
   };
-  
-  class AnalogSensor : public Sensor 
+
+  class ExternalSensor : public Sensor
   {
   public:
-    AnalogSensor(int channel);
+    ExternalSensor(int id, int port);
+    virtual char  *name() = 0;
+
+  protected:
+    const int port_;
+
+  };
+  
+  class AnalogSensor : public ExternalSensor 
+  {
+  public:
+    AnalogSensor(int id, int port);
 
     bool set(const char* param, const char* value);
     virtual char *name() = 0;
@@ -141,10 +151,10 @@ namespace platypus
     float offset_;
   };
   
-  class PoweredSensor : virtual public Sensor 
+  class PoweredSensor : virtual public ExternalSensor 
   {
   public:
-    PoweredSensor(int channel, bool poweredOn=true);
+    PoweredSensor(int id, int port, bool poweredOn=true);
     virtual char *name() = 0;
     bool powerOn();
     bool powerOff();
@@ -153,11 +163,12 @@ namespace platypus
     bool state_;
   };
 
-  class SerialSensor : virtual public Sensor
+  class SerialSensor : virtual public ExternalSensor
   {
   public:
-    SerialSensor(int channel, int baudRate, int serialType = RS232, int dataStringLength = 0);
+    SerialSensor(int id,  int port, int baud, int type = RS232, int dataLength = 0);
     virtual char * name() = 0;
+    static void onSerial_(void *data);
     void onSerial();
 
     enum SERIAL_TYPE{
@@ -166,7 +177,7 @@ namespace platypus
     };
 
   protected:
-    int baud_;
+    int baudRate_;
     int serialType_;
     int minDataStringLength_;
     char recv_buffer_[DEFAULT_BUFFER_SIZE];
@@ -174,7 +185,6 @@ namespace platypus
   };
 
   
-
   extern platypus::Motor *motors[board::NUM_MOTORS];
   extern platypus::Sensor *sensors[board::NUM_SENSORS];
   extern platypus::Peripheral *peripherals[board::NUM_PERIPHERALS];

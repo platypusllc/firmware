@@ -69,8 +69,8 @@ void Dynamite::arm()
   delay(3000);
 }
 
-BatterySensor::BatterySensor(int channel) 
-  : Sensor(channel), measurementInterval(5000)
+BatterySensor::BatterySensor(int id) 
+  : Sensor(id), measurementInterval(5000)
 {
   lastMeasurementTime = 0;
   lastReading = 0.0;
@@ -97,7 +97,7 @@ void BatterySensor::loop()
              "\"data\":\"%.3f %f %d\""
              "}"
              "}",
-             channel_,
+             id_,
              this->name(),
              lastReading,
              0.0,
@@ -107,8 +107,8 @@ void BatterySensor::loop()
   }
 }
 
-IMU::IMU(int channel)
-  : Sensor(channel), measurementInterval(1000), bno(55, 0x29)
+IMU::IMU(int id)
+  : Sensor(id), measurementInterval(1000), bno(55, 0x29)
 {
   lastMeasurementTime = 0;
 
@@ -154,7 +154,7 @@ void IMU::loop()
              "\"data\":\"%f\""
              "}"
              "}",
-             channel_,
+             id_,
              this->name(),
              event.orientation.x
             );
@@ -163,10 +163,10 @@ void IMU::loop()
 }
 
 
-ServoSensor::ServoSensor(int channel) : Sensor(channel)
+ServoSensor::ServoSensor(int id, int port) 
+  : ExternalSensor(id, port), position_(0.0)
 {
-  position_ = 0.0;
-  servo_.attach(board::SENSOR_PORT[channel].GPIO[board::TX_NEG]);
+  servo_.attach(board::SENSOR_PORT[port].GPIO[board::TX_NEG]);
 }
 
 ServoSensor::~ServoSensor()
@@ -210,8 +210,8 @@ char* ServoSensor::name()
 }
 
 // Known working values: measurementInterval = 1500, minReadTime = 350 (min difference seems to be 1150)
-ES2::ES2(int channel)
-  : Sensor(channel), PoweredSensor(channel, false), SerialSensor(channel, 1200, RS232, 3), measurementInterval(1500), minReadTime(350)//minDataLength filters out "q>"
+ES2::ES2(int id, int port)
+  : ExternalSensor(id, port), PoweredSensor(id, port, false), SerialSensor(id, port, 1200, RS232, 3), measurementInterval(1500), minReadTime(350)//minDataLength filters out "q>"
 {
   lastMeasurementTime = 0;
   state = OFF;
@@ -246,8 +246,8 @@ void ES2::loop()
   
 }
 
-AtlasPH::AtlasPH(int channel) 
-  : Sensor(channel), SerialSensor(channel, 9600), measurementInterval(3000)
+AtlasPH::AtlasPH(int id, int port) 
+  : ExternalSensor(id, port), SerialSensor(id, port, 9600), measurementInterval(3000)
 {
   // Initialize internal variables
   lastMeasurementTime = 0;
@@ -339,42 +339,42 @@ void AtlasPH::sendCommand(){
     break;
     
   case GET_CALIB:
-    SERIAL_PORTS[channel_]->print("Cal,?\r");
+    SERIAL_PORTS[port_]->print("Cal,?\r");
     break;
 
   case GET_TEMP:
-    SERIAL_PORTS[channel_]->print("T,?\r");
+    SERIAL_PORTS[port_]->print("T,?\r");
     break;
   
   case READING:
-    SERIAL_PORTS[channel_]->print("R\r");
+    SERIAL_PORTS[port_]->print("R\r");
     break;
 
   case SET_TEMP:
-    SERIAL_PORTS[channel_]->print("T,");
-    SERIAL_PORTS[channel_]->print(temperature);
-    SERIAL_PORTS[channel_]->print("\r");
+    SERIAL_PORTS[port_]->print("T,");
+    SERIAL_PORTS[port_]->print(temperature);
+    SERIAL_PORTS[port_]->print("\r");
     break;
 
   case CALIB_LOW:
     Serial.println(F("Calibrate pH probe lowpoint"));
-    SERIAL_PORTS[channel_]->print("Cal,low,4.00\r");
+    SERIAL_PORTS[port_]->print("Cal,low,4.00\r");
     break;
 
   case CALIB_MID:
     Serial.println(F("Calibrate pH probe midpoint"));
-    SERIAL_PORTS[channel_]->print("Cal,mid,7.00\r");
+    SERIAL_PORTS[port_]->print("Cal,mid,7.00\r");
     break;
   
   case CALIB_HIGH:
     Serial.println(F("Calibrate pH probe highpoint"));
-    SERIAL_PORTS[channel_]->print("Cal,high,10.00\r");
+    SERIAL_PORTS[port_]->print("Cal,high,10.00\r");
     break;
   }
 }
 
 void AtlasPH::onSerial(){
-  char c = SERIAL_PORTS[channel_]->read();
+  char c = SERIAL_PORTS[port_]->read();
   
   // Ignore null and tab characters
   if (c == '\0' || c == '\t') {
@@ -423,7 +423,7 @@ void AtlasPH::onSerial(){
                      "\"data\":\"%s\""
                      "}"
                      "}",
-                     channel_,
+                     id_,
                      this->name(),
                      recv_buffer_
                     );
@@ -457,8 +457,8 @@ void AtlasPH::onSerial(){
   }
 }
 
-AtlasDO::AtlasDO(int channel) 
-  : Sensor(channel), SerialSensor(channel, 9600), measurementInterval(3000)
+AtlasDO::AtlasDO(int id, int port) 
+  : ExternalSensor(id, port), SerialSensor(id, port, 9600), measurementInterval(3000)
 {
   // Initialize internal variables
   lastMeasurementTime = 0;
@@ -538,41 +538,41 @@ void AtlasDO::sendCommand(){
     break;
     
   case GET_CALIB:
-    SERIAL_PORTS[channel_]->print("Cal,?\r");
+    SERIAL_PORTS[port_]->print("Cal,?\r");
     break;
 
   case GET_TEMP:
-    SERIAL_PORTS[channel_]->print("T,?\r");
+    SERIAL_PORTS[port_]->print("T,?\r");
     break;
 
   case GET_EC:
-    SERIAL_PORTS[channel_]->print("S,?\r");
+    SERIAL_PORTS[port_]->print("S,?\r");
     break;
   
   case READING:
-    SERIAL_PORTS[channel_]->print("R\r");
+    SERIAL_PORTS[port_]->print("R\r");
     break;
 
   case SET_TEMP:
-    SERIAL_PORTS[channel_]->print("T,");
-    SERIAL_PORTS[channel_]->print(temperature);
-    SERIAL_PORTS[channel_]->print("\r");
+    SERIAL_PORTS[port_]->print("T,");
+    SERIAL_PORTS[port_]->print(temperature);
+    SERIAL_PORTS[port_]->print("\r");
     break;
 
   case SET_EC:
-    SERIAL_PORTS[channel_]->print("S,");
-    SERIAL_PORTS[channel_]->print(ec);
-    SERIAL_PORTS[channel_]->print("\r");
+    SERIAL_PORTS[port_]->print("S,");
+    SERIAL_PORTS[port_]->print(ec);
+    SERIAL_PORTS[port_]->print("\r");
     break;
 
   case CALIB_ATM:
     Serial.println(F("Calibrate DO probe to atm"));
-    SERIAL_PORTS[channel_]->print("Cal\r");
+    SERIAL_PORTS[port_]->print("Cal\r");
     break;
 
   case CALIB_ZERO:
     Serial.println(F("Calibrate DO probe to 0"));
-    SERIAL_PORTS[channel_]->print("Cal,0\r");
+    SERIAL_PORTS[port_]->print("Cal,0\r");
     break;
 
   }
@@ -618,7 +618,7 @@ void AtlasDO::loop(){
 }
 
 void AtlasDO::onSerial(){
-  char c = SERIAL_PORTS[channel_]->read();
+  char c = SERIAL_PORTS[port_]->read();
   
   // Ignore null and tab characters
   if (c == '\0' || c == '\t') {
@@ -667,7 +667,7 @@ void AtlasDO::onSerial(){
                      "\"data\":\"%s\""
                      "}"
                      "}",
-                     channel_,
+                     id_,
                      this->name(),
                      recv_buffer_
                     );
@@ -710,8 +710,8 @@ void AtlasDO::onSerial(){
   }
 }
 
-HDS::HDS(int channel)
-  : Sensor(channel), PoweredSensor(channel, true), SerialSensor(channel, 4800, RS485)
+HDS::HDS(int id, int port)
+  : ExternalSensor(id, port), PoweredSensor(id, port, true), SerialSensor(id, port, 4800, RS485)
 {
 
 }
