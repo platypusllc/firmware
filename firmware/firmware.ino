@@ -194,12 +194,15 @@ void setup()
   // Set ADC Precision:
   analogReadResolution(12);
 
-  // TODO: replace this with smart hooks.
+  // Initialize and power all peripherals (WiFi & Pump)
+  platypus::peripherals[0] = new platypus::Peripheral(0, true);
+  platypus::peripherals[1] = new platypus::Peripheral(1, true);
+
   // Initialize External sensors
-  platypus::sensors[0] = new platypus::EmptySensor(0);
-  platypus::sensors[1] = new platypus::AtlasPH(1);
-  platypus::sensors[2] = new platypus::EmptySensor(2);
-  platypus::sensors[3] = new platypus::ServoSensor(3);
+  platypus::sensors[0] = new platypus::EmptySensor(0, 0);
+  platypus::sensors[1] = new platypus::AtlasPH(1, 1);
+  platypus::sensors[2] = new platypus::EmptySensor(2, 2);
+  platypus::sensors[3] = new platypus::ServoSensor(3, 3);
 
   // Initialize Internal sensors
   platypus::sensors[4] = new platypus::BatterySensor(4);
@@ -208,10 +211,6 @@ void setup()
   // Initialize motors
   platypus::motors[0] = new platypus::Dynamite(0);
   platypus::motors[1] = new platypus::Dynamite(1);
-
-  // Initialize and power all peripherals
-  platypus::peripherals[0] = new platypus::Peripheral(0, true);
-  platypus::peripherals[1] = new platypus::Peripheral(1, true);
 
   // Make the ADK buffers into null terminated string.
   debug_buffer[INPUT_BUFFER_SIZE] = '\0';
@@ -400,16 +399,14 @@ void motorUpdateLoop()
     snprintf(output_buffer, OUTPUT_BUFFER_SIZE,
       "{"
         "\"m0\":{"
-          "\"v\":%f,"
-          "\"c\":%f"
+          "\"v\":%f"
         "},"
         "\"m1\":{"
-          "\"v\":%f,"
-          "\"c\":%f"
+          "\"v\":%f"
         "}"
       "}",
-      platypus::motors[0]->velocity(), platypus::motors[0]->velocity(),
-      platypus::motors[1]->velocity(), platypus::motors[1]->velocity()
+      platypus::motors[0]->velocity(),
+      platypus::motors[1]->velocity()
     );
     send(output_buffer);
   }

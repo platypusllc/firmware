@@ -113,12 +113,22 @@ IMU::IMU(int id)
   lastMeasurementTime = 0;
 
   if (!bno.begin()){
-    Serial.println("Warning: Could not initialize IMU");
+    Serial.println(F("Error: Could not initialize IMU"));
   }
 
   bno.setExtCrystalUse(true);
 
+  delay(500);
+
   bno.getCalibration(&sysCalib, &gyroCalib, &accelCalib, &magCalib);
+
+  // Wait until calibration values are within limits
+  while (sysCalib < 3 && magCalib < 3)
+  {
+    delay(100);
+    Serial.println(F("Warning: Waiting for IMU to calibrate, please move Boat around"));
+    bno.getCalibration(&sysCalib, &gyroCalib, &accelCalib, &magCalib);
+  }
 }
 
 char* IMU::name()
@@ -128,16 +138,10 @@ char* IMU::name()
 
 void IMU::loop()
 {
-  bno.getCalibration(&sysCalib, &gyroCalib, &accelCalib, &magCalib);
-
-  if (sysCalib < 2 || magCalib < 2)
-  {
-    Serial.println("IMU not calibrated");
-    return;
-  }
-
   if (millis() - lastMeasurementTime > measurementInterval)
   {
+    bno.getCalibration(&sysCalib, &gyroCalib, &accelCalib, &magCalib);
+
     sensors_event_t event;
     bno.getEvent(&event);
 
@@ -151,7 +155,7 @@ void IMU::loop()
              "{"
              "\"s%u\":{"
              "\"type\":\"%s\","
-             "\"data\":\"%f\""
+             "\"data\":\"%.4f\""
              "}"
              "}",
              id_,
