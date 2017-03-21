@@ -108,16 +108,17 @@ void BatterySensor::loop()
 }
 
 IMU::IMU(int channel)
-  : Sensor(channel), measurementInterval(200), bno(55)
+  : Sensor(channel), measurementInterval(1000), bno(55, 0x29)
 {
   lastMeasurementTime = 0;
 
   if (!bno.begin()){
-    Serial.println("Could not initialize IMU");
+    Serial.println("Warning: Could not initialize IMU");
   }
 
-  delay(1000);
   bno.setExtCrystalUse(true);
+
+  bno.getCalibration(&sysCalib, &gyroCalib, &accelCalib, &magCalib);
 }
 
 char* IMU::name()
@@ -127,10 +128,23 @@ char* IMU::name()
 
 void IMU::loop()
 {
+  bno.getCalibration(&sysCalib, &gyroCalib, &accelCalib, &magCalib);
+
+  if (sysCalib < 2 || magCalib < 2)
+  {
+    Serial.println("IMU not calibrated");
+    return;
+  }
+
   if (millis() - lastMeasurementTime > measurementInterval)
   {
     sensors_event_t event;
     bno.getEvent(&event);
+
+    if (sysCalib < 3)
+    {
+      Serial.println("Warning poor IMU calibration");
+    }
 
     char output_str[DEFAULT_BUFFER_SIZE + 3];
     snprintf(output_str, DEFAULT_BUFFER_SIZE,

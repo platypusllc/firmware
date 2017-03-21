@@ -96,6 +96,11 @@ namespace platypus
     const int measurementInterval;
     int lastMeasurementTime;
     Adafruit_BNO055 bno;
+
+    uint8_t sysCalib;
+    uint8_t gyroCalib;
+    uint8_t accelCalib;
+    uint8_t magCalib;
   };
   
   // External Sensors //
