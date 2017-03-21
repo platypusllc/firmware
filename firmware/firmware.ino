@@ -196,9 +196,9 @@ void setup()
 
   // TODO: replace this with smart hooks.
   // Initialize External sensors
-  platypus::sensors[0] = new platypus::ES2(0);
+  platypus::sensors[0] = new platypus::EmptySensor(0);
   platypus::sensors[1] = new platypus::AtlasPH(1);
-  platypus::sensors[2] = new platypus::ES2(2);
+  platypus::sensors[2] = new platypus::EmptySensor(2);
   platypus::sensors[3] = new platypus::ServoSensor(3);
 
   // Initialize Internal sensors

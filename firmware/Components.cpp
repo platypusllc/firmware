@@ -162,7 +162,6 @@ void IMU::loop()
   }
 }
 
-
 ServoSensor::ServoSensor(int id, int port) 
   : ExternalSensor(id, port), position_(0.0)
 {

@@ -104,6 +104,16 @@ namespace platypus
   };
   
   // External Sensors //
+  class EmptySensor :  public ExternalSensor
+  {
+  // Empty Sensor placeholder representing a non-connected port
+  public:
+    EmptySensor(int id) : EmptySensor(id, id){};
+    EmptySensor(int id, int port) : ExternalSensor(id, port){};
+
+    virtual char *name(){ return "empty"; };
+  };
+
   class ServoSensor : public ExternalSensor 
   {
   public:
