@@ -7,6 +7,11 @@
 
 #include "Platypus.h"
 
+#define DEFAULT_BATTERY_INTERVAL 5000
+#define DEFAULT_ATLAS_INTERVAL 3000
+#define DEFAULT_ES2_INTERVAL 1500
+#define DEFAULT_IMU_INTERVAL 200
+
 namespace platypus 
 {
 
@@ -75,32 +80,32 @@ namespace platypus
   class BatterySensor : public Sensor
   {
   public:
-    BatterySensor(int id);
+    BatterySensor(int id, int interval = DEFAULT_BATTERY_INTERVAL);
     virtual char* name();
     void loop();
 
   private:
-    const int measurementInterval;
-    int lastMeasurementTime;
-    double lastReading;
+    const int interval_;
+    int lastMeasurementTime_;
+    double lastMeasurement_;
   };
 
   class IMU : public Sensor
   {
   public:
-    IMU(int id);
+    IMU(int id, int interval = DEFAULT_IMU_INTERVAL);
     virtual char* name();
     void loop();
 
   private:
-    const int measurementInterval;
-    int lastMeasurementTime;
-    Adafruit_BNO055 bno;
+    const int interval_;
+    int lastMeasurementTime_;
+    Adafruit_BNO055 bno_;
 
-    uint8_t sysCalib;
-    uint8_t gyroCalib;
-    uint8_t accelCalib;
-    uint8_t magCalib;
+    uint8_t sysCalib_;
+    uint8_t gyroCalib_;
+    uint8_t accelCalib_;
+    uint8_t magCalib_;
   };
   
   // External Sensors //
@@ -136,22 +141,22 @@ namespace platypus
   {
   public:
     ES2(int id) : ES2(id, id){};
-    ES2(int id, int port);
+    ES2(int id, int port, int inteval = DEFAULT_ES2_INTERVAL);
     virtual char *name();
     void loop();
 
   private:
-    SensorState state;
-    int lastMeasurementTime;
-    const int measurementInterval;
-    const int minReadTime;
+    SensorState state_;
+    int lastMeasurementTime_;
+    const int interval_;
+    const int minReadTime_;
   };
   
   class AtlasPH : public SerialSensor
   {
   public:
     AtlasPH(int id) : AtlasPH(id, id){};
-    AtlasPH(int id, int port);
+    AtlasPH(int id, int port, int interval = DEFAULT_ATLAS_INTERVAL);
     bool set(const char * param, const char * value);
     virtual char * name();
     void setTemp(double temp);
@@ -160,13 +165,13 @@ namespace platypus
     void onSerial();
 
   private:
-    const int measurementInterval;
-    int lastMeasurementTime;
-    SensorState state;
-    bool initialized;
-    int calibrationStatus;
-    float temperature;
-    AtlasCommand lastCommand;
+    const int interval_;
+    int lastMeasurementTime_;
+    SensorState state_;
+    bool initialized_;
+    int calibrationStatus_;
+    float temperature_;
+    AtlasCommand lastCommand_;
 
     void sendCommand();
   };
@@ -175,7 +180,7 @@ namespace platypus
   {    
   public:
     AtlasDO(int id) : AtlasDO(id, id){};
-    AtlasDO(int id, int port);
+    AtlasDO(int id, int port, int interval = DEFAULT_ATLAS_INTERVAL);
     bool set(const char * param, const char * value);
     virtual char * name();
     void setTemp(double temp);
@@ -185,14 +190,14 @@ namespace platypus
     void onSerial();
 
   private:
-    const int measurementInterval;
-    int lastMeasurementTime;
-    SensorState state;
-    AtlasCommand lastCommand;
-    bool initialized;
-    int calibrationStatus;
-    float temperature;
-    float ec;
+    const int interval_;
+    int lastMeasurementTime_;
+    SensorState state_;
+    AtlasCommand lastCommand_;
+    bool initialized_;
+    int calibrationStatus_;
+    float temperature_;
+    float ec_;
 
     //void updateCalibrationStatus();
     void sendCommand();

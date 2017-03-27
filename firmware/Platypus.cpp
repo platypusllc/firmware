@@ -403,7 +403,7 @@ void AnalogSensor::scale(float scale)
 
 void AnalogSensor::offset(float offset)
 {
-  offset = offset_;
+  offset_ = offset;
 }
 
 PoweredSensor::PoweredSensor(int id, int port, bool poweredOn)
