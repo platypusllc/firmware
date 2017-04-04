@@ -246,7 +246,7 @@ namespace platypus
     uint32_t desired_acceleration_;
   };
 
-  class JSONPassThrough : public SerialSensor
+  class JSONPassThrough : public SerialSensor, public PoweredSensor
   {
   public:
     JSONPassThrough(int channel);
