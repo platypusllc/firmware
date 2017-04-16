@@ -2,6 +2,13 @@
 
 using namespace platypus;
 
+namespace platypus 
+{
+  float water_temperature = 12.0;
+  float water_ec = 600;
+}
+
+
 namespace rc
 {
   rc::VehicleType vehicle_type = rc::VehicleType::PROP; // default is a prop boat
@@ -553,20 +560,7 @@ AtlasDO::AtlasDO(int channel)
   // Initialize internal variables
   lastMeasurementTime = 0;
   lastCommand = NONE;
-  initialized = false;
   calibrationStatus = -1; // -1 uninitialized, 0 not calibrate, 1 single point, 2 two point
-  temperature = -1.0;
-  ec = -1.0;
-
-  // Enter INIT state to read sensor info
-  state = INIT;
-
-  // Code to set BAUD rate - eventually implement check for incorrect baud rate
-  //SERIAL_PORTS[channel]->print("SERIAL,115200\r");
-  
-  // Disable continous sensor polling
-  //SERIAL_PORTS[channel]->print("C,0,\r");
-  //SERIAL_PORTS[channel]->print("C,0,\r");
 }
 
 
@@ -575,44 +569,16 @@ char * AtlasDO::name(){
 }
 
 bool AtlasDO::set(const char* param, const char* value){
-  if (strncmp(param, "ec", 2) == 0){
-    this->setEC(atof(value));
-    return true;
-  } else if (strncmp(param, "temp", 4) == 0){
-    this->setTemp(atof(value));
-    return true;  
-  } else if (strncmp(param, "cal", 3) == 0){
-    //Serial.println("trigger calibrate method");
-  }
   return false;
 }
 
-void AtlasDO::setTemp(double temp) {
-  if (temp > 0.0){
-    this->temperature = temp;
-    lastCommand = SET_TEMP;
-    this->sendCommand();
-  }
-}
-
-void AtlasDO::setEC(double ec) {
-  //Check for salt water and set ec compensation if applicable
-  if (ec >= 2500){
-    this->ec = ec;
-    lastCommand = SET_TEMP;
-    this->sendCommand();
-  } else if (this->ec > 0.0){
-    this->ec = 0.0;
-    lastCommand = SET_TEMP;
-    this->sendCommand();
-  }
-}
-
 void AtlasDO::calibrate(int flag){
-  if (flag == 0){
-    //calib 0 solution
+  if (flag == 0)
+  {
     lastCommand = CALIB_ZERO;
-  } else {
+  } 
+  else 
+  {
     lastCommand = CALIB_ATM;
   }
 
@@ -620,11 +586,9 @@ void AtlasDO::calibrate(int flag){
 }
 
 void AtlasDO::sendCommand(){
-  state = WAITING;
   
   switch (lastCommand){
   case NONE:
-    state = IDLE;
     break;
     
   case GET_CALIB:
@@ -645,13 +609,13 @@ void AtlasDO::sendCommand(){
 
   case SET_TEMP:
     SERIAL_PORTS[channel_]->print("T,");
-    SERIAL_PORTS[channel_]->print(temperature);
+    SERIAL_PORTS[channel_]->print(water_temperature);
     SERIAL_PORTS[channel_]->print("\r");
     break;
 
   case SET_EC:
     SERIAL_PORTS[channel_]->print("S,");
-    SERIAL_PORTS[channel_]->print(ec);
+    SERIAL_PORTS[channel_]->print(water_ec);
     SERIAL_PORTS[channel_]->print("\r");
     break;
 
@@ -669,41 +633,13 @@ void AtlasDO::sendCommand(){
 }
 
 void AtlasDO::loop(){
-  // Enter INIT state if sensor is not fully initialized
-  if (state != WAITING && !initialized){
-    state = INIT;
-  }
-  
-  switch (state){
-  // Initializing calibration status from sensor config
-  case INIT:
-    if (calibrationStatus < 0){
-      lastCommand = GET_CALIB;
-    } else if (temperature < 0.0){
-      lastCommand = GET_TEMP;
-    } else if (ec < 0.0){
-      lastCommand = GET_EC;
-    } else {
-      Serial.println(F("Atlas DO Sensor Successfully Initialized!"));
-      Serial.print("Calibration: "); Serial.println(calibrationStatus);
-      Serial.print("Temperature(C): "); Serial.println(temperature);
-      Serial.print("EC(uS): "); Serial.println(ec);
-      initialized = true;
-      state = IDLE;
-      lastCommand = NONE;
-    }
-    break;
-
-  // Sensor Idle, waiting to poll
-  case IDLE:
-    if (millis() - lastMeasurementTime > measurementInterval){
+  if (millis() - lastMeasurementTime > measurementInterval)
+  {
+      // update temperature compensation, then take a reading
+      lastCommand = SET_TEMP;
+      this->sendCommand();
       lastCommand = READING;
-    }
-  }
-
-
-  if (lastCommand != NONE && state != WAITING){
-    this->sendCommand();
+      this->sendCommand();
   }
 }
 
@@ -723,78 +659,36 @@ void AtlasDO::onSerial(){
   {
     recv_buffer_[recv_index_] = '\0';
 
-    //Serial.print("Raw Sensor Input: ");
-    //Serial.println(recv_buffer_);
+    Serial.print("Raw Sensor Input: ");
+    Serial.println(recv_buffer_);
 
-    // Trims first three characters off response (used to trim temp and ec responses)
-    char *subString = recv_buffer_ + 3;
-
-    switch (state){
-    case WAITING:
-      if (!strcmp(recv_buffer_, "*ER")){
-        //Serial.println("Error Detected, resending last command");
-        this->sendCommand();
-      } else if (!strcmp(recv_buffer_, "*OK")){
-        //Serial.println("OK Confirmation Response Received");
-        
-        if (lastCommand == CALIB_ATM || lastCommand == CALIB_ZERO){
-          lastCommand = GET_CALIB;
-          this->sendCommand();
-          //state = IDLE;
-          //lastCommand = NONE;
-        }
-        
-      } else {
-        switch (lastCommand){
-        case READING:
-          if (recv_index_ >  minDataStringLength_){
-            lastMeasurementTime = millis();
-            char output_str[DEFAULT_BUFFER_SIZE + 3];
-            snprintf(output_str, DEFAULT_BUFFER_SIZE,
-                     "{"
-                     "\"s%u\":{"
-                     "\"type\":\"%s\","
-                     "\"data\":\"%s\""
-                     "}"
-                     "}",
-                     channel_,
-                     this->name(),
-                     recv_buffer_
-                    );
-            send(output_str);
-          }
-          state = IDLE;
-          lastCommand = NONE;
-          break;
-
-        case GET_CALIB:
-          calibrationStatus = recv_buffer_[5] - '0';
-
-          state = IDLE;
-          lastCommand = NONE;
-          break;
-
-        case GET_TEMP:
-          temperature = atof(subString);
-          
-          state = IDLE;
-          lastCommand = NONE;
-          break;
-
-        case GET_EC:
-          // Trim off ",uS" units 
-          recv_buffer_[recv_index_-3] = '\0';
-          
-          ec = atof(subString);
-
-          state = IDLE;
-          lastCommand = NONE;
-          break;
-        }
+    switch (lastCommand) {
+    case READING:
+      if (recv_index_ >  minDataStringLength_)
+      {
+        lastMeasurementTime = millis();
+        char output_str[DEFAULT_BUFFER_SIZE + 3];
+        snprintf(output_str, DEFAULT_BUFFER_SIZE,
+                 "{"
+                 "\"s%u\":{"
+                 "\"type\":\"%s\","
+                 "\"data\":\"%s\""
+                 "}"
+                 "}",
+                 channel_,
+                 this->name(),
+                 recv_buffer_
+                );
+        send(output_str);
       }
-      
+      break;
+
+    case GET_CALIB:
+      calibrationStatus = recv_buffer_[5] - '0';     
+      break;
     }
 
+    lastCommand = NONE;
     memset(recv_buffer_, 0, recv_index_);
     recv_index_ = 0;
   }

@@ -37,6 +37,9 @@ namespace platypus
 {
   const int DEFAULT_BUFFER_SIZE = 128;
 
+  extern float water_temperature; // [deg C] used for any temperature compensation
+  extern float water_ec; // [uS/cm] used for any electrical conductivity compensation
+ 
   typedef enum 
   {
     OFF,
@@ -210,22 +213,14 @@ namespace platypus
   private:
     const int measurementInterval;
     int lastMeasurementTime;
-    SensorState state;
     AtlasCommand lastCommand;
-    bool initialized;
-    int calibrationStatus;
-    float temperature;
-    float ec;
-
-    //void updateCalibrationStatus();
     void sendCommand();
+    int calibrationStatus;
     
   public:
     AtlasDO(int channel);
     bool set(const char * param, const char * value);
     virtual char * name();
-    void setTemp(double temp);
-    void setEC(double EC);
     void calibrate(int flag);
     void loop();
     void onSerial();

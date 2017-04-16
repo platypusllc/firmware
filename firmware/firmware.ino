@@ -625,15 +625,30 @@ void serialConsoleLoop()
 
     //Serial.println(debug_buffer);
     if (strcmp(debug_buffer, "DOc") == 0){
-      platypus::sensors[1]->calibrate(1);
+      for (int i = 1; i < 4; i++)
+      {
+        if (strcmp(platypus::sensors[i]->name(), "atlas_do") == 0) platypus::sensors[i]->calibrate(1);
+      }      
     } else if (strcmp(debug_buffer, "DOc0") == 0){
-      platypus::sensors[1]->calibrate(0);
+      for (int i = 1; i < 4; i++)
+      {
+        if (strcmp(platypus::sensors[i]->name(), "atlas_do") == 0) platypus::sensors[i]->calibrate(0);
+      }
     } else if (strcmp(debug_buffer, "PHcm") == 0){
-      platypus::sensors[2]->calibrate(0.0);
+      for (int i = 1; i < 4; i++)
+      {
+        if (strcmp(platypus::sensors[i]->name(), "atlas_ph") == 0) platypus::sensors[i]->calibrate(0.0);
+      }
     } else if (strcmp(debug_buffer, "PHcl") == 0){
-      platypus::sensors[2]->calibrate(-1);
+      for (int i = 1; i < 4; i++)
+      {
+        if (strcmp(platypus::sensors[i]->name(), "atlas_ph") == 0) platypus::sensors[i]->calibrate(-1);
+      }      
     } else if (strcmp(debug_buffer, "PHch") == 0){
-      platypus::sensors[2]->calibrate(1);
+      for (int i = 1; i < 4; i++)
+      {
+        if (strcmp(platypus::sensors[i]->name(), "atlas_ph") == 0) platypus::sensors[i]->calibrate(1);
+      }      
     }
     // Attempt to parse command.
     handleCommand(debug_buffer); 
