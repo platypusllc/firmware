@@ -97,8 +97,11 @@ namespace platypus
     virtual char* name();
     void loop();
 
+    bool isAvailable(){ return available_; };
+
   private:
     const int interval_;
+    bool available_;
     int lastMeasurementTime_;
     Adafruit_BNO055 bno_;
 

@@ -6,6 +6,13 @@
 namespace board 
 {
   
+  struct LED_t
+  {
+    int R;
+    int G;
+    int B;
+  };
+
   struct Peripheral_t
   {
     int ENABLE;
@@ -39,6 +46,8 @@ namespace board
   };
   
   // Pin definitions
+  const LED_t LEGACY_LED = {54, 55, 56};
+
   const int LED = 54;
   const size_t NUM_LEDS = 4;
 

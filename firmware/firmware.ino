@@ -21,6 +21,10 @@ char versionNumber[] = "3.0";
 char serialNumber[] = "3";
 char url[] = "http://senseplatypus.com";
 
+// Board parameters
+char firmwareVersion[] = "4.2.0";
+char boardVersion[] = "4.2.0";
+
 // ADK USB Host
 USBHost Usb;
 ADK adk(&Usb, companyName, applicationName, accessoryName, versionNumber, url, serialNumber);
@@ -199,10 +203,10 @@ void setup()
   platypus::peripherals[1] = new platypus::Peripheral(1, true);
 
   // Initialize External sensors
-  platypus::sensors[0] = new platypus::ES2(0, 0);
+  platypus::sensors[0] = new platypus::EmptySensor(0, 0);
   platypus::sensors[1] = new platypus::AtlasPH(1, 1);
-  platypus::sensors[2] = new platypus::EmptySensor(2, 2);
-  platypus::sensors[3] = new platypus::ServoSensor(3, 3);
+  platypus::sensors[2] = new platypus::ES2(2, 2);
+  platypus::sensors[3] = new platypus::HDS(3, 3);
 
   // Initialize Internal sensors
   platypus::sensors[4] = new platypus::BatterySensor(4);
@@ -334,7 +338,7 @@ void motorUpdateLoop()
   delay(100);
   
   // Set the LED for current system state.
-  unsigned c = (millis() >> 3) & 0xFF;
+  unsigned c = (millis() >> 8) & 1;
   if (c > 128) c = 255 - c;
  
   switch (system_state)

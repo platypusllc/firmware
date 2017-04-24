@@ -108,12 +108,15 @@ void BatterySensor::loop()
 }
 
 IMU::IMU(int id, int interval)
-  : Sensor(id), interval_(interval), bno_(55, 0x29)
+  : Sensor(id), interval_(interval), available_(false), bno_(55, 0x29)
 {
   lastMeasurementTime_ = 0;
 
   if (!bno_.begin()){
     Serial.println(F("Error: Could not initialize IMU"));
+    return;
+  } else {
+    available_ = true;
   }
 
   bno_.setExtCrystalUse(true);
@@ -122,13 +125,42 @@ IMU::IMU(int id, int interval)
 
   bno_.getCalibration(&sysCalib_, &gyroCalib_, &accelCalib_, &magCalib_);
 
+
+  /* Want to move this to EEPROM and put int option to recalibrate */
+  adafruit_bno055_offsets_t calib;
+  calib.accel_offset_x = 0;
+  calib.accel_offset_y = 35;
+  calib.accel_offset_z = 24;
+  calib.gyro_offset_x = 65533;
+  calib.gyro_offset_y = 0;
+  calib.gyro_offset_z = 65535;
+  calib.mag_offset_x = 140;
+  calib.mag_offset_y = 65208;
+  calib.mag_offset_z = 173;
+  calib.accel_radius = 1000;
+  calib.mag_radius = 894;
+
+  bno_.setSensorOffsets(calib);
+
+
   // Wait until calibration values are within limits
-  while (sysCalib_ < 3 && magCalib_ < 3)
+  while (!bno_.isFullyCalibrated())
   {
     delay(100);
     Serial.println(F("Warning: Waiting for IMU to calibrate, please move Boat around"));
+    Serial.println(sysCalib_);
+    Serial.println(magCalib_);
+    Serial.println(accelCalib_);
     bno_.getCalibration(&sysCalib_, &gyroCalib_, &accelCalib_, &magCalib_);
   }
+
+
+  /* Todo: Put in option to recalibrate
+  adafruit_bno055_offsets_t newCalib;
+
+  bno_.getSensorOffsets(newCalib);
+  displaySensorOffsets(newCalib);
+  */
 }
 
 char* IMU::name()
@@ -138,7 +170,7 @@ char* IMU::name()
 
 void IMU::loop()
 {
-  if (millis() - lastMeasurementTime_ > interval_)
+  if (isAvailable() && millis() - lastMeasurementTime_ > interval_)
   {
     bno_.getCalibration(&sysCalib_, &gyroCalib_, &accelCalib_, &magCalib_);
 
@@ -155,12 +187,16 @@ void IMU::loop()
              "{"
              "\"s%u\":{"
              "\"type\":\"%s\","
-             "\"data\":\"%.4f\""
+             "\"data\":\"%.4f,%d,%d,%d,%d\""
              "}"
              "}",
              id_,
              this->name(),
-             event.orientation.x
+             event.orientation.x,
+             sysCalib_,
+             magCalib_,
+             gyroCalib_,
+             accelCalib_
             );
     send(output_str); 
   }

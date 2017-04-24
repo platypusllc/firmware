@@ -1,5 +1,16 @@
 #include "Platypus.h"
+
+// Define for LEGACY support
+#define LEGACY
+
+#ifndef LEGACY
+
 #include <Adafruit_NeoPixel.h>
+// LED serial controller.
+Adafruit_NeoPixel pixels = Adafruit_NeoPixel(board::NUM_LEDS, board::LED,
+                                             NEO_GRB + NEO_KHZ800);
+#endif
+
 
 using namespace platypus;
 
@@ -12,16 +23,13 @@ platypus::Peripheral *platypus::peripherals[board::NUM_PERIPHERALS];
 platypus::Motor *platypus::motors[board::NUM_MOTORS];
 platypus::Sensor *platypus::sensors[board::NUM_SENSORS];
 
-// LED serial controller.
-Adafruit_NeoPixel pixels = Adafruit_NeoPixel(board::NUM_LEDS, board::LED,
-                                             NEO_GRB + NEO_KHZ800);
 
 // TODO: Switch to using HardwareSerial.
 USARTClass *platypus::SERIAL_PORTS[4] = {
+  nullptr,
   &Serial1,
   &Serial2,
-  &Serial3,
-  nullptr,
+  &Serial3
 };
 
 SerialHandler_t platypus::SERIAL_HANDLERS[4] = {
@@ -33,25 +41,25 @@ SerialHandler_t platypus::SERIAL_HANDLERS[4] = {
 
 void serialEvent1() 
 {
-  if (SERIAL_HANDLERS[0].handler != NULL)
-  {
-    (*SERIAL_HANDLERS[0].handler)(SERIAL_HANDLERS[0].data);
-  }
-}
-
-void serialEvent2() 
-{
   if (SERIAL_HANDLERS[1].handler != NULL)
   {
     (*SERIAL_HANDLERS[1].handler)(SERIAL_HANDLERS[1].data);
   }
 }
 
-void serialEvent3() 
-{ 
+void serialEvent2() 
+{
   if (SERIAL_HANDLERS[2].handler != NULL)
   {
     (*SERIAL_HANDLERS[2].handler)(SERIAL_HANDLERS[2].data);
+  }
+}
+
+void serialEvent3() 
+{ 
+  if (SERIAL_HANDLERS[3].handler != NULL)
+  {
+    (*SERIAL_HANDLERS[3].handler)(SERIAL_HANDLERS[3].data);
   }
 }
 
@@ -106,10 +114,24 @@ void platypus::init()
 Led::Led()
   : r_(0), g_(0), b_(0)
 {
+  #ifdef LEGACY
+  pinMode(board::LEGACY_LED.R, OUTPUT);
+  digitalWrite(board::LEGACY_LED.R, HIGH);
+  pinMode(board::LEGACY_LED.G, OUTPUT);
+  digitalWrite(board::LEGACY_LED.G, HIGH);
+  pinMode(board::LEGACY_LED.B, OUTPUT);
+  digitalWrite(board::LEGACY_LED.B, HIGH);
+  #endif
+
 }
 
 Led::~Led()
 {
+  #ifdef LEGACY
+  pinMode(board::LEGACY_LED.R, INPUT);
+  pinMode(board::LEGACY_LED.G, INPUT);
+  pinMode(board::LEGACY_LED.B, INPUT);
+  #endif
 }
 
 void Led::set(int red, int green, int blue)
@@ -117,6 +139,14 @@ void Led::set(int red, int green, int blue)
   r_ = red;
   g_ = green;
   b_ = blue;
+
+  #ifdef LEGACY
+
+  digitalWrite(board::LEGACY_LED.R, !r_);
+  digitalWrite(board::LEGACY_LED.G, !g_);
+  digitalWrite(board::LEGACY_LED.B, !b_);
+
+  #endif
   /*
   while (!pixels.canShow());
   for (size_t pixel_idx = 0; pixel_idx < board::NUM_LEDS; ++pixel_idx)
