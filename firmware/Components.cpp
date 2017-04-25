@@ -176,6 +176,8 @@ void IMU::loop()
 
     sensors_event_t event;
     bno_.getEvent(&event);
+    lastMeasurementTime_ = millis();
+
 
     if (sysCalib_ < 3)
     {
@@ -200,6 +202,21 @@ void IMU::loop()
             );
     send(output_str); 
   }
+}
+
+AdafruitGPS::AdafruitGPS(int id, int port)
+  : ExternalSensor(id, port), SerialSensor(id, port, 9600, RS232, 0)
+{
+  // Note: This currently does not work after SerialSensor Init!
+
+  SERIAL_PORTS[port]->setTimeout(250);
+  // Set output to RMC only
+  SERIAL_PORTS[port]->println(PMTK_SET_NMEA_OUTPUT_RMCONLY);
+  SERIAL_PORTS[port]->flush();
+  // Set output rate to 5Hz
+  SERIAL_PORTS[port]->println(PMTK_API_SET_FIX_CTL_5HZ);
+  // Set fix rate to 5Hz
+  SERIAL_PORTS[port]->println(PMTK_SET_NMEA_UPDATE_5HZ);
 }
 
 ServoSensor::ServoSensor(int id, int port) 

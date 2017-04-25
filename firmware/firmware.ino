@@ -25,6 +25,12 @@ char url[] = "http://senseplatypus.com";
 char firmwareVersion[] = "4.2.0";
 char boardVersion[] = "4.2.0";
 
+
+#define PMTK_SET_NMEA_OUTPUT_RMCONLY "$PMTK314,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0*29"
+#define PMTK_SET_NMEA_UPDATE_5HZ  "$PMTK220,200*2C"
+#define PMTK_API_SET_FIX_CTL_5HZ  "$PMTK300,200,0,0,0,0*2F"
+
+
 // ADK USB Host
 USBHost Usb;
 ADK adk(&Usb, companyName, applicationName, accessoryName, versionNumber, url, serialNumber);
@@ -198,15 +204,29 @@ void setup()
   // Set ADC Precision:
   analogReadResolution(12);
 
+  /*
+  // Set GPS Settings
+  Serial1.begin(9600);
+  Serial1.setTimeout(250);
+  // Set output to RMC only
+  Serial1.println(PMTK_SET_NMEA_OUTPUT_RMCONLY);
+  Serial1.flush();
+  // Set output rate to 5Hz
+  Serial1.println(PMTK_API_SET_FIX_CTL_5HZ);
+  // Set fix rate to 5Hz
+  Serial1.println(PMTK_SET_NMEA_UPDATE_5HZ);
+  Serial1.flush();
+  */
+
   // Initialize and power all peripherals (WiFi & Pump)
   platypus::peripherals[0] = new platypus::Peripheral(0, true);
   platypus::peripherals[1] = new platypus::Peripheral(1, true);
 
   // Initialize External sensors
-  platypus::sensors[0] = new platypus::EmptySensor(0, 0);
-  platypus::sensors[1] = new platypus::AtlasPH(1, 1);
-  platypus::sensors[2] = new platypus::ES2(2, 2);
-  platypus::sensors[3] = new platypus::HDS(3, 3);
+  platypus::sensors[0] = new platypus::AdafruitGPS(0, 0);
+  platypus::sensors[1] = new platypus::AdafruitGPS(1, 1);
+  platypus::sensors[2] = new platypus::AdafruitGPS(2, 2);
+  platypus::sensors[3] = new platypus::EmptySensor(3, 3);
 
   // Initialize Internal sensors
   platypus::sensors[4] = new platypus::BatterySensor(4);

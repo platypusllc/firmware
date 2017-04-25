@@ -1,7 +1,7 @@
 #include "Platypus.h"
 
 // Define for LEGACY support
-#define LEGACY
+//#define LEGACY
 
 #ifndef LEGACY
 
@@ -26,10 +26,10 @@ platypus::Sensor *platypus::sensors[board::NUM_SENSORS];
 
 // TODO: Switch to using HardwareSerial.
 USARTClass *platypus::SERIAL_PORTS[4] = {
-  nullptr,
   &Serial1,
   &Serial2,
-  &Serial3
+  &Serial3,
+  nullptr
 };
 
 SerialHandler_t platypus::SERIAL_HANDLERS[4] = {
@@ -39,7 +39,16 @@ SerialHandler_t platypus::SERIAL_HANDLERS[4] = {
   {NULL, NULL}
 };
 
+
 void serialEvent1() 
+{
+  if (SERIAL_HANDLERS[0].handler != NULL)
+  {
+    (*SERIAL_HANDLERS[0].handler)(SERIAL_HANDLERS[0].data);
+  }
+}
+
+void serialEvent2() 
 {
   if (SERIAL_HANDLERS[1].handler != NULL)
   {
@@ -47,19 +56,11 @@ void serialEvent1()
   }
 }
 
-void serialEvent2() 
-{
+void serialEvent3() 
+{ 
   if (SERIAL_HANDLERS[2].handler != NULL)
   {
     (*SERIAL_HANDLERS[2].handler)(SERIAL_HANDLERS[2].data);
-  }
-}
-
-void serialEvent3() 
-{ 
-  if (SERIAL_HANDLERS[3].handler != NULL)
-  {
-    (*SERIAL_HANDLERS[3].handler)(SERIAL_HANDLERS[3].data);
   }
 }
 
@@ -498,11 +499,14 @@ SerialSensor::SerialSensor(int id, int port, int baud, int type, int dataLength)
     digitalWrite(board::SENSOR_PORT[port].RS485_232, HIGH);
   }
   
-  // Register serial event handler
-  SerialHandler_t handler = {SerialSensor::onSerial_, this}; 
-  SERIAL_HANDLERS[port] = handler;
-
-  SERIAL_PORTS[port]->begin(baud);
+  if (SERIAL_PORTS[port] != nullptr)
+  {
+    // Register serial event handler
+    SerialHandler_t handler = {SerialSensor::onSerial_, this}; 
+    SERIAL_HANDLERS[port] = handler;
+    
+    SERIAL_PORTS[port]->begin(baud);
+  }
 }
 
 void SerialSensor::onSerial(){
