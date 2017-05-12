@@ -61,10 +61,17 @@ namespace platypus
     void arm();
   };
 
-    class Dynamite : public Motor 
+  class Dynamite : public Motor 
   {
   public:
     Dynamite(int channel) : Motor(channel) {}
+    void arm();
+  };
+
+  class BRThruster : public Motor
+  {
+  public:
+    BRThruster(int channel) : Motor(channel) {}
     void arm();
   };
 
