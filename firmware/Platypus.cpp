@@ -155,9 +155,12 @@ int Led::B()
   return b_;
 }
 
-Motor::Motor(int channel)
+Motor::Motor(int channel,int motorMin,int motorMax,int motorCenter)
   : enable_(board::MOTOR[channel].ENABLE), enabled_(false), velocity_(0), servo_ctrl(board::MOTOR[channel].SERVO_CTRL)
 {
+  motorMax_ = motorMax;
+  motorMin_ = motorMin;
+  motorCenter_ = motorCenter;
   channel_ = channel;
   servo_.attach(board::MOTOR[channel_].SERVO);
   pinMode(enable_, OUTPUT);
@@ -186,10 +189,16 @@ void Motor::velocity(float velocity)
   else if (velocity < -1.0) {
     velocity = -1.0;
   }
-
   velocity_ = velocity;
-
-  float command = (velocity * 500) + 1500;
+  float command;
+  if (velocity < 0.0)
+    {
+      command = motorMin_ + (motorCenter_ - motorMin_) * velocity_;
+    }
+  else if (velocity > 0.0)
+    {
+      command = motorCenter_ + (motorMax_ - motorCenter_) * velocity_;
+    }
   servo_.writeMicroseconds(command);
 }
 

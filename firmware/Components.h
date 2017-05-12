@@ -71,7 +71,7 @@ namespace platypus
   class BRThruster : public Motor
   {
   public:
-    BRThruster(int channel) : Motor(channel) {}
+    BRThruster(int channel) : Motor(channel,1100,1900,1500) {}
     void arm();
   };
 
