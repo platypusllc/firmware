@@ -196,11 +196,12 @@ void Motor::velocity(float velocity)
   float command;
   if (velocity < 0.0)
     {
-      command = motorMin_ + (motorCenter_ - motorMin_ + motorRDB_) * (VELOCITY_THRESHOLD + 1.0) / (1.0 - VELOCITY_THRESHOLD);
+      command = motorMin_ + (motorCenter_ - motorMin_ + motorRDB_) * (velocity + 1.0) / (1.0 - VELOCITY_THRESHOLD);
     }
   else if (velocity > 0.0)
     {
       command = motorCenter_ + motorFDB_ + (motorMax_ - motorCenter_ - motorFDB_)*(velocity - VELOCITY_THRESHOLD)/ (1.0 - VELOCITY_THRESHOLD);
+
     }
   servo_.writeMicroseconds(command);
 }
