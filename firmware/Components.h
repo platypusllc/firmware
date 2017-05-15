@@ -68,10 +68,10 @@ namespace platypus
     void arm();
   };
 
-  class BRThruster : public Motor
+  class AfroESC : public Motor
   {
   public:
-    BRThruster(int channel) : Motor(channel,1100,1900,1500,25,-25) {}
+    AfroESC(int channel) : Motor(channel,1100,1900,1500,25,-25) {}
     void arm();
   };
 

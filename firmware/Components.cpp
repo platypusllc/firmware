@@ -69,7 +69,7 @@ void Dynamite::arm()
   delay(3000);
 }
 
-void BRThruster::arm()
+void AfroESC::arm()
 {
   disable();
   velocity(0.0); //sends it 1500 for arming
