@@ -72,6 +72,7 @@ void Dynamite::arm()
 void AfroESC::arm()
 {
   disable();
+  delay(1000);
   velocity(0.0); //sends it 1500 for arming
   enable();
   delay(1000);

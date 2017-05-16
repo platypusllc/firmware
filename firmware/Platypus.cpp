@@ -187,6 +187,7 @@ void Motor::velocity(float velocity)
     velocity = -1.0;
   }
   velocity_ = velocity;
+  
   float command;
   if (velocity < 0.0)
     {
@@ -196,7 +197,14 @@ void Motor::velocity(float velocity)
     {
       command = motorCenter_ + motorFDB_ + (motorMax_ - motorCenter_ - motorFDB_)*(velocity - VELOCITY_THRESHOLD)/ (1.0 - VELOCITY_THRESHOLD);
     }
+   else if (velocity == 0)
+   {
+    command = motorCenter_;
+   }
+  //float command = (velocity * 200) + 1500; //binding it from 1300 to 1700 because it sounds like there is damage being done at max 1900?
   servo_.writeMicroseconds(command);
+ // printf("velocity is: %d \n",velocity);
+ // printf("command is %d \n",command);
 }
 
 float Motor::velocity()
