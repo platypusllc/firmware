@@ -94,6 +94,16 @@ void Dynamite::arm()
   delay(3000);
 }
 
+void AfroESC::arm()
+{
+  disable();
+  delay(1000);
+  velocity(0.0); //sends it 1500 for arming
+  enable();
+  delay(1000);
+}
+
+
 AnalogSensor::AnalogSensor(int channel)
   : Sensor(channel), scale_(1.0f), offset_(0.0f) {}
 

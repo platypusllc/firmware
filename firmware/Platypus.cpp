@@ -153,8 +153,8 @@ int Led::B()
   return b_;
 }
 
-Motor::Motor(int channel)
-  : enable_(board::MOTOR[channel].ENABLE), enabled_(false), velocity_(0), servo_ctrl(board::MOTOR[channel].SERVO_CTRL)
+Motor::Motor(int channel,int motorMin,int motorMax,int motorCenter,int motorFDB, int motorRDB)
+  : enable_(board::MOTOR[channel].ENABLE), enabled_(false), velocity_(0), servo_ctrl(board::MOTOR[channel].SERVO_CTRL), motorMax_(motorMax), motorMin_(motorMin), motorCenter_(motorCenter), motorFDB_(motorFDB),motorRDB_(motorRDB)
 {
   channel_ = channel;
   servo_.attach(board::MOTOR[channel_].SERVO);
@@ -177,18 +177,31 @@ Motor::~Motor()
 
 void Motor::velocity(float velocity)
 {
-  //Cap motor signals to between -1.0 and 1.0
   if (velocity > 1.0) {
     velocity = 1.0;
   }
   else if (velocity < -1.0) {
     velocity = -1.0;
   }
-
   velocity_ = velocity;
-
-  float command = (velocity * 500) + 1500;
+  
+  float command;
+  if (velocity < 0.0)
+    {
+      command = motorMin_ + (motorCenter_ - motorMin_ + motorRDB_) * (velocity + 1.0) / (1.0 - VELOCITY_THRESHOLD);
+    }
+  else if (velocity > 0.0)
+    {
+      command = motorCenter_ + motorFDB_ + (motorMax_ - motorCenter_ - motorFDB_)*(velocity - VELOCITY_THRESHOLD)/ (1.0 - VELOCITY_THRESHOLD);
+    }
+   else if (velocity == 0)
+   {
+    command = motorCenter_;
+   }
+  //float command = (velocity * 200) + 1500; //binding it from 1300 to 1700 because it sounds like there is damage being done at max 1900?
   servo_.writeMicroseconds(command);
+ // printf("velocity is: %d \n",velocity);
+ // printf("command is %d \n",command);
 }
 
 float Motor::velocity()

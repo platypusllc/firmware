@@ -199,8 +199,8 @@ void setup()
   platypus::sensors[3] = new platypus::ServoSensor(3);
   
   // Initialize motors
-  platypus::motors[0] = new platypus::Dynamite(0);
-  platypus::motors[1] = new platypus::Dynamite(1);
+  platypus::motors[0] = new platypus::AfroESC(0);
+  platypus::motors[1] = new platypus::AfroESC(1);
 
   // Power all peripherals
   platypus::motors[0]->enablePower(true);

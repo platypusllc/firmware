@@ -47,7 +47,7 @@ namespace platypus
   class Motor : public Configurable
   { 
   public:
-    Motor(int channel);
+    Motor(int channel,int motorMin = 1000 ,int motorMax = 2000 ,int motorCenter = 1500, int motorFDB = 25, int motorRDB = -25);
     virtual ~Motor();
 
     virtual void arm() = 0;
@@ -77,6 +77,11 @@ namespace platypus
     bool enabled_;
     float velocity_;
     float desiredVelocity_;
+    int motorMax_; 
+    int motorMin_; 
+    int motorCenter_;
+    int motorFDB_; //motor forward deadband (positive val)
+    int motorRDB_; //motor reverse deadband (negative val)
     
   public:
     static void onLoop_(void *data);

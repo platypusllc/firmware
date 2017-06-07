@@ -67,6 +67,12 @@ namespace platypus
     Dynamite(int channel) : Motor(channel) {}
     void arm();
   };
+    class AfroESC : public Motor
+  {
+  public:
+    AfroESC(int channel) : Motor(channel,1100,1900,1500,25,-25) {}
+    void arm();
+  };
 
   // Sensors //
   class AnalogSensor : public Sensor 
