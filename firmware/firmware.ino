@@ -249,6 +249,11 @@ void handleCommand(char *buffer)
           rc::vehicle_type = rc::VehicleType::PROP;
           Serial.println("Changed vehicle type to propboat");
         }
+        else if (strcmp(type, "PropGuard" == 0))
+        {
+          rc::vehicle_type = rc::VehicleType::PROP_GUARD;
+          Serial.println("Changed vehicle type to guarded propboat");          
+        }
         else if (strcmp(type, "Air") == 0)
         {
           rc::vehicle_type = rc::VehicleType::AIR;

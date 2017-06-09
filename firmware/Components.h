@@ -27,7 +27,8 @@ namespace rc {
   enum VehicleType
   {
     PROP = 0,
-    AIR = 1    
+    PROP_GUARD = 1,
+    AIR = 2
   };
 
   extern VehicleType vehicle_type;  
