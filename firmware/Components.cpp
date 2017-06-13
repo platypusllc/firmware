@@ -988,42 +988,25 @@ void RC::motorSignals()
   }
   else if (rc::vehicle_type == rc::VehicleType::PROP_GUARD)
   {
-    // need to reduce both m0 and m1 evenly until the backdriving is effective.
-    // first  idea: set the motor_overage cutoff scheme in PROP above to use a number <= 1, number = (1 - abs(heading_fraction))
-    // e.g.
-    // H = 0,   T = 1 --> m0 = 1, m1 = 1
-    // H = 1.0, T = 0 --> m0 = 0, m1 = 0 ..... cant use (1 - abs(heading_fraction))
-    // maybe instead of changing motors directly, bias the thrust fraction downward, T -= 0.5*abs(heading_fraction)
-    // H = 0,   T = 1 --> m0 = 1, m1 = 1
-    // H = 1.0, T = 0 --> Tnew = -0.5 --> m0 = 0.5, m1 = -1.5 (overage = -0.5, maybe just cap it) --> m0 = 0.5, m1 = -1.0 --> Heff = 0.75, Teff = -0.25
-    // H = 1.0, T = -1 --> Tnew = -1.5 --> m0 = -0.5, m1 = -2.0 --> m0 = -0.5, m1 = -1.0 --> Heff = 0.25 (opposite sign???), Teff = -0.75
-    // with thrust envelope = 1.0, 1.5/4.0 thrust fraction, 1.0 heading fraction, caused the boat to spin in place
-
-    // positive thrust is worth disproportionately more than negative thrust, so +0.1 is like -0.3
-    // so maybe max(0.05, (1 - abs(heading_fraction))) is applied to any *positive* motor value
-    // As heading fraction increases, the negatives motor results are left alone but the positive ones are attenuated toward zero but never all the way to zero
-    // H = 0,   T = 1 --> m0, m1 = 1
-    // H = 1,   T = 0 --> m0 = 1, m1 = -1 --> m0 = 0.1, m1 = -1
-    // H = 0.5, T = 0 --> m0 = 0.5, m1 = -0.5 --> m0 = 0.25, m1 = -0.5
-    // H = 0.5, T = 0.5 --> m0 = 1.0, m1 = 0.0
-    // H = -0.1, T = 1.0 --> m0 = 0.45, m1 = 0.55 
-    Serial.print("RAW: H = "); Serial.print(heading_fraction);
-    Serial.print("  T = "); Serial.println(thrust_fraction);
-    thrust_fraction -= 0.5*abs(heading_fraction);
-    Serial.print("T reduced = "); Serial.println(thrust_fraction);
+    // assume that forward thrust is X times more powerful per motor signal value
     m0 = thrust_fraction + heading_fraction;
     m1 = thrust_fraction - heading_fraction;
-    Serial.print("RAW m0 = "); Serial.print(m0);
-    Serial.print("  m1 = "); Serial.println(m1);
-    if (abs(m0) > 1.0) m0 = sign(m0)*1.0;
-    if (abs(m1) > 1.0) m1 = sign(m1)*1.0;
-    Serial.print("CAP m0 = "); Serial.print(m0);
-    Serial.print("  m1 = "); Serial.println(m1);    
-    Serial.print("Heff = "); Serial.print((m1-m0)/2.);
-    Serial.print("  Teff = "); Serial.println((m0+m1)/2.);
-    sprintf(m, "%.4f", m0);
+    Serial.print("RAW   : m0 = "); Serial.print(m0); Serial.print("  m1 = "); Serial.println(m1);
+    float signals[] = {m0, m1};
+    scaleDown(signals, 2);    
+    Serial.print("SCALED: m0 = "); Serial.print(signals[0]); Serial.print("  m1 = "); Serial.println(signals[1]);
+    if (sign(signals[0]) > 0 && sign(signals[1]) < 0)
+    {
+      signals[0] = signals[0]/3.0;
+    }
+    if (sign(signals[1]) > 0 && sign(signals[0]) < 0)
+    {
+      signals[1] = signals[1]/3.0;
+    }
+    
+    sprintf(m, "%.4f", signals[0]);
     platypus::motors[0]->set("v", m);
-    sprintf(m, "%.4f", m1);
+    sprintf(m, "%.4f", signals[1]);
     platypus::motors[1]->set("v", m);    
     
   }
@@ -1037,6 +1020,7 @@ void RC::motorSignals()
     platypus::sensors[0]->set("p", m);
   }
 }
+
 void RC::update() {/*I'm virtual!*/};
 
 RC_PWM::RC_PWM(int channel)

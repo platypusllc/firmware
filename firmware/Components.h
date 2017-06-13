@@ -12,6 +12,27 @@ inline int sign(float x)
   return 1.0;
 }
 
+inline void scaleDown(float* raw_signals, int array_size)
+{
+  boolean needs_scaling = false;
+  float max_signal = 0.0;
+  for (int i = 0; i < array_size; i++)
+  {
+    if (abs(raw_signals[i]) > 1.0)
+    {
+      needs_scaling = true;
+    }
+    if (abs(raw_signals[i]) > max_signal)
+    {
+      max_signal = abs(raw_signals[i]);
+    }
+  }
+  for (int i = 0; i < array_size; i++)
+  {
+    raw_signals[i] = raw_signals[i]/max_signal;
+  }
+}
+
 namespace rc {
   enum RC_CHANNEL
   {
@@ -95,7 +116,7 @@ namespace platypus
     void arm();
   };
 
-    class Dynamite : public Motor 
+  class Dynamite : public Motor 
   {
   public:
     Dynamite(int channel) : Motor(channel) {}
@@ -280,7 +301,7 @@ namespace platypus
     RC(int channel);
     bool  isOverrideEnabled();
     void motorSignals();
-    virtual void  update(); // instead of using Sensor::loop we will call this in its own parallel thread
+    virtual void  update(); // instead of using Sensor::loop we will call this in its own parallel thread    
   protected:
     bool  override_enabled = false;
     float m0 = 0;
