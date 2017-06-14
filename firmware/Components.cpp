@@ -528,7 +528,7 @@ void AtlasPH::onSerial(){
   {
     recv_buffer_[recv_index_] = '\0';
 
-    //Serial.print("Raw Sensor Input: ");
+    //Serial.print("AtlasPH Raw Sensor Input: ");
     //Serial.println(recv_buffer_);
 
     // Trims first three characters off response (used to trim temp and ec responses)
@@ -580,7 +580,7 @@ void AtlasPH::onSerial(){
           break;
 
         case GET_TEMP:
-          Serial.print("AtlasPH thinks the temp is "); Serial.println(atof(subString));
+          //Serial.print("AtlasPH thinks the temp is "); Serial.println(atof(subString));
           
           state = IDLE;
           lastCommand = NONE;
@@ -991,10 +991,10 @@ void RC::motorSignals()
     // assume that forward thrust is X times more powerful per motor signal value
     m0 = thrust_fraction + heading_fraction;
     m1 = thrust_fraction - heading_fraction;
-    Serial.print("RAW   : m0 = "); Serial.print(m0); Serial.print("  m1 = "); Serial.println(m1);
+    //Serial.print("RAW   : m0 = "); Serial.print(m0); Serial.print("  m1 = "); Serial.println(m1);
     float signals[] = {m0, m1};
     scaleDown(signals, 2);    
-    Serial.print("SCALED: m0 = "); Serial.print(signals[0]); Serial.print("  m1 = "); Serial.println(signals[1]);
+    //Serial.print("SCALED: m0 = "); Serial.print(signals[0]); Serial.print("  m1 = "); Serial.println(signals[1]);
     if (sign(signals[0]) > 0 && sign(signals[1]) < 0)
     {
       signals[0] = signals[0]/3.0;
@@ -1003,6 +1003,7 @@ void RC::motorSignals()
     {
       signals[1] = signals[1]/3.0;
     }
+    //Serial.print("BCKDRV: m0 = "); Serial.print(signals[0]); Serial.print("  m1 = "); Serial.println(signals[1]);
     
     sprintf(m, "%.4f", signals[0]);
     platypus::motors[0]->set("v", m);

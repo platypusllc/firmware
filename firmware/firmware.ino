@@ -445,8 +445,12 @@ void loop()
   input_buffer[bytes_read] = '\0';
   
   // Copy incoming message to debug console.
-  //Serial.print("<- ");
-  //Serial.println(input_buffer);
+  
+  //if (input_buffer[2] != 'm')
+  //{
+    //Serial.println(input_buffer);
+  //} 
+  
   
   // Attempt to parse command
   handleCommand(input_buffer);

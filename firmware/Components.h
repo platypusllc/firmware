@@ -21,15 +21,20 @@ inline void scaleDown(float* raw_signals, int array_size)
     if (abs(raw_signals[i]) > 1.0)
     {
       needs_scaling = true;
+      Serial.println("scaling is necessary");
     }
     if (abs(raw_signals[i]) > max_signal)
     {
-      max_signal = abs(raw_signals[i]);
+      max_signal = abs(raw_signals[i]);      
     }
   }
-  for (int i = 0; i < array_size; i++)
+  if (needs_scaling)
   {
-    raw_signals[i] = raw_signals[i]/max_signal;
+    Serial.print("Need to scale by "); Serial.println(max_signal);
+    for (int i = 0; i < array_size; i++)
+    {
+      raw_signals[i] = raw_signals[i]/max_signal;
+    }
   }
 }
 
