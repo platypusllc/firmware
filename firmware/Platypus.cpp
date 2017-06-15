@@ -1,5 +1,16 @@
 #include "Platypus.h"
+
+// Define for LEGACY support
+//#define LEGACY
+
+#ifndef LEGACY
+
 #include <Adafruit_NeoPixel.h>
+// LED serial controller.
+Adafruit_NeoPixel pixels = Adafruit_NeoPixel(board::NUM_LEDS, board::LED,
+                                             NEO_GRB + NEO_KHZ800);
+#endif
+
 
 using namespace platypus;
 
@@ -8,19 +19,17 @@ constexpr float VELOCITY_ALPHA = 0.1;
 constexpr float VELOCITY_THRESHOLD = 0.001;
 
 // TODO: Correct default initialization of these sensors.
+platypus::Peripheral *platypus::peripherals[board::NUM_PERIPHERALS];
 platypus::Motor *platypus::motors[board::NUM_MOTORS];
 platypus::Sensor *platypus::sensors[board::NUM_SENSORS];
 
-// LED serial controller.
-Adafruit_NeoPixel pixels = Adafruit_NeoPixel(board::NUM_LEDS, board::LED,
-                                             NEO_GRB + NEO_KHZ800);
 
 // TODO: Switch to using HardwareSerial.
 USARTClass *platypus::SERIAL_PORTS[4] = {
   &Serial1,
   &Serial2,
   &Serial3,
-  nullptr,
+  nullptr
 };
 
 SerialHandler_t platypus::SERIAL_HANDLERS[4] = {
@@ -29,6 +38,7 @@ SerialHandler_t platypus::SERIAL_HANDLERS[4] = {
   {NULL, NULL},
   {NULL, NULL}
 };
+
 
 void serialEvent1() 
 {
@@ -105,10 +115,24 @@ void platypus::init()
 Led::Led()
   : r_(0), g_(0), b_(0)
 {
+  #ifdef LEGACY
+  pinMode(board::LEGACY_LED.R, OUTPUT);
+  digitalWrite(board::LEGACY_LED.R, HIGH);
+  pinMode(board::LEGACY_LED.G, OUTPUT);
+  digitalWrite(board::LEGACY_LED.G, HIGH);
+  pinMode(board::LEGACY_LED.B, OUTPUT);
+  digitalWrite(board::LEGACY_LED.B, HIGH);
+  #endif
+
 }
 
 Led::~Led()
 {
+  #ifdef LEGACY
+  pinMode(board::LEGACY_LED.R, INPUT);
+  pinMode(board::LEGACY_LED.G, INPUT);
+  pinMode(board::LEGACY_LED.B, INPUT);
+  #endif
 }
 
 void Led::set(int red, int green, int blue)
@@ -116,6 +140,14 @@ void Led::set(int red, int green, int blue)
   r_ = red;
   g_ = green;
   b_ = blue;
+
+  #ifdef LEGACY
+
+  digitalWrite(board::LEGACY_LED.R, !r_);
+  digitalWrite(board::LEGACY_LED.G, !g_);
+  digitalWrite(board::LEGACY_LED.B, !b_);
+
+  #endif
   /*
   while (!pixels.canShow());
   for (size_t pixel_idx = 0; pixel_idx < board::NUM_LEDS; ++pixel_idx)
@@ -153,25 +185,48 @@ int Led::B()
   return b_;
 }
 
-Motor::Motor(int channel)
-  : enable_(board::MOTOR[channel].ENABLE), enabled_(false), velocity_(0), servo_ctrl(board::MOTOR[channel].SERVO_CTRL)
+Peripheral::Peripheral(int channel, bool enabled)
+  : channel_(channel), enable_(board::PERIPHERAL[channel].ENABLE)
 {
-  channel_ = channel;
-  servo_.attach(board::MOTOR[channel_].SERVO);
   pinMode(enable_, OUTPUT);
-  // Initialize with power output on
-  digitalWrite(enable_, HIGH);
+  enable(enabled);
+}
+
+Peripheral::~Peripheral()
+{
+  disable();
+  pinMode(enable_, INPUT);
+}
+
+void Peripheral::enable(bool enabled)
+{
+  enabled_ = enabled;
+  digitalWrite(enable_, enabled);
+}
+
+float Peripheral::current()
+{
+  float vsense = analogRead(board::PERIPHERAL[channel_].CURRENT);
+  //V sense is measured across a 330 Ohm resistor, I = V/R
+  //I sense is ~1/5000 of output current
+  return vsense*5000.0/330.0;
+}
+
+Motor::Motor(int channel)
+  : channel_(channel), enable_(board::MOTOR[channel].ENABLE)
+{
   // Initialize with ESC softswitch off
-  pinMode(servo_ctrl,OUTPUT);
-  digitalWrite(servo_ctrl,HIGH);
+  pinMode(enable_, OUTPUT);
+  disable();
+
+  // Attach Servo object to signal pin
+  servo_.attach(board::MOTOR[channel_].SERVO);
 }
 
 Motor::~Motor()
 {
+  disable();
   pinMode(enable_, INPUT);
-  digitalWrite(enable_, LOW);
-  pinMode(servo_ctrl,INPUT);
-  digitalWrite(servo_ctrl,HIGH);  
   servo_.detach();
 }
 
@@ -191,50 +246,16 @@ void Motor::velocity(float velocity)
   servo_.writeMicroseconds(command);
 }
 
-float Motor::velocity()
-{
-  return velocity_;
-}
-
-void Motor::enablePower(bool enabled)
-{
-  digitalWrite(enable_, enabled);
-}
-
 // Deals with ESC softswitch exclusively
 void Motor::enable(bool enabled)
 {
   enabled_ = enabled;
-  digitalWrite(servo_ctrl, !enabled_);
+  digitalWrite(enable_, !enabled_);
 
   if (!enabled_)
   {
     velocity(0.0);
   }
-}
-
-bool Motor::enabled()
-{
-  return enabled_;
-}
-
-void Motor::enable()
-{
-  enable(true);
-}
-
-void Motor::disable()
-{
-  enable(false);
-}
-
-float Motor::current()
-{
-  //Will no longer work with battery directly powering esc?
-  float vsense = analogRead(board::MOTOR[channel_].CURRENT);
-  //V sense is measured across a 330 Ohm resistor, I = V/R
-  //I sense is ~1/5000 of output current
-  return vsense*5000.0/330.0;
 }
 
 bool Motor::set(const char *param, const char *value)
@@ -309,27 +330,55 @@ void Motor::onLoop_(void *data)
   self->loop();
 }
 
-Sensor::Sensor(int channel) 
-: channel_(channel)
+Sensor::Sensor(int id) : id_(id)
 {  
+  // Abstract Class - should not be instantiated
+}
+
+Sensor::~Sensor()
+{
+  // TODO: fill me in
+}
+
+bool Sensor::set(const char* param, const char* value)
+{
+  return false;
+}
+
+void Sensor::loop()
+{
+  // Default to doring nothing during loop function.
+}
+
+void Sensor::onLoop_(void *data)
+{ 
+  // Resolve self-reference and call member function.
+  Sensor *self = (Sensor*)data;
+  self->loop();
+}
+
+ExternalSensor::ExternalSensor(int id, int port) : Sensor(id), port_(port) 
+{
+  //Unknown if following code is necessary...
+
   // Disable RSxxx receiver
-  pinMode(board::SENSOR[channel].RX_DISABLE, OUTPUT);
-  digitalWrite(board::SENSOR[channel].RX_DISABLE, HIGH);
+  pinMode(board::SENSOR_PORT[port].RX_DISABLE, OUTPUT);
+  digitalWrite(board::SENSOR_PORT[port].RX_DISABLE, HIGH);
 
   // Disable RSxxx transmitter
-  pinMode(board::SENSOR[channel].TX_ENABLE, OUTPUT);
-  digitalWrite(board::SENSOR[channel].TX_ENABLE, LOW);
+  pinMode(board::SENSOR_PORT[port].TX_ENABLE, OUTPUT);
+  digitalWrite(board::SENSOR_PORT[port].TX_ENABLE, LOW);
 
   // Disable RS485 termination resistor
-  pinMode(board::SENSOR[channel].RS485_TE, OUTPUT);
-  digitalWrite(board::SENSOR[channel].RS485_TE, LOW);
+  pinMode(board::SENSOR_PORT[port].RS485_TE, OUTPUT);
+  digitalWrite(board::SENSOR_PORT[port].RS485_TE, LOW);
 
   // Select RS232 (deselect RS485)
-  pinMode(board::SENSOR[channel].RS485_232, OUTPUT);
-  digitalWrite(board::SENSOR[channel].RS485_232, LOW);
+  pinMode(board::SENSOR_PORT[port].RS485_232, OUTPUT);
+  digitalWrite(board::SENSOR_PORT[port].RS485_232, LOW);
 
   // TODO: deconflict this!
-  if (channel < 2)
+  if (port < 2)
   {
     // Disable half-duplex
     pinMode(board::HALF_DUPLEX01, OUTPUT);
@@ -347,48 +396,159 @@ Sensor::Sensor(int channel)
   digitalWrite(board::LOOPBACK, LOW);
   
   // Disable 12V output
-  pinMode(board::SENSOR[channel].PWR_ENABLE, OUTPUT);
-  digitalWrite(board::SENSOR[channel].PWR_ENABLE, LOW);
+  pinMode(board::SENSOR_PORT[port].PWR_ENABLE, OUTPUT);
+  digitalWrite(board::SENSOR_PORT[port].PWR_ENABLE, LOW);
+}
+
+
+AnalogSensor::AnalogSensor(int id, int port)
+  : ExternalSensor(id, port), scale_(1.0f), offset_(0.0f) {}
+
+bool AnalogSensor::set(const char* param, const char* value)
+{
+  // Set analog scale.
+  if (!strncmp("scale", param, 6))
+  {
+    float s = atof(value);
+    scale(s);
+    return true;
+  }
+  // Set analog offset.
+  else if (!strncmp("offset", param, 7))
+  {
+    float o = atof(value);
+    offset(o);
+    return true;
+  }
+  // Return false for unknown command.
+  else
+  {
+    return false;
+  }
+}
+
+void AnalogSensor::scale(float scale)
+{
+  scale_ = scale;
+}
+
+void AnalogSensor::offset(float offset)
+{
+  offset_ = offset;
+}
+
+PoweredSensor::PoweredSensor(int id, int port, bool poweredOn)
+  : ExternalSensor(id, port), state_(true)
+{
+  //PowerOff to be sure sensor is off
+  powerOff();
   
-  // Register serial event handler
-  SerialHandler_t handler = {Sensor::onSerial_, this}; 
-  SERIAL_HANDLERS[channel] = handler;
+  if (poweredOn){
+    powerOn();
+  } else {
+    powerOff();
+  }
 }
 
-void Sensor::calibrate(int flag){
+// Turn 12v pin on. Returns true if successful, false if power was already on
+bool PoweredSensor::powerOn(){
+  if (state_){
+    //Serial.println("Power On Failure, sensor already powered on");
+    return false;
+  } else {
+    pinMode(board::SENSOR_PORT[port_].PWR_ENABLE, OUTPUT);
+    digitalWrite(board::SENSOR_PORT[port_].PWR_ENABLE, HIGH);
+    state_ = true;
+    return true;
+  }
+}
+
+// Turn 12v pin off. Returns true if successful, false if power was already off
+bool PoweredSensor::powerOff(){
+  if (state_){
+    pinMode(board::SENSOR_PORT[port_].PWR_ENABLE, OUTPUT);
+    digitalWrite(board::SENSOR_PORT[port_].PWR_ENABLE, LOW);
+    state_ = false;
+    return true;
+  } else {
+    //Serial.println("Power Off Failure, sensor already powered off");
+    return false;
+  }
+}
+
+SerialSensor::SerialSensor(int id, int port, int baud, int type, int dataLength) 
+  : ExternalSensor(id, port), recv_index_(0), baudRate_(baud), serialType_(type)
+{
+  minDataStringLength_ = dataLength;
+
+  if (type == RS485){
+    // Enable RSxxx receiver
+    pinMode(board::SENSOR_PORT[port].RX_DISABLE, OUTPUT);
+    digitalWrite(board::SENSOR_PORT[port].RX_DISABLE, LOW);
+    
+    // Enable RSxxx transmitter
+    pinMode(board::SENSOR_PORT[port].TX_ENABLE, OUTPUT);
+    digitalWrite(board::SENSOR_PORT[port].TX_ENABLE, HIGH);
+    
+    // Enable RS485 termination resistor
+    pinMode(board::SENSOR_PORT[port].RS485_TE, OUTPUT);
+    digitalWrite(board::SENSOR_PORT[port].RS485_TE, HIGH);
+    
+    // Select RS485 (deselect RS232)
+    pinMode(board::SENSOR_PORT[port].RS485_232, OUTPUT);
+    digitalWrite(board::SENSOR_PORT[port].RS485_232, HIGH);
+  }
   
+  if (SERIAL_PORTS[port] != nullptr)
+  {
+    // Register serial event handler
+    SerialHandler_t handler = {SerialSensor::onSerial_, this}; 
+    SERIAL_HANDLERS[port] = handler;
+    
+    SERIAL_PORTS[port]->begin(baud);
+  }
 }
 
-Sensor::~Sensor()
-{
-  // TODO: fill me in
+void SerialSensor::onSerial(){
+  char c = SERIAL_PORTS[port_]->read();
+  
+  // Ignore null and tab characters
+  if (c == '\0' || c == '\t') {
+    return;
+  }
+  if (c != '\r' && c != '\n' && recv_index_ < DEFAULT_BUFFER_SIZE)
+  {
+    recv_buffer_[recv_index_] = c;
+    ++recv_index_;
+  }
+  else if (recv_index_ > 0)
+  {
+    recv_buffer_[recv_index_] = '\0';
+
+    if (recv_index_ >  minDataStringLength_){
+      char output_str[DEFAULT_BUFFER_SIZE + 3];
+      snprintf(output_str, DEFAULT_BUFFER_SIZE,
+               "{"
+               "\"s%u\":{"
+               "\"type\":\"%s\","
+               "\"data\":\"%s\""
+               "}"
+               "}",
+               id_,
+               this->name(),
+               recv_buffer_
+              );
+      send(output_str);  
+    }
+    
+    memset(recv_buffer_, 0, recv_index_);
+    recv_index_ = 0;
+  }
 }
 
-bool Sensor::set(const char* param, const char* value)
-{
-  return false;
-}
-
-void Sensor::onSerial() 
-{
-  // Default to doing nothing on serial events. 
-}
-
-void Sensor::onSerial_(void *data)
+void SerialSensor::onSerial_(void *data)
 {
   // Resolve self-reference and call member function.
-  Sensor *self = (Sensor*)data;
+  SerialSensor *self = (SerialSensor*)data;
   self->onSerial();
-}
-
-void Sensor::loop()
-{
-  // Do nothing.
-}
-
-void Sensor::onLoop_(void *data)
-{ 
-  // Resolve self-reference and call member function.
-  Sensor *self = (Sensor*)data;
-  self->loop();
 }
