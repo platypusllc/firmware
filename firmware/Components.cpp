@@ -963,7 +963,9 @@ uint32_t Winch::encoder(bool *valid)
   uint32_t enc1 = roboclaw_.ReadEncM1(addr, NULL, valid);
   return enc1;
 }
-JSONPassThrough::JSONPassThrough(int channel):Sensor(channel),SerialSensor(channel, 9600, DIRECT),PoweredSensor(channel, true)
+
+JSONPassThrough::JSONPassThrough(int channel)
+:Sensor(channel),SerialSensor(channel, 9600, DIRECT),PoweredSensor(channel, true)
 {
   
 }

@@ -237,7 +237,12 @@ void handleCommand(char *buffer)
           pRC = ptemp;          
           platypus::sensors[object_index] = ptemp;
           Serial.print("    S"); Serial.print(object_index); Serial.println(" is now RC_PWM");
-        }        
+        }
+        else if (strcmp(sensor_type, "Sampler") == 0)
+        {
+          platypus::sensors[object_index] = new platypus::JSONPassThrough(object_index);
+          Serial.print("    S"); Serial.print(object_index); Serial.println(" is now Sampler");
+        }
       }
       continue;    
 
@@ -517,8 +522,9 @@ void motorUpdateLoop()
           motor->disable();
         }
       }
-      break;
-    case CONNECTED:
+    }
+    break;
+  case CONNECTED:
       // Decay all motors exponentially towards zero speed.
       for (size_t motor_idx = 0; motor_idx < board::NUM_MOTORS; ++motor_idx)
       {
@@ -526,7 +532,7 @@ void motorUpdateLoop()
         motor->set("v", "0.0");
       }
     // NOTE: WE DO NOT BREAK OUT OF THE SWITCH HERE!
-    case RUNNING:
+  case RUNNING:
       // Rearm motors if necessary.
       for (size_t motor_idx = 0; motor_idx < board::NUM_MOTORS; ++motor_idx)
       {
