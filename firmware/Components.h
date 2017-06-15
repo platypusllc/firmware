@@ -3,10 +3,42 @@
 
 #include "Platypus.h"
 #include "RoboClaw.h"
+#include "RC_PWM.h"
+#include "RC_SBUS.h"
+
+inline int sign(float x)
+{
+  if (x < 0) return -1.0;
+  return 1.0;
+}
+
+namespace rc {
+  enum RC_CHANNEL
+  {
+    THRUST_FRACTION = 0,
+    HEADING_FRACTION = 1,
+    OVERRIDE = 2,
+    THRUST_SCALE = 3,
+  };
+
+  const int CHANNEL_COUNT = 16;
+  const int USED_CHANNELS = 4;
+
+  enum VehicleType
+  {
+    PROP = 0,
+    AIR = 1    
+  };
+
+  extern VehicleType vehicle_type;  
+}
 
 namespace platypus 
 {
   const int DEFAULT_BUFFER_SIZE = 128;
+
+  extern float water_temperature; // [deg C] used for any temperature compensation
+  extern float water_ec; // [uS/cm] used for any electrical conductivity compensation
 
   typedef enum 
   {
@@ -146,12 +178,13 @@ namespace platypus
     SensorState state;
     int lastMeasurementTime;
     const int measurementInterval;
-    const int minReadTime;
+    const int minReadTime;    
     
   public:
     ES2(int channel);
     virtual char *name();
     void loop();
+    void onSerial();
   };
   
   class AtlasPH : public SerialSensor
@@ -162,7 +195,6 @@ namespace platypus
     SensorState state;
     bool initialized;
     int calibrationStatus;
-    float temperature;
     AtlasCommand lastCommand;
 
     void sendCommand();
@@ -186,10 +218,6 @@ namespace platypus
     AtlasCommand lastCommand;
     bool initialized;
     int calibrationStatus;
-    float temperature;
-    float ec;
-
-    //void updateCalibrationStatus();
     void sendCommand();
     
   public:
@@ -255,6 +283,7 @@ namespace platypus
     void loop();
     void onSerial();
   };
+  
   class WinchPassThrough : public SerialSensor
   {
   public:
@@ -264,6 +293,55 @@ namespace platypus
     void loop();
     void onSerial();
     int time;
+  };
+
+  class RC
+  {
+  public:
+    RC(int channel);
+    bool  isOverrideEnabled();
+    void motorSignals();
+    virtual void  update(); // instead of using Sensor::loop we will call this in its own parallel thread
+  protected:
+    bool  override_enabled = false;
+    float m0 = 0;
+    float m1 = 0;
+    float thrust_scale = 1.0;
+    uint16_t raw_channel_values[rc::CHANNEL_COUNT];
+    float scaled_channel_values[rc::USED_CHANNELS];    
+    int override_pin;
+    int thrust_scale_pin;
+    int thrust_fraction_pin;
+    int heading_fraction_pin;
+  };
+
+  class RC_PWM : public RC, public Sensor {
+  public:
+    RC_PWM(int channel);
+    char * name();
+    void update();    
+  private:
+    //RC transmitter PWM break points
+    const int pwm_min = 1000;
+    const int pwm_max = 2000;
+    
+    const int override_low = 980*0.95;
+    const int override_high = 1966*1.05;
+    const int override_threshold_l = 1500*0.9;
+    const int override_threshold_h = 1500*1.1;  
+  };
+
+
+  class RC_SBUS : public RC, public SerialSensor
+  {
+  public:
+    RC_SBUS(int channel);
+    char * name();
+    void update();
+    void onSerial();
+  
+  private:
+    uint8_t packet[SBUS_FRAME_SIZE];
   };
 }
 

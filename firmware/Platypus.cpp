@@ -311,6 +311,11 @@ void Motor::onLoop_(void *data)
   self->loop();
 }
 
+Sensor::Sensor()
+: channel_(0)
+{  
+}
+
 Sensor::Sensor(int channel) 
 : channel_(channel)
 {  
@@ -353,12 +358,12 @@ Sensor::Sensor(int channel)
   digitalWrite(board::SENSOR[channel].PWR_ENABLE, LOW);
   
   // Register serial event handler
-  SerialHandler_t handler = {Sensor::onSerial_, this}; 
+  SerialHandler_t handler = {Sensor::onSerial_, this};
   SERIAL_HANDLERS[channel] = handler;
 }
 
-void Sensor::calibrate(int flag){
-  
+void Sensor::calibrate(int flag)
+{  
 }
 
 Sensor::~Sensor()
@@ -369,6 +374,11 @@ Sensor::~Sensor()
 bool Sensor::set(const char* param, const char* value)
 {
   return false;
+}
+
+char * Sensor::name()
+{
+  return "dummy";
 }
 
 void Sensor::onSerial() 
@@ -383,6 +393,11 @@ void Sensor::onSerial_(void *data)
   self->onSerial();
 }
 
+void Sensor::onSerialDummy_(void *data)
+{
+  
+}
+
 void Sensor::loop()
 {
   // Do nothing.
@@ -394,3 +409,10 @@ void Sensor::onLoop_(void *data)
   Sensor *self = (Sensor*)data;
   self->loop();
 }
+
+Sensor &Sensor::dummy()
+{
+  static Sensor dummy;
+  return dummy;
+}
+

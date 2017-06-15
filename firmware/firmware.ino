@@ -21,6 +21,9 @@ char versionNumber[] = "3.0";
 char serialNumber[] = "3";
 char url[] = "http://senseplatypus.com";
 
+// pointer to RC
+platypus::RC * pRC = NULL;
+
 // ADK USB Host
 USBHost Usb;
 ADK adk(&Usb, companyName, applicationName, accessoryName, versionNumber, url, serialNumber);
@@ -57,6 +60,23 @@ const size_t CONNECTION_TIMEOUT_MS = 500;
 // TODO: move this board.h?
 platypus::Led rgb_led;
 
+void RC_listener()
+{
+  //Serial.println("RC_listener loop...");
+  if (pRC != NULL)
+  {
+    pRC->update();
+    delay(100);
+    if (pRC->isOverrideEnabled())
+    {
+      if(!platypus::motors[0]->enabled()) platypus::motors[0]->enable();
+      if(!platypus::motors[1]->enabled()) platypus::motors[1]->enable();
+      pRC->motorSignals(); // set motor velocities
+    }
+  }
+  yield();
+}
+
 /**
    Wrapper for ADK send command that copies data to debug port.
    Requires a null-terminated char* pointer.
@@ -74,8 +94,8 @@ void send(char *str)
   if (adk.isReady()) adk.write(len, (uint8_t*)str);
 
   // Copy string to debugging console.
-  Serial.print("-> ");
-  Serial.print(str);
+  //Serial.print("-> ");
+  //Serial.print(str);
 }
 
 /**
@@ -122,37 +142,135 @@ void handleCommand(char *buffer)
     size_t object_index;
 
     // Determine target object
-    switch (key[0]) {
-      case 'm': // Motor command
-        object_index = key[1] - '0';
+    switch (key[0]){
+    case 'm': // Motor command
+      object_index = key[1] - '0';
 
-        if (object_index >= board::NUM_MOTORS) {
-          reportError("Invalid motor index.", buffer);
-          return;
-        }
-
-        target_object = platypus::motors[object_index];
-        break;
-
-      case 's': // Sensor command
-        object_index = key[1] - '0';
-
-        if (object_index >= board::NUM_SENSORS) {
-          reportError("Invalid sensor index.", buffer);
-          return;
-        }
-
-        target_object = platypus::sensors[object_index];
-        break;
-      default: // Unrecognized target
-        reportError("Unknown command target.", buffer);
+      if (object_index >= board::NUM_MOTORS){
+        reportError("Invalid motor index.", buffer);
         return;
+      }
+
+      if (pRC != NULL)
+      {
+        if (pRC->isOverrideEnabled()) continue; // ignore motor signals from the phone if RC is enabled
+      }
+
+      target_object = platypus::motors[object_index];
+      break;
+      
+    case 's': // Sensor command
+      object_index = key[1] - '0';
+
+      if (object_index >= board::NUM_SENSORS){
+        reportError("Invalid sensor index.", buffer);
+        return;
+      }
+
+      if (object_index == 0) // the airboat ServoSensor
+      {
+        if (pRC != NULL)
+        {
+          if (pRC->isOverrideEnabled()) continue; // ignore servo signals from the phone if RC is enabled
+        } 
+      }     
+
+      target_object = platypus::sensors[object_index];
+      break;
+    
+    case 'i': // Sensor instantiation command
+      object_index = key[1] - '0';
+      Serial.print("Sensor instantiation command for S"); Serial.print(object_index); 
+      Serial.print(".  Current name = "); Serial.println(platypus::sensors[object_index]->name());
+
+      if (strcmp(platypus::sensors[object_index]->name(), "dummy") != 0)
+      {
+        Serial.println("   Not a dummy sensor. Freeing the memory.");
+        if ((strcmp(platypus::sensors[object_index]->name(), "RC_SBUS") == 0)
+           ||
+           (strcmp(platypus::sensors[object_index]->name(), "RC_PWM") == 0))
+        {
+          pRC = NULL;
+        }
+        delete platypus::sensors[object_index]; // free the memory      
+        platypus::sensors[object_index] = &(platypus::Sensor::dummy()); // temporarily point to the dummy sensor again
+        platypus::SerialHandler_t handler = {platypus::Sensor::onSerialDummy_, platypus::sensors[object_index]};
+        platypus::SERIAL_HANDLERS[object_index] = handler;
+      }      
+      { // enclosing scope for new objects in switch-case
+        const char * sensor_type = it->value;
+        if (strcmp(sensor_type, "AtlasDO") == 0)
+        {
+          platypus::sensors[object_index] = new platypus::AtlasDO(object_index);
+          Serial.print("    S"); Serial.print(object_index); Serial.println(" is now AtlasDO");
+        }
+        else if (strcmp(sensor_type, "AtlasPH") == 0)
+        {
+          platypus::sensors[object_index] = new platypus::AtlasPH(object_index);
+          Serial.print("    S"); Serial.print(object_index); Serial.println(" is now AtlasPH");
+        }
+        else if (strcmp(sensor_type, "ES2") == 0)
+        {
+          platypus::sensors[object_index] = new platypus::ES2(object_index);
+          Serial.print("    S"); Serial.print(object_index); Serial.println(" is now ES2");
+        }        
+        else if (strcmp(sensor_type, "GY26Compass") == 0)
+        {
+          platypus::sensors[object_index] = new platypus::GY26Compass(object_index);
+          Serial.print("    S"); Serial.print(object_index); Serial.println(" is now GY26Compass");
+        }  
+        else if (strcmp(sensor_type, "HDS") == 0)
+        {
+          platypus::sensors[object_index] = new platypus::HDS(object_index);
+          Serial.print("    S"); Serial.print(object_index); Serial.println(" is now HDS");
+        }  
+        else if (strcmp(sensor_type, "RC_SBUS") == 0)
+        {
+          platypus::RC_SBUS * ptemp = new platypus::RC_SBUS(object_index);
+          pRC = ptemp;          
+          platypus::sensors[object_index] = ptemp;          
+          Serial.print("    S"); Serial.print(object_index); Serial.println(" is now RC_SBUS");
+        }
+        else if (strcmp(sensor_type, "RC_PWM") == 0)
+        {
+          platypus::RC_PWM * ptemp = new platypus::RC_PWM(object_index);
+          pRC = ptemp;          
+          platypus::sensors[object_index] = ptemp;
+          Serial.print("    S"); Serial.print(object_index); Serial.println(" is now RC_PWM");
+        }        
+      }
+      continue;    
+
+    case 't': // vehicle type command
+      { // enclosing scope for new objects in switch-case
+        const char * type = it->value;
+        if (strcmp(type, "Prop") == 0)
+        {
+          rc::vehicle_type = rc::VehicleType::PROP;
+          Serial.println("Changed vehicle type to propboat");
+        }
+        else if (strcmp(type, "Air") == 0)
+        {
+          rc::vehicle_type = rc::VehicleType::AIR;
+          Serial.println("Changed vehicle type to airboat");
+        }    
+        else
+        {
+          Serial.print("WARNING: unknown vehicle type: "); Serial.println(type); 
+        }
+      }
+      continue;
+
+    default: // Unrecognized target
+      reportError("Unknown command target.", buffer);
+      //return; // needs to be continue so we don't throw away a JSON that may have other valid commands in it
+      continue;
     }
 
     // Extract JsonObject with param:value pairs
     JsonObject& params = it->value;
 
-    // Todo: Move this parsing to specific components and pass ref to params instead
+    // TODO: Move this parsing to specific components and pass ref to params instead
     // Iterate over and set parameter:value pairs on target object
     for (JsonObject::iterator paramIt = params.begin(); paramIt != params.end(); ++paramIt)
     {
@@ -189,13 +307,17 @@ void setup()
 
   // Start the system in the disconnected state
   system_state = DISCONNECTED;
-
-  // TODO: replace this with smart hooks.
+    
   // Initialize sensors
   platypus::sensors[0] = new platypus::ServoSensor(0);
-  platypus::sensors[1] = new platypus::JSONPassThrough(1);
-  platypus::sensors[2] = new platypus::WinchPassThrough(2);
-  platypus::sensors[3] = new platypus::GY26Compass(3);
+  for (int i = 1; i < 4; i++)
+  {
+    platypus::sensors[i] = &(platypus::Sensor::dummy());
+  }
+  // RC_SBUS on s2 by default (for running the boat without a phone)
+  platypus::RC_SBUS * ptemp = new platypus::RC_SBUS(2);
+  pRC = ptemp;          
+  platypus::sensors[2] = ptemp;
 
   // Initialize motors
   platypus::motors[0] = new platypus::Dynamite(0);
@@ -217,18 +339,19 @@ void setup()
   Scheduler.startLoop(motorUpdateLoop);
   Scheduler.startLoop(serialConsoleLoop);
   Scheduler.startLoop(batteryUpdateLoop);
+  Scheduler.startLoop(RC_listener);
 
   // Initialize Platypus library.
   platypus::init();
 
   // Print header indicating that board successfully initialized
-  /*Serial.println(F("------------------------------"));
-    Serial.println(companyName);
-    Serial.println(url);
-    Serial.println(accessoryName);
-    Serial.println(versionNumber);
-    Serial.println(F("------------------------------"));
-  */
+  Serial.println(F("------------------------------"));
+  Serial.println(companyName);
+  Serial.println(url);
+  Serial.println(accessoryName);
+  Serial.println(versionNumber);
+  Serial.println(F("------------------------------"));
+  
   // Turn LED off
   // TODO: Investigate how this gets turned on in the first place
   rgb_led.set(0, 0, 0);
@@ -373,11 +496,21 @@ void motorUpdateLoop()
   // Handle the motors appropriately for each system state.
   switch (system_state)
   {
-    case DISCONNECTED:
-      // Turn off motors.
-      for (size_t motor_idx = 0; motor_idx < board::NUM_MOTORS; ++motor_idx)
+  case DISCONNECTED:
+    // Turn off motors.
+    for (size_t motor_idx = 0; motor_idx < board::NUM_MOTORS; ++motor_idx) 
+    {
+      platypus::Motor* motor = platypus::motors[motor_idx];
+      bool should_disable = true;
+      if (pRC != NULL)
       {
-        platypus::Motor* motor = platypus::motors[motor_idx];
+        if (pRC->isOverrideEnabled())
+        {
+          should_disable = false;
+        }
+      }
+      if (should_disable)
+      {
         if (motor->enabled())
         {
           Serial.print("Disabling motor "); Serial.println(motor_idx);
