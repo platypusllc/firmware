@@ -15,225 +15,226 @@ extern void send(char *str);
 
 namespace platypus
 {
-	const int DEFAULT_BUFFER_SIZE = 128;
+  const int DEFAULT_BUFFER_SIZE = 128;
 
-	typedef enum class
-		{
-			/** Board is not armed, hasnt recieved any commands **/
-			STANDBY,
-			/** Board recieved some commands or adk.isready(), there is a USB host present	**/
-			CONNECTED,
-			/** boat is getting and running commands **/
-			ACTIVE
-		} SerialState;
+  typedef enum
+  {
+    /** Board is not armed, hasnt recieved any commands **/
+    STANDBY,
+    /** Board recieved some commands or adk.isready(), there is a USB host present  **/
+    CONNECTED,
+    /** boat is getting and running commands **/
+    ACTIVE
+  } SerialState;
 
-	// Main library initialization function.
-	void init();
+  // Main library initialization function.
+  void init();
 
-	class Configurable
-	{
-	public:
-		virtual bool set(const char *param, const char *value);
-	};
-	class Led
-	{
-	public:
-		Led();
-		virtual ~Led();
-		void set(int red, int green, int blue);
-		void R(int red);
-		int R();
-		void G(int green);
-		int G();
-		void B(int blue);
-		int B();
+  class Configurable
+  {
+  public:
+    virtual bool set(const char *param, const char *value);
+  };
+  class Led
+  {
+  public:
+    Led();
+    virtual ~Led();
+    void set(int red, int green, int blue);
+    void R(int red);
+    int R();
+    void G(int green);
+    int G();
+    void B(int blue);
+    int B();
 
-	private:
-		Led(const Led&);
-		Led& operator=(const Led&);
+  private:
+    Led(const Led&);
+    Led& operator=(const Led&);
 
-		int r_, g_, b_;
-	};
+    int r_, g_, b_;
+  };
 
-	class Peripheral
-	{
-	public:
-		// Initialize with power off by default
-		Peripheral(int channel, bool enabled = false);
-		virtual ~Peripheral();
+  class Peripheral
+  {
+  public:
+    // Initialize with power off by default
+    Peripheral(int channel, bool enabled = false);
+    virtual ~Peripheral();
 
-		// Functions to turn peripheral power on/off
-		void enable(bool enabled);
-		bool enabled(){ return enabled_; };
+    // Functions to turn peripheral power on/off
+    void enable(bool enabled);
+    bool enabled(){ return enabled_; };
 
-		void enable(){ enable(true); };
-		void disable(){ enable(false); };
+    void enable(){ enable(true); };
+    void disable(){ enable(false); };
 
-		// Get peripheral current use
-		float current();
+    // Get peripheral current use
+    float current();
 
-	private:
-		const int channel_;
-		const int enable_;
-		bool enabled_;
-	};
+  private:
+    const int channel_;
+    const int enable_;
+    bool enabled_;
+  };
 
-	class EBoard : public Configurable
-	{
-	public:
-		EBoard();
-		virtual ~EBoard();
-		virtual bool set(const char *param, const char* value);
-		virtual void onSerial();
-		virtual void loop();
-		SerialState state();
-		void disarm();
-		void arm();
-		SerialState serial_state = SerialState::STANDBY;
-	private:
-		const String applicationName_;
-		const String accessoryName_;
-		const String companyName_;
-		const String versionNumber_;
-		const String serialNumber_;
-		const String url_;
-	};
+  class EBoard : public Configurable
+  {
+  public:
+    EBoard();
+    virtual ~EBoard();
+    virtual bool set(const char *param, const char* value);
+    virtual void onSerial();
+    virtual void loop();
+    void disarm();
+    void arm();
+    void setState(SerialState state);
+    SerialState getState();
+  private:
+    const String applicationName_;
+    const String accessoryName_;
+    const String companyName_;
+    const String versionNumber_;
+    const String serialNumber_;
+    const String url_;
+    SerialState state_ = SerialState::STANDBY;
+  };
 
-	class Motor : public Configurable
-	{
-	public:
-		Motor(int channel);
-		virtual ~Motor();
+  class Motor : public Configurable
+  {
+  public:
+    Motor(int channel);
+    virtual ~Motor();
 
-		virtual void arm() = 0;
-		virtual bool set(const char *param, const char *value);
-		virtual void loop();
+    virtual void arm() = 0;
+    virtual bool set(const char *param, const char *value);
+    virtual void loop();
 
-		void velocity(float velocity);
-		float velocity(){ return velocity_; };
+    void velocity(float velocity);
+    float velocity(){ return velocity_; };
 
-		// Enable ESCs (softswitch)
-		void enable(bool enabled);
-		bool enabled(){ return enabled_; };
+    // Enable ESCs (softswitch)
+    void enable(bool enabled);
+    bool enabled(){ return enabled_; };
 
-		void enable(){ enable(true); };
-		void disable(){ enable(false); };
+    void enable(){ enable(true); };
+    void disable(){ enable(false); };
 
-	private:
-		Servo servo_;
-		const int channel_;
-		const int enable_;
-		bool enabled_;
-		float velocity_;
-		float desiredVelocity_;
+  private:
+    Servo servo_;
+    const int channel_;
+    const int enable_;
+    bool enabled_;
+    float velocity_;
+    float desiredVelocity_;
 
-	public:
-		static void onLoop_(void *data);
-	};
+  public:
+    static void onLoop_(void *data);
+  };
 
-	class Sensor : public Configurable
-	{
-	public:
-		Sensor(int id);
-		virtual ~Sensor();
+  class Sensor : public Configurable
+  {
+  public:
+    Sensor(int id);
+    virtual ~Sensor();
 
-		virtual bool set(const char* param, const char* value);
-		virtual char *name() = 0;
-		//virtual void onSerial();
-		virtual void loop();
+    virtual bool set(const char* param, const char* value);
+    virtual char *name() = 0;
+    //virtual void onSerial();
+    virtual void loop();
 
-	protected:
-		const int id_;
+  protected:
+    const int id_;
 
-	public:
-		//static void onSerial_(void *data);
-		static void onLoop_(void *data);
-		virtual void calibrate(int flag){};
-	};
+  public:
+    //static void onSerial_(void *data);
+    static void onLoop_(void *data);
+    virtual void calibrate(int flag){};
+  };
 
-	class ExternalSensor : public Sensor
-	{
-	public:
-		ExternalSensor(int id, int port);
-		virtual char	*name() = 0;
+  class ExternalSensor : public Sensor
+  {
+  public:
+    ExternalSensor(int id, int port);
+    virtual char  *name() = 0;
 
-	protected:
-		const int port_;
+  protected:
+    const int port_;
 
-	};
+  };
 
-	class AnalogSensor : public ExternalSensor
-	{
-	public:
-		AnalogSensor(int id, int port);
+  class AnalogSensor : public ExternalSensor
+  {
+  public:
+    AnalogSensor(int id, int port);
 
-		bool set(const char* param, const char* value);
-		virtual char *name() = 0;
+    bool set(const char* param, const char* value);
+    virtual char *name() = 0;
 
-		void scale(float scale);
-		float scale(){ return scale_; };
+    void scale(float scale);
+    float scale(){ return scale_; };
 
-		void offset(float offset);
-		float offset(){ return offset_; };
+    void offset(float offset);
+    float offset(){ return offset_; };
 
-	private:
-		float scale_;
-		float offset_;
-	};
+  private:
+    float scale_;
+    float offset_;
+  };
 
-	class PoweredSensor : virtual public ExternalSensor
-	{
-	public:
-		PoweredSensor(int id, int port, bool poweredOn=true);
-		virtual char *name() = 0;
-		bool powerOn();
-		bool powerOff();
+  class PoweredSensor : virtual public ExternalSensor
+  {
+  public:
+    PoweredSensor(int id, int port, bool poweredOn=true);
+    virtual char *name() = 0;
+    bool powerOn();
+    bool powerOff();
 
-	private:
-		bool state_;
-	};
+  private:
+    bool state_;
+  };
 
-	class SerialSensor : virtual public ExternalSensor
-	{
-	public:
-		SerialSensor(int id,	int port, int baud, int type = RS232, int dataLength = 0);
-		virtual char * name() = 0;
-		static void onSerial_(void *data);
-		void onSerial();
+  class SerialSensor : virtual public ExternalSensor
+  {
+  public:
+    SerialSensor(int id,  int port, int baud, int type = RS232, int dataLength = 0);
+    virtual char * name() = 0;
+    static void onSerial_(void *data);
+    void onSerial();
 
-		enum SERIAL_TYPE{
-			RS232,
-			RS485
-		};
+    enum SERIAL_TYPE{
+      RS232,
+      RS485
+    };
 
-	protected:
-		int baudRate_;
-		int serialType_;
-		int minDataStringLength_;
-		char recv_buffer_[DEFAULT_BUFFER_SIZE];
-		unsigned int recv_index_;
-	};
+  protected:
+    int baudRate_;
+    int serialType_;
+    int minDataStringLength_;
+    char recv_buffer_[DEFAULT_BUFFER_SIZE];
+    unsigned int recv_index_;
+  };
 
 
-	extern platypus::Motor *motors[board::NUM_MOTORS];
-	extern platypus::Sensor *sensors[board::NUM_SENSORS];
-	extern platypus::Peripheral *peripherals[board::NUM_PERIPHERALS];
-	extern platypus::EBoard *eboard;
+  extern platypus::Motor *motors[board::NUM_MOTORS];
+  extern platypus::Sensor *sensors[board::NUM_SENSORS];
+  extern platypus::Peripheral *peripherals[board::NUM_PERIPHERALS];
+  extern platypus::EBoard *eboard;
 
-	// Callbacks structure for serial events
-	typedef struct {
-		void (*handler)(void *arg);
-		void *data;
-	} SerialHandler_t;
+  // Callbacks structure for serial events
+  typedef struct {
+    void (*handler)(void *arg);
+    void *data;
+  } SerialHandler_t;
 
-	// Callbacks for serial events
-	extern SerialHandler_t SERIAL_HANDLERS[4];
+  // Callbacks for serial events
+  extern SerialHandler_t SERIAL_HANDLERS[4];
 
-	// Array of available serial ports
-	extern USARTClass *SERIAL_PORTS[4];
+  // Array of available serial ports
+  extern USARTClass *SERIAL_PORTS[4];
 
-	// Helper function to do endian conversion
-	uint32_t swap(uint32_t bytes);
+  // Helper function to do endian conversion
+  uint32_t swap(uint32_t bytes);
 }
 
 #endif //PLATYPUS_H
