@@ -16,11 +16,6 @@
 //Typedefs
 typedef platypus::SerialState SerialState;
 
-/*
-  MAJOR BUG
-  restarting adk connection (plug out then in) causes one motor to go full speed
-*/
-
 
 // ADK USB Host configuration
 /* Make server accept version 4.x.x */
@@ -112,12 +107,6 @@ void reportError(const char *error_message, const char *buffer)
 void handleCommand(char *buffer)
 {
   // Allocate buffer for JSON parsing
-  if (strcmp(buffer,"arm")==0)
-  {
-    platypus::eboard->set("cmd","arm");
-    return;
-  }
-	
   StaticJsonBuffer<200> jsonBuffer;
 
   // Attempt to parse JSON in buffer
@@ -137,11 +126,6 @@ void handleCommand(char *buffer)
 
     platypus::Configurable * target_object;
     size_t object_index;
-
-		/* if (key[0] != 'e') */
-		/* { */
-		/* 	last_command_time = millis(); */
-		/* } */
 
     // Determine target object
     switch (key[0]){
@@ -280,22 +264,11 @@ void setup()
 
 void loop()
 {
-
-  /* if (serial_state == SerialState::ACTIVE) */
-  /*    Serial.println("active"); */
-  /* if (serial_state == SerialState::CONNECTED) */
-  /*    Serial.println("connected"); */
-  /* if (serial_state == SerialState::STANDBY) */
-  /*    Serial.println("standby"); */
-  /* if (platypus::eboard->serial_state == SerialState::ACTIVE) */
-  /*    Serial.println("active"); */
-  /* if (platypus::eboard->serial_state == SerialState::CONNECTED) */
-  /*    Serial.println("connected"); */
-  /* if (platypus::eboard->serial_state == SerialState::STANDBY) */
-  /*    Serial.println("standby"); */
-
-
-  unsigned long current_time = millis();
+	/*
+		If the board is in an active state and hasnt recieved a command
+		in a while drop it to connected
+	*/
+  //unsigned long current_time = millis();
   if (platypus::eboard->getState() == SerialState::ACTIVE) //if youre in active drop to connected
   {
     if (millis() - last_command_time >= RESPONSE_TIMEOUT_MS)
@@ -305,10 +278,12 @@ void loop()
       last_command_time = millis();
     }
   }
+	/*
+		If the board is in an connected state and hasnt recieved a command
+		in a while drop it to standby
+	*/
   else if (platypus::eboard->getState() == SerialState::CONNECTED)
   {
-    /* Serial.println("time diff");  */
-    /* Serial.println(millis() - last_command_time); */
     if (millis() - last_command_time >= CONNECT_STANDBY_TIMEOUT)
     {
       platypus::eboard->setState(SerialState::STANDBY);
@@ -352,7 +327,6 @@ void motorUpdateLoop()
   unsigned c = (millis() >> 8) & 1;
   if (c > 128) c = 255 - c;
 
-  /* REPLACE WITH SERIAL STATE */
 
   switch (platypus::eboard->getState())
   {
@@ -394,6 +368,7 @@ void motorUpdateLoop()
     }
 		break;
     // NOTE: WE DO NOT BREAK OUT OF THE SWITCH HERE!
+		// NOTE: WE DO NOW 
 		
   case SerialState::ACTIVE:
     // Rearm motors if necessary.
@@ -440,7 +415,6 @@ void serialLoop()
 {
   static size_t debug_buffer_idx = 0;
   // Wait until characters are received.
-
   if (Serial.available())
   {
     // Put the new character into the buffer, ignore \n and \r
@@ -454,7 +428,6 @@ void serialLoop()
       // Properly null-terminate the buffer.
       debug_buffer[debug_buffer_idx] = '\0';
       debug_buffer_idx = 0;
-      Serial.println(debug_buffer);
 
       last_command_time = millis();
       handleCommand(debug_buffer);
@@ -475,7 +448,7 @@ void ADKLoop()
       Serial.println("STATE: ACTIVE");
     }
     adk.read(&bytes_read, INPUT_BUFFER_SIZE, (uint8_t*)input_buffer);
-    if (bytes_read <= 0)
+		if (bytes_read <= 0)
     {
       yield();
       return;
@@ -486,13 +459,6 @@ void ADKLoop()
       input_buffer[bytes_read] = '\0';
       handleCommand(input_buffer);
     }
-  }
-  else
-  {
-    /* if (serial_state != SerialState::STANDBY) */
-    /*    { */
-    /*      serial_state = SerialState::STANDBY; */
-    /*    } */
   }
   yield();
 }

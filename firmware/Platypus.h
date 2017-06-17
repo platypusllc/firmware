@@ -21,7 +21,7 @@ namespace platypus
   {
     /** Board is not armed, hasnt recieved any commands **/
     STANDBY,
-    /** Board recieved some commands or adk.isready(), there is a USB host present  **/
+    /** adk.isready(), there is a USB host present  **/
     CONNECTED,
     /** boat is getting and running commands **/
     ACTIVE

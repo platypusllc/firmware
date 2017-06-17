@@ -202,7 +202,6 @@ SerialState EBoard::getState()
 }
 EBoard::~EBoard()
 {
-  //Do i need to do anything here?
 }
 bool EBoard::set(const char *param, const char *value)
 {
