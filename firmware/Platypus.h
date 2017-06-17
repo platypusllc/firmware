@@ -13,21 +13,30 @@
  */
 extern void send(char *str);
 
-namespace platypus 
-{  
+namespace platypus
+{
   const int DEFAULT_BUFFER_SIZE = 128;
+
+  typedef enum class
+    {
+      /** Board is not armed, hasnt recieved any commands **/
+      STANDBY,
+      /** Board recieved some commands or adk.isready(), there is a USB host present  **/
+      CONNECTED,
+      /** boat is getting and running commands **/
+      ACTIVE
+    } SerialState;
 
   // Main library initialization function.
   void init();
-  
+
   class Configurable
   {
-  public:     
+  public:
     virtual bool set(const char *param, const char *value);
   };
-
-  class Led 
-  { 
+  class Led
+  {
   public:
     Led();
     virtual ~Led();
@@ -38,11 +47,11 @@ namespace platypus
     int G();
     void B(int blue);
     int B();
-    
+
   private:
     Led(const Led&);
     Led& operator=(const Led&);
-    
+
     int r_, g_, b_;
   };
 
@@ -68,9 +77,30 @@ namespace platypus
     const int enable_;
     bool enabled_;
   };
-  
+
+  class EBoard : public Configurable
+  {
+  public:
+    EBoard();
+    virtual ~EBoard();
+    virtual bool set(const char *param, const char* value);
+    virtual void onSerial();
+    virtual void loop();
+    SerialState state();
+    void disarm();
+    void arm();
+    SerialState serial_state = SerialState::STANDBY;
+  private:
+    const String applicationName_;
+    const String accessoryName_;
+    const String companyName_;
+    const String versionNumber_;
+    const String serialNumber_;
+    const String url_;
+  };
+
   class Motor : public Configurable
-  { 
+  {
   public:
     Motor(int channel);
     virtual ~Motor();
@@ -78,17 +108,17 @@ namespace platypus
     virtual void arm() = 0;
     virtual bool set(const char *param, const char *value);
     virtual void loop();
-    
+
     void velocity(float velocity);
     float velocity(){ return velocity_; };
 
     // Enable ESCs (softswitch)
     void enable(bool enabled);
     bool enabled(){ return enabled_; };
-    
+
     void enable(){ enable(true); };
     void disable(){ enable(false); };
-    
+
   private:
     Servo servo_;
     const int channel_;
@@ -96,17 +126,17 @@ namespace platypus
     bool enabled_;
     float velocity_;
     float desiredVelocity_;
-    
+
   public:
     static void onLoop_(void *data);
   };
-  
+
   class Sensor : public Configurable
   {
   public:
     Sensor(int id);
     virtual ~Sensor();
-    
+
     virtual bool set(const char* param, const char* value);
     virtual char *name() = 0;
     //virtual void onSerial();
@@ -114,7 +144,7 @@ namespace platypus
 
   protected:
     const int id_;
-    
+
   public:
     //static void onSerial_(void *data);
     static void onLoop_(void *data);
@@ -131,27 +161,27 @@ namespace platypus
     const int port_;
 
   };
-  
-  class AnalogSensor : public ExternalSensor 
+
+  class AnalogSensor : public ExternalSensor
   {
   public:
     AnalogSensor(int id, int port);
 
     bool set(const char* param, const char* value);
     virtual char *name() = 0;
-    
+
     void scale(float scale);
     float scale(){ return scale_; };
-    
+
     void offset(float offset);
     float offset(){ return offset_; };
-    
+
   private:
     float scale_;
     float offset_;
   };
-  
-  class PoweredSensor : virtual public ExternalSensor 
+
+  class PoweredSensor : virtual public ExternalSensor
   {
   public:
     PoweredSensor(int id, int port, bool poweredOn=true);
@@ -184,23 +214,24 @@ namespace platypus
     unsigned int recv_index_;
   };
 
-  
+
   extern platypus::Motor *motors[board::NUM_MOTORS];
   extern platypus::Sensor *sensors[board::NUM_SENSORS];
   extern platypus::Peripheral *peripherals[board::NUM_PERIPHERALS];
-  
-    // Callbacks structure for serial events
+  extern platypus::EBoard *eboard;
+
+  // Callbacks structure for serial events
   typedef struct {
     void (*handler)(void *arg);
     void *data;
   } SerialHandler_t;
-  
+
   // Callbacks for serial events
   extern SerialHandler_t SERIAL_HANDLERS[4];
-  
+
   // Array of available serial ports
   extern USARTClass *SERIAL_PORTS[4];
-  
+
   // Helper function to do endian conversion
   uint32_t swap(uint32_t bytes);
 }
