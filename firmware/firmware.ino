@@ -16,6 +16,11 @@
 //Typedefs
 typedef platypus::SerialState SerialState;
 
+/* 
+	 MAJOR BUG
+	 restarting adk connection (plug out then in) causes one motor to go full speed
+ */
+
 
 
 // ADK USB Host configuration
@@ -62,7 +67,7 @@ const size_t RESPONSE_TIMEOUT_MS = 500;
 // Time to wait before dropping into DISCONNECTED state when USB cable is disconnected
 // Deals with dodgy USB connections and improves USB C support for all cables
 const size_t CONNECTION_TIMEOUT_MS = 500;
-const size_t CONNECT_STANDBY_TIMEOUT = 3000;
+const size_t CONNECT_STANDBY_TIMEOUT = 500;
 
 // Define the systems on this board
 // TODO: move this board.h?
@@ -156,6 +161,8 @@ void handleCommand(char *buffer)
 
 			case 'e': //eboard command
 				target_object = platypus::eboard;
+				serial_state = SerialState::CONNECTED;
+				Serial.println("STATE: CONNECTED");
 				break;
 
 			default: // Unrecognized target
@@ -173,12 +180,12 @@ void handleCommand(char *buffer)
 					const char * param_name = paramIt->key;
 					const char * param_value = paramIt->value;
 
-					/* Serial.print("Sending command to "); */
-					/* Serial.print(key); */
-					/* Serial.print(": "); */
-					/* Serial.print(param_name); */
-					/* Serial.print(" : "); */
-					/* Serial.println(param_value); */
+					Serial.print("Sending command to ");
+					Serial.print(key);
+					Serial.print(": ");
+					Serial.print(param_name);
+					Serial.print(" : ");
+					Serial.println(param_value);
 
 					if (!target_object->set(param_name, param_value)) {
 						reportError("Invalid parameter set.", buffer);
@@ -200,6 +207,7 @@ void setup()
 	Serial.begin(115200);
 	// Start the system in the disconnected state
 	serial_state = SerialState::STANDBY;
+	Serial.println("STATE: STANDBY");
 
 	// Set ADC Precision:
 	analogReadResolution(12);
@@ -268,10 +276,13 @@ void setup()
 
 void loop()
 {
-	/* Serial.print("last cmd recvd: "); */
-	/* Serial.println(last_command_time); */
-
-	//Serial.println(serial_state);
+	/* if (serial_state == SerialState::ACTIVE) */
+	/*		Serial.println("active"); */
+	/* if (serial_state == SerialState::CONNECTED) */
+	/*		Serial.println("connected"); */
+	/* if (serial_state == SerialState::STANDBY) */
+	/*		Serial.println("standby"); */
+		
 	unsigned long current_time = millis();
 	if (serial_state == SerialState::ACTIVE) //if youre in active drop to connected
 		{
@@ -289,9 +300,16 @@ void loop()
 			if (millis() - last_command_time >= CONNECT_STANDBY_TIMEOUT)
 				{
 					serial_state = SerialState::STANDBY;
-		Serial.println("STATE: STANDBY");
+					Serial.println("STATE: STANDBY");
 				}
 		}
+	/* if (serial_state == SerialState::STANDBY) */
+	/*		{ */
+	/*			if (millis() - last_command_time < CONNECT_STANDBY_TIMEOUT) */
+	/*				{ */
+	/*					serial_state = SerialState::CONNECTED; */
+	/*				} */
+	/*		} */
 	yield();
 }
 
@@ -367,7 +385,7 @@ void motorUpdateLoop()
 			for (size_t motor_idx = 0; motor_idx < board::NUM_MOTORS; ++motor_idx)
 				{
 					platypus::Motor* motor = platypus::motors[motor_idx];
-					motor->set("v", "0.0"); 
+					motor->set("v", "0.0");
 				}
 			// NOTE: WE DO NOT BREAK OUT OF THE SWITCH HERE!
 		case SerialState::ACTIVE:
@@ -430,8 +448,10 @@ void serialLoop()
 					// Properly null-terminate the buffer.
 					debug_buffer[debug_buffer_idx] = '\0';
 					debug_buffer_idx = 0;
-		
-					last_command_time = current_command_time;
+					Serial.println(debug_buffer);
+
+					//last_command_time = current_command_time;
+					last_command_time = millis();
 					handleCommand(debug_buffer);
 				}
 		}
@@ -445,10 +465,10 @@ void ADKLoop()
 		{
 			//read from adk usb
 			if (serial_state != SerialState::ACTIVE)
-	{
-		serial_state = SerialState::ACTIVE;
-		Serial.println("STATE: ACTIVE");
-	}
+				{
+					serial_state = SerialState::ACTIVE;
+					Serial.println("STATE: ACTIVE");
+				}
 			unsigned long current_command_time = millis();
 			adk.read(&bytes_read, INPUT_BUFFER_SIZE, (uint8_t*)input_buffer);
 
@@ -463,6 +483,13 @@ void ADKLoop()
 					input_buffer[bytes_read] = '\0';
 					handleCommand(input_buffer);
 				}
+		}
+	else
+		{
+			/* if (serial_state != SerialState::STANDBY) */
+			/*		{ */
+			/*			serial_state = SerialState::STANDBY; */
+			/*		} */
 		}
 	yield();
 }
