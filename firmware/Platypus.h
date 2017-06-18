@@ -72,7 +72,7 @@ namespace platypus
   class Motor : public Configurable
   { 
   public:
-    Motor(int channel,int motorMin = 1000 ,int motorMax = 2000 ,int motorCenter = 1500, int motorFDB = 25, int motorRDB = -25);
+    Motor(int channel, int motorMin = 1000, int motorMax = 2000, int motorCenter = 1500, int motorFDB = 25, int motorRDB = -25);
     virtual ~Motor();
 
     virtual void arm() = 0;

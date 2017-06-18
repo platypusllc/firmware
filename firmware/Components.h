@@ -98,16 +98,20 @@ namespace platypus
     void arm();
   };
 
-    class Dynamite : public Motor 
+  class Dynamite : public Motor 
   {
   public:
-  Dynamite(int channel) : Motor(channel,1000,2000,1500,30,-75) {} //dead range is 1425-1530~
+    // Motor Deadband range is *approx* 1425 to 1530
+    Dynamite(int channel) : Motor(channel, 1000, 2000, 1500, 30, -75) {}
     void arm();
   };
-    class AfroESC : public Motor
+    
+  class AfroESC : public Motor
   {
   public:
-    AfroESC(int channel) : Motor(channel,1100,1900,1500,25,-25) {}
+    // Motor range is 1100 to 1900
+    // Motor deadband is 1475 to 1525
+    AfroESC(int channel) : Motor(channel, 1100, 1900, 1500, 25, -25) {}
     void arm();
   };
 

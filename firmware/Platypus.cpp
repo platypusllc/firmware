@@ -213,7 +213,8 @@ float Peripheral::current()
 }
 
 Motor::Motor(int channel,int motorMin,int motorMax,int motorCenter,int motorFDB, int motorRDB)
-  : enable_(board::MOTOR[channel].ENABLE), enabled_(false), velocity_(0), servo_ctrl(board::MOTOR[channel].SERVO_CTRL), motorMax_(motorMax), motorMin_(motorMin), motorCenter_(motorCenter), motorFDB_(motorFDB),motorRDB_(motorRDB)
+  : channel_(channel), enable_(board::MOTOR[channel].ENABLE), enabled_(false), velocity_(0.0), 
+    motorMax_(motorMax), motorMin_(motorMin), motorCenter_(motorCenter), motorFDB_(motorFDB), motorRDB_(motorRDB)
 {
   // Initialize with ESC softswitch off
   pinMode(enable_, OUTPUT);
@@ -241,22 +242,22 @@ void Motor::velocity(float velocity)
   velocity_ = velocity;
   
   float command;
-  if (velocity < 0.0)
-    {
-      command = motorMin_ + (motorCenter_ - motorMin_ + motorRDB_) * (velocity + 1.0) / (1.0 - VELOCITY_THRESHOLD);
-    }
-  else if (velocity > 0.0)
-    {
-      command = motorCenter_ + motorFDB_ + (motorMax_ - motorCenter_ - motorFDB_)*(velocity - VELOCITY_THRESHOLD)/ (1.0 - VELOCITY_THRESHOLD);
-    }
-   else if (velocity == 0)
-   {
+  if (velocity <= -VELOCITY_THRESHOLD)
+  {
+    command = motorMin_ + (motorCenter_ - motorMin_ + motorRDB_) * (velocity + 1.0) / (1.0 - VELOCITY_THRESHOLD);
+  }
+  else if (velocity >= VELOCITY_THRESHOLD)
+  {
+    command = motorCenter_ + motorFDB_ + (motorMax_ - motorCenter_ - motorFDB_) * (velocity - VELOCITY_THRESHOLD) / (1.0 - VELOCITY_THRESHOLD);
+  }
+  else
+  {
     command = motorCenter_;
-   }
+  }
   //float command = (velocity * 200) + 1500; //binding it from 1300 to 1700 because it sounds like there is damage being done at max 1900?
   servo_.writeMicroseconds(command);
- // printf("velocity is: %d \n",velocity);
- // printf("command is %d \n",command);
+  // printf("velocity is: %d \n",velocity);
+  // printf("command is %d \n",command);
 }
 
 // Deals with ESC softswitch exclusively
@@ -304,32 +305,6 @@ void Motor::loop()
     velocity(desiredVelocity_);
     return;
   }
-
-  /*
-  // Scale
-
-  //New desired deadband around 0 - all commands under this magnitude map to 0
-  double deadBandSize = 0.001;
-
-  //Max safe reverse command
-  double reverseCommandLowerBound = -1.0;
-  //Min reverse command that will spin the motors
-  double reverseCommandUpperBound = -0.1;
-
-  //Min forward command that will spin the motors
-  double forwardCommandLowerBound = 0.03;
-  //Max safe forward command
-  double forwardCommandUpperBound = 1.0;
-
-  float v = desiredVelocity_;
-
-  if (v < -deadBandSize){
-    v = (v + 1.0) * (reverseCommandUpperBound - reverseCommandLowerBound) + reverseCommandLowerBound;
-  } else if (v > deadBandSize){
-    v = v * (forwardCommandUpperBound - forwardCommandLowerBound) + forwardCommandLowerBound;
-  } else {
-    v = 0.0;
-  }*/
 
   float v = (1.0 - VELOCITY_ALPHA) * velocity_ + VELOCITY_ALPHA * desiredVelocity_;
   velocity(v);
