@@ -223,14 +223,14 @@ void setup()
   platypus::peripherals[1] = new platypus::Peripheral(1, true);
 
   // Initialize External sensors
-  platypus::sensors[0] = new platypus::AdafruitGPS(0, 0);
-  platypus::sensors[1] = new platypus::AdafruitGPS(1, 1);
-  platypus::sensors[2] = new platypus::AdafruitGPS(2, 2);
-  platypus::sensors[3] = new platypus::EmptySensor(3, 3);
+  platypus::sensors[0] = new platypus::HDS(0, 0);
+  platypus::sensors[1] = new platypus::AtlasDO(1, 1);
+  platypus::sensors[2] = new platypus::AtlasPH(2, 2);
+  platypus::sensors[3] = new platypus::ES2(3, 3);
 
   // Initialize Internal sensors
   platypus::sensors[4] = new platypus::BatterySensor(4);
-  platypus::sensors[5] = new platypus::IMU(5);
+  platypus::sensors[5] = new platypus::EmptySensor(5);
   
   // Initialize motors
   platypus::motors[0] = new platypus::Dynamite(0);
