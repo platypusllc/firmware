@@ -337,6 +337,12 @@ Motor::~Motor()
 
 void Motor::velocity(float velocity)
 {
+	if (!enabled())
+		{
+			servo_.writeMicroseconds(motorCenter_);
+			return;
+		}
+	
   if (velocity > 1.0) {
     velocity = 1.0;
   }
@@ -360,8 +366,8 @@ void Motor::velocity(float velocity)
   }
   //float command = (velocity * 200) + 1500; //binding it from 1300 to 1700 because it sounds like there is damage being done at max 1900?
   servo_.writeMicroseconds(command);
-  // printf("velocity is: %d \n",velocity);
-  // printf("command is %d \n",command);
+	// printf("velocity is: %d \n",velocity);
+	// printf("command is %d \n",command);
 }
 
 // Deals with ESC softswitch exclusively

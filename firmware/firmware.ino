@@ -54,11 +54,7 @@ static unsigned long time_at_connected = 0;
 // Time betweeen commands before we consider the Android
 // server to be unresponsive.
 const size_t RESPONSE_TIMEOUT_MS = 500;
-
-// Time to wait before dropping into DISCONNECTED state when USB cable is disconnected
-// Deals with dodgy USB connections and improves USB C support for all cables
-const size_t CONNECTION_TIMEOUT_MS = 500;
-const size_t CONNECT_STANDBY_TIMEOUT = 500;
+const size_t CONNECT_STANDBY_TIMEOUT = 1000;
 
 // Define the systems on this board
 // TODO: move this board.h?
@@ -106,6 +102,14 @@ void reportError(const char *error_message, const char *buffer)
  */
 void handleCommand(char *buffer)
 {
+
+  if (strcmp(buffer,"arm") == 0)
+    {
+      Serial.println("Arming eboard");
+      platypus::eboard->set("cmd","arm");
+      return;
+    }
+
   // Allocate buffer for JSON parsing
   StaticJsonBuffer<200> jsonBuffer;
 
@@ -114,74 +118,74 @@ void handleCommand(char *buffer)
 
   // Check for parsing error
   if (!command.success())
-  {
-    // Parsing Failure
-    reportError("Failed to parse JSON command.", buffer);
-    return;
-  }
-
-  for (JsonObject::iterator it=command.begin(); it!=command.end(); ++it)
-  {
-    const char * key = it->key;
-
-    platypus::Configurable * target_object;
-    size_t object_index;
-
-    // Determine target object
-    switch (key[0]){
-    case 'm': // Motor command
-      object_index = key[1] - '0';
-
-      if (object_index >= board::NUM_MOTORS){
-        reportError("Invalid motor index.", buffer);
-        return;
-      }
-
-      target_object = platypus::motors[object_index];
-      break;
-
-    case 's': // Sensor command
-      object_index = key[1] - '0';
-
-      if (object_index >= board::NUM_SENSORS){
-        reportError("Invalid sensor index.", buffer);
-        return;
-      }
-      target_object = platypus::sensors[object_index];
-      break;
-
-    case 'e': //eboard command
-      target_object = platypus::eboard;
-      break;
-
-    default: // Unrecognized target
-      reportError("Unknown command target.", buffer);
+    {
+      // Parsing Failure
+      reportError("Failed to parse JSON command.", buffer);
       return;
     }
 
-    // Extract JsonObject with param:value pairs
-    JsonObject& params = it->value;
-    // Todo: Move this parsing to specific components and pass ref to params instead
-    // Iterate over and set parameter:value pairs on target object
-    for (JsonObject::iterator paramIt=params.begin(); paramIt!=params.end(); ++paramIt)
+  for (JsonObject::iterator it=command.begin(); it!=command.end(); ++it)
     {
+      const char * key = it->key;
 
-      const char * param_name = paramIt->key;
-      const char * param_value = paramIt->value;
+      platypus::Configurable * target_object;
+      size_t object_index;
 
-      /* Serial.print("Sending command to "); */
-      /* Serial.print(key); */
-      /* Serial.print(": "); */
-      /* Serial.print(param_name); */
-      /* Serial.print(" : "); */
-      /* Serial.println(param_value); */
+      // Determine target object
+      switch (key[0]){
+      case 'm': // Motor command
+        object_index = key[1] - '0';
 
-      if (!target_object->set(param_name, param_value)) {
-        reportError("Invalid parameter set.", buffer);
-        continue; // Todo: Should we return or continue?
+        if (object_index >= board::NUM_MOTORS){
+          reportError("Invalid motor index.", buffer);
+          return;
+        }
+
+        target_object = platypus::motors[object_index];
+        break;
+
+      case 's': // Sensor command
+        object_index = key[1] - '0';
+
+        if (object_index >= board::NUM_SENSORS){
+          reportError("Invalid sensor index.", buffer);
+          return;
+        }
+        target_object = platypus::sensors[object_index];
+        break;
+
+      case 'e': //eboard command
+        target_object = platypus::eboard;
+        break;
+
+      default: // Unrecognized target
+        reportError("Unknown command target.", buffer);
+        return;
       }
+
+      // Extract JsonObject with param:value pairs
+      JsonObject& params = it->value;
+      // Todo: Move this parsing to specific components and pass ref to params instead
+      // Iterate over and set parameter:value pairs on target object
+      for (JsonObject::iterator paramIt=params.begin(); paramIt!=params.end(); ++paramIt)
+        {
+
+          const char * param_name = paramIt->key;
+          const char * param_value = paramIt->value;
+
+          /* Serial.print("Sending command to "); */
+          /* Serial.print(key); */
+          /* Serial.print(": "); */
+          /* Serial.print(param_name); */
+          /* Serial.print(" : "); */
+          /* Serial.println(param_value); */
+
+          if (!target_object->set(param_name, param_value)) {
+            reportError("Invalid parameter set.", buffer);
+            continue; // Todo: Should we return or continue?
+          }
+        }
     }
-  }
 }
 
 void setup()
@@ -264,33 +268,43 @@ void setup()
 
 void loop()
 {
-	/*
-		If the board is in an active state and hasnt recieved a command
-		in a while drop it to connected
-	*/
-  //unsigned long current_time = millis();
-  if (platypus::eboard->getState() == SerialState::ACTIVE) //if youre in active drop to connected
-  {
-    if (millis() - last_command_time >= RESPONSE_TIMEOUT_MS)
-    {
-      platypus::eboard->setState(SerialState::CONNECTED);
-      Serial.println("STATE: CONNECTED");
-      last_command_time = millis();
-    }
-  }
-	/*
-		If the board is in an connected state and hasnt recieved a command
-		in a while drop it to standby
-	*/
-  else if (platypus::eboard->getState() == SerialState::CONNECTED)
-  {
-    if (millis() - last_command_time >= CONNECT_STANDBY_TIMEOUT)
-    {
-      platypus::eboard->setState(SerialState::STANDBY);
-      Serial.println("STATE: STANDBY");
-    }
-  }
-  yield();
+  /*
+    If the board is in an active state and hasnt recieved a command
+    in a while drop it to connected
+  */
+	if (millis() - last_command_time >= RESPONSE_TIMEOUT_MS)
+		{
+			/*You were active, didnt send anything for R.TO now youre being kicked down to connected */
+			if (platypus::eboard->getState() == SerialState::ACTIVE)
+				{
+					platypus::eboard->setState(SerialState::CONNECTED);
+					Serial.println("STATE: CONNECTED");
+					yield();
+					return;
+				}
+		}
+	
+	if (millis() - last_command_time >= CONNECT_STANDBY_TIMEOUT)
+		{
+			/*You were in connected without recieving a command for a while  */
+			if (platypus::eboard->getState() == SerialState::CONNECTED)
+				{
+					platypus::eboard->setState(SerialState::STANDBY);
+					Serial.println("STATE: STANDBY");
+				}
+			yield();
+			return;
+		}	
+	/* You were in standby but got a command! bumping you up to connected */
+	else
+		{
+			if (platypus::eboard->getState() == SerialState::STANDBY)
+				{
+					platypus::eboard->setState(SerialState::CONNECTED);
+					Serial.println("STATE: CONNECTED1");
+				}
+		}
+	yield();
 }
 
 void batteryUpdateLoop()
@@ -309,7 +323,7 @@ void batteryUpdateLoop()
            voltageReading,
            platypus::motors[0]->velocity(),
            platypus::motors[1]->velocity()
-    );
+           );
   send(output_str);
   yield();
 }
@@ -329,86 +343,86 @@ void motorUpdateLoop()
 
 
   switch (platypus::eboard->getState())
-  {
-  case SerialState::STANDBY:
-    // Red pulse
-    rgb_led.set(c, 0, 0);
-    break;
-  case SerialState::CONNECTED:
-    // Yellow pulse
-    rgb_led.set(c, c/4, 0);
-    break;
-  case SerialState::ACTIVE:
-    // Green pulse
-    rgb_led.set(0, c, 0);
-    break;
-  }
+    {
+    case SerialState::STANDBY:
+      // Red pulse
+      rgb_led.set(c, 0, 0);
+      break;
+    case SerialState::CONNECTED:
+      // Yellow pulse
+      rgb_led.set(c, c/4, 0);
+      break;
+    case SerialState::ACTIVE:
+      // Green pulse
+      rgb_led.set(0, c, 0);
+      break;
+    }
 
   // Handle the motors appropriately for each system state.
   switch (platypus::eboard->getState())
-  {
-  case SerialState::STANDBY:
-    // Turn off motors.
-    for (size_t motor_idx = 0; motor_idx < board::NUM_MOTORS; ++motor_idx)
     {
-      platypus::Motor* motor = platypus::motors[motor_idx];
-      if (motor->enabled())
-      {
-        Serial.print("Disabling motor "); Serial.println(motor_idx);
-        motor->disable();
-      }
+    case SerialState::STANDBY:
+      // Turn off motors.
+      for (size_t motor_idx = 0; motor_idx < board::NUM_MOTORS; ++motor_idx)
+        {
+          platypus::Motor* motor = platypus::motors[motor_idx];
+          if (motor->enabled())
+            {
+              Serial.print("Disabling motor "); Serial.println(motor_idx);
+              motor->disable();
+            }
+        }
+      break;
+    case SerialState::CONNECTED:
+      // Decay all motors exponentially towards zero speed.
+      for (size_t motor_idx = 0; motor_idx < board::NUM_MOTORS; ++motor_idx)
+        {
+          platypus::Motor* motor = platypus::motors[motor_idx];
+          motor->set("v", "0.0");
+        }
+      break;
+      // NOTE: WE DO NOT BREAK OUT OF THE SWITCH HERE!
+      // NOTE: WE DO NOW
+
+    case SerialState::ACTIVE:
+      // Rearm motors if necessary.
+      for (size_t motor_idx = 0; motor_idx < board::NUM_MOTORS; ++motor_idx)
+        {
+          platypus::Motor* motor = platypus::motors[motor_idx];
+          if (!motor->enabled())
+            {
+              Serial.print("Arming motor "); Serial.print(motor_idx);
+              motor->arm();
+              Serial.println(F("Motor Armed"));
+            }
+        }
+      break;
     }
-    break;
-  case SerialState::CONNECTED:
-    // Decay all motors exponentially towards zero speed.
-    for (size_t motor_idx = 0; motor_idx < board::NUM_MOTORS; ++motor_idx)
-    {
-      platypus::Motor* motor = platypus::motors[motor_idx];
-      motor->set("v", "0.0");
-    }
-		break;
-    // NOTE: WE DO NOT BREAK OUT OF THE SWITCH HERE!
-		// NOTE: WE DO NOW 
-		
-  case SerialState::ACTIVE:
-    // Rearm motors if necessary.
-    for (size_t motor_idx = 0; motor_idx < board::NUM_MOTORS; ++motor_idx)
-    {
-      platypus::Motor* motor = platypus::motors[motor_idx];
-      if (!motor->enabled())
-      {
-        Serial.print("Arming motor "); Serial.print(motor_idx);
-        motor->arm();
-        Serial.println(F("Motor Armed"));
-      }
-    }
-    break;
-  }
 
   // Send status updates while connected to server.
   if (platypus::eboard->getState() == SerialState::ACTIVE)
-  {
-    // TODO: move this to another location (e.g. Motor)
-    // Send motor status update over USB
-    snprintf(output_buffer, OUTPUT_BUFFER_SIZE,
-             "{"
-             "\"m0\":{"
-             "\"v\":%f"
-             "},"
-             "\"m1\":{"
-             "\"v\":%f"
-             "}"
-             "}",
-             platypus::motors[0]->velocity(),
-             platypus::motors[1]->velocity()
-      );
-    send(output_buffer);
-  }
+    {
+      // TODO: move this to another location (e.g. Motor)
+      // Send motor status update over USB
+      snprintf(output_buffer, OUTPUT_BUFFER_SIZE,
+               "{"
+               "\"m0\":{"
+               "\"v\":%f"
+               "},"
+               "\"m1\":{"
+               "\"v\":%f"
+               "}"
+               "}",
+               platypus::motors[0]->velocity(),
+               platypus::motors[1]->velocity()
+               );
+      send(output_buffer);
+    }
   yield();
 }
 
 /**
- * Reads from serial debugging console and attempts to execute commands.
+ * Reads from serial console and attempts to execute commands.
  */
 
 void serialLoop()
@@ -416,49 +430,49 @@ void serialLoop()
   static size_t debug_buffer_idx = 0;
   // Wait until characters are received.
   if (Serial.available())
-  {
-    // Put the new character into the buffer, ignore \n and \r
-    char c = Serial.read();
-    if (c != '\n' && c != '\r'){
-      debug_buffer[debug_buffer_idx++] = c;
-    }
-    // If it is the end of a line, or we are out of space, parse the buffer.
-    if (debug_buffer_idx >= INPUT_BUFFER_SIZE || c == '\n' || c == '\r')
     {
-      // Properly null-terminate the buffer.
-      debug_buffer[debug_buffer_idx] = '\0';
-      debug_buffer_idx = 0;
-
-      last_command_time = millis();
-      handleCommand(debug_buffer);
+			last_command_time = millis();
+      // Put the new character into the buffer, ignore \n and \r
+      char c = Serial.read();
+      if (c != '\n' && c != '\r'){
+        debug_buffer[debug_buffer_idx++] = c;
+      }
+      // If it is the end of a line, or we are out of space, parse the buffer.
+      if (debug_buffer_idx >= INPUT_BUFFER_SIZE || c == '\n' || c == '\r')
+        {
+          // Properly null-terminate the buffer.
+          debug_buffer[debug_buffer_idx] = '\0';
+          debug_buffer_idx = 0;
+          handleCommand(debug_buffer);
+        }
     }
-  }
   yield();
 }
 void ADKLoop()
 {
   uint32_t bytes_read;
   Usb.Task();
+
   if (adk.isReady())
-  {
-    //read from adk usb
-    if (platypus::eboard->getState() != SerialState::ACTIVE)
     {
-      platypus::eboard->setState(SerialState::ACTIVE);
-      Serial.println("STATE: ACTIVE");
+			last_command_time = millis();
+      adk.read(&bytes_read, INPUT_BUFFER_SIZE, (uint8_t*)input_buffer);
+      if (bytes_read <= 0)
+        {
+          yield();
+          return;
+        }
+      else
+        {
+          input_buffer[bytes_read] = '\0';
+
+          if (platypus::eboard->getState() != SerialState::ACTIVE)
+            {
+              platypus::eboard->setState(SerialState::ACTIVE);
+              Serial.println("STATE: ACTIVE");
+            }
+          handleCommand(input_buffer);
+        }
     }
-    adk.read(&bytes_read, INPUT_BUFFER_SIZE, (uint8_t*)input_buffer);
-		if (bytes_read <= 0)
-    {
-      yield();
-      return;
-    }
-    else
-    {
-      last_command_time = millis();
-      input_buffer[bytes_read] = '\0';
-      handleCommand(input_buffer);
-    }
-  }
   yield();
 }
