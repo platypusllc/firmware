@@ -117,8 +117,8 @@ namespace platypus
     void enable(bool enabled);
     bool enabled(){ return enabled_; };
 
-    void enable(){ enable(true); };
-    void disable(){ enable(false); };
+    void enable(){ enable(true); servo_.attach(board::MOTOR[channel_].SERVO);};
+    void disable(){ enable(false); servo_.detach();};
 
   private:
     Servo servo_;
