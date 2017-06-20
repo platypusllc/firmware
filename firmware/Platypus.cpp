@@ -1,16 +1,9 @@
 #include "Platypus.h"
 
-// Define for LEGACY support
-//#define LEGACY
-
-#ifndef LEGACY
 
 #include <Adafruit_NeoPixel.h>
 // LED serial controller.
-Adafruit_NeoPixel pixels = Adafruit_NeoPixel(board::NUM_LEDS, board::LED,
-                                             NEO_GRB + NEO_KHZ800);
-#endif
-
+Adafruit_NeoPixel pixels = Adafruit_NeoPixel(board::NUM_LEDS, board::LED, NEO_GRB + NEO_KHZ800);
 
 using namespace platypus;
 
@@ -116,24 +109,11 @@ void platypus::init()
 Led::Led()
   : r_(0), g_(0), b_(0)
 {
-#ifdef LEGACY
-  pinMode(board::LEGACY_LED.R, OUTPUT);
-  digitalWrite(board::LEGACY_LED.R, HIGH);
-  pinMode(board::LEGACY_LED.G, OUTPUT);
-  digitalWrite(board::LEGACY_LED.G, HIGH);
-  pinMode(board::LEGACY_LED.B, OUTPUT);
-  digitalWrite(board::LEGACY_LED.B, HIGH);
-#endif
-
 }
 
 Led::~Led()
 {
-#ifdef LEGACY
-  pinMode(board::LEGACY_LED.R, INPUT);
-  pinMode(board::LEGACY_LED.G, INPUT);
-  pinMode(board::LEGACY_LED.B, INPUT);
-#endif
+
 }
 
 void Led::set(int red, int green, int blue)
@@ -142,13 +122,6 @@ void Led::set(int red, int green, int blue)
   g_ = green;
   b_ = blue;
 
-#ifdef LEGACY
-
-  digitalWrite(board::LEGACY_LED.R, !r_);
-  digitalWrite(board::LEGACY_LED.G, !g_);
-  digitalWrite(board::LEGACY_LED.B, !b_);
-
-#endif
   /*
     while (!pixels.canShow());
     for (size_t pixel_idx = 0; pixel_idx < board::NUM_LEDS; ++pixel_idx)
@@ -262,17 +235,6 @@ bool EBoard::set(const char *param, const char *value)
     return false;
   }
   return true;
-}
-
-/*
-  These two are not implemented yet
-  Not sure if we will every need these for anything
-  but it might be useful for debugging or something
-  in the future
-*/
-void EBoard::onSerial()
-{
-  //onSerial not implemented yet
 }
 
 void EBoard::loop()

@@ -151,16 +151,18 @@ IMU::IMU(int id, int interval)
   calib.mag_radius = 894;
 
   bno_.setSensorOffsets(calib);
-
+  
 
   // Wait until calibration values are within limits
-  while (!bno_.isFullyCalibrated())
+  //while (!bno_.isFullyCalibrated())
+  while (sysCalib_ < 3)
   {
     delay(100);
     Serial.println(F("Warning: Waiting for IMU to calibrate, please move Boat around"));
     Serial.println(sysCalib_);
     Serial.println(magCalib_);
     Serial.println(accelCalib_);
+    Serial.println(gyroCalib_);
     bno_.getCalibration(&sysCalib_, &gyroCalib_, &accelCalib_, &magCalib_);
   }
 

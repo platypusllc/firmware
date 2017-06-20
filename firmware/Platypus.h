@@ -84,12 +84,12 @@ namespace platypus
     EBoard();
     virtual ~EBoard();
     virtual bool set(const char *param, const char* value);
-    virtual void onSerial();
     virtual void loop();
     void disarm();
     void arm();
     void setState(SerialState state);
     SerialState getState();
+
   private:
     const String applicationName_;
     const String accessoryName_;
