@@ -287,7 +287,14 @@ Motor::Motor(int channel,int motorMin,int motorMax,int motorCenter,int motorFDB,
   disable();
 
   // Attach Servo object to signal pin
-  servo_.attach(board::MOTOR[channel_].SERVO);
+	/* This is commented out to support changes to for BR thrusters
+		 Since velocity now sends 0 when !enabled, when the board boots 
+		 the pin is attached yet and not enabled, which will send a 0 command
+		 and then arm the motors. I think we can also just get rid of that !enabled
+		 statement in velocity since now when its not enabled it detaches that servo pin
+	*/
+  //servo_.attach(board::MOTOR[channel_].SERVO);
+
 }
 
 Motor::~Motor()
@@ -299,7 +306,7 @@ Motor::~Motor()
 
 void Motor::velocity(float velocity)
 {
-	if (!enabled())
+	if (!enabled()) //accidently arming boat on start
 		{
 			servo_.writeMicroseconds(motorCenter_);
 			return;
