@@ -202,8 +202,9 @@ void setup()
   // Set ADC Precision:
   analogReadResolution(12);
 
-  /*
+  
   // Set GPS Settings
+  
   Serial1.begin(9600);
   Serial1.setTimeout(250);
   // Set output to RMC only
@@ -214,7 +215,8 @@ void setup()
   // Set fix rate to 5Hz
   Serial1.println(PMTK_SET_NMEA_UPDATE_5HZ);
   Serial1.flush();
-  */
+  
+  
 
   // Initialize EBoard object
   platypus::eboard = new platypus::EBoard();
@@ -252,14 +254,14 @@ void setup()
   platypus::init();
 
   // Print header indicating that board successfully initialized
-
+  /* Disable info print for now
   Serial.println(F("------------------------------"));
   Serial.println(companyName);
   Serial.println(url);
   Serial.println(accessoryName);
   Serial.println(versionNumber);
   Serial.println(F("------------------------------"));
-
+  */
   // Turn LED to startup state.
   rgb_led.set(255, 0, 255);
   delay(1000);
@@ -277,7 +279,7 @@ void loop()
 			if (platypus::eboard->getState() == SerialState::ACTIVE)
 				{
 					platypus::eboard->setState(SerialState::CONNECTED);
-					Serial.println("STATE: CONNECTED");
+					//Serial.println("STATE: CONNECTED");
 					yield();
 					return;
 				}
@@ -289,7 +291,7 @@ void loop()
 		if (platypus::eboard->getState() == SerialState::CONNECTED)
 		{
 			platypus::eboard->setState(SerialState::STANDBY);
-			Serial.println("STATE: STANDBY");
+			//Serial.println("STATE: STANDBY");
 		}
 		yield();
 		return;
@@ -300,7 +302,7 @@ void loop()
 		if (platypus::eboard->getState() == SerialState::STANDBY)
 		{
 			platypus::eboard->setState(SerialState::CONNECTED);
-			Serial.println("STATE: CONNECTED1");
+			//Serial.println("STATE: CONNECTED1");
 		}
 	}
 	yield();
@@ -469,7 +471,7 @@ void ADKLoop()
         if (platypus::eboard->getState() != SerialState::ACTIVE)
         {
           platypus::eboard->setState(SerialState::ACTIVE);
-          Serial.println("STATE: ACTIVE");
+          //Serial.println("STATE: ACTIVE");
         }
         handleCommand(input_buffer);
       }
