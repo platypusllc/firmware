@@ -99,6 +99,7 @@ void AfroESC::arm()
   disable();
   delay(1000);
   velocity(0.0); //sends it 1500 for arming
+  delay(100);
   enable();
   delay(1000);
 }
@@ -159,15 +160,7 @@ IMU::IMU(int id, int interval)
 
   bno_.getCalibration(&sysCalib_, &gyroCalib_, &accelCalib_, &magCalib_);
 
-  /*
-  Accelerometer: 65525 65511 32 
-  Gyro: 65534 65534 0 
-  Mag: 65449 65443 261 
-  Accel Radius: 1000
-  Mag Radius: 709
-  */
-
-  /* Want to move this to EEPROM and put int option to recalibrate */
+  /* Need option to recalibrate - Current Values for Portugal */
   adafruit_bno055_offsets_t calib;
   calib.accel_offset_x = 65527;
   calib.accel_offset_y = 65450;
@@ -187,6 +180,7 @@ IMU::IMU(int id, int interval)
 
   // Wait until calibration values are within limits
   //while (!bno_.isFullyCalibrated())
+  // Looser requirement for faster arming. Should pause in server instead
   while (sysCalib_ < 3 || magCalib_ < 3)
   {
     delay(100);
@@ -223,14 +217,7 @@ void IMU::loop()
     bno_.getEvent(&event);
     lastMeasurementTime_ = millis();
 
-
-    /* Disable calibration warning - calibration status is returned in json reading anyway
-    if (sysCalib_ < 3)
-    {
-      Serial.println("Warning poor IMU calibration");
-    }
-    */
-
+    // Todo: return other values from imu as well
     char output_str[DEFAULT_BUFFER_SIZE + 3];
     snprintf(output_str, DEFAULT_BUFFER_SIZE,
              "{"
@@ -252,7 +239,7 @@ void IMU::loop()
 }
 
 AdafruitGPS::AdafruitGPS(int id, int port)
-  : ExternalSensor(id, port), SerialSensor(id, port, 9600, RS232, 0)
+  : ExternalSensor(id, port), SerialSensor(id, port, 9600, RS232, 0) // Should be TTL here?
 {
   // Note: This currently does not work after SerialSensor Init!
 
