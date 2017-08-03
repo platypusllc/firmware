@@ -44,6 +44,16 @@
 namespace platypus 
 {
 
+  typedef enum
+  {
+    /** Board is not armed, hasnt recieved any commands **/
+    STANDBY,
+    /** adk.isready(), there is a USB host present  **/
+    CONNECTED,
+    /** boat is getting and running commands **/
+    ACTIVE
+  } SerialState;
+
   typedef enum 
   {
     OFF,
@@ -68,6 +78,28 @@ namespace platypus
     GET_EC, // Get EC compensation value
     SET_EC // Set EC compensation value
   } AtlasCommand;
+
+  class EBoard : public Configurable
+  {
+  public:
+    EBoard();
+    virtual ~EBoard();
+    virtual bool set(const char *param, const char* value);
+    virtual void loop();
+    void disarm();
+    void arm();
+    void setState(SerialState state);
+    SerialState getState();
+
+  private:
+    const String applicationName_;
+    const String accessoryName_;
+    const String companyName_;
+    const String versionNumber_;
+    const String serialNumber_;
+    const String url_;
+    SerialState state_ = SerialState::STANDBY;
+  };
 
   // ESCs //
   class VaporPro : public Motor 
@@ -261,7 +293,10 @@ namespace platypus
     virtual char *name();
     //void onSerial();
   };
-  
+ 
+
+  extern platypus::EBoard *eboard;
+ 
 }
 
 #endif //COMPONENTS_H

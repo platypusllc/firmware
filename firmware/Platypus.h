@@ -17,16 +17,6 @@ namespace platypus
 {
   const int DEFAULT_BUFFER_SIZE = 128;
 
-  typedef enum
-  {
-    /** Board is not armed, hasnt recieved any commands **/
-    STANDBY,
-    /** adk.isready(), there is a USB host present  **/
-    CONNECTED,
-    /** boat is getting and running commands **/
-    ACTIVE
-  } SerialState;
-
   // Main library initialization function.
   void init();
 
@@ -76,28 +66,6 @@ namespace platypus
     const int channel_;
     const int enable_;
     bool enabled_;
-  };
-
-  class EBoard : public Configurable
-  {
-  public:
-    EBoard();
-    virtual ~EBoard();
-    virtual bool set(const char *param, const char* value);
-    virtual void loop();
-    void disarm();
-    void arm();
-    void setState(SerialState state);
-    SerialState getState();
-
-  private:
-    const String applicationName_;
-    const String accessoryName_;
-    const String companyName_;
-    const String versionNumber_;
-    const String serialNumber_;
-    const String url_;
-    SerialState state_ = SerialState::STANDBY;
   };
 
   class Motor : public Configurable
@@ -225,7 +193,6 @@ namespace platypus
   extern platypus::Motor *motors[board::NUM_MOTORS];
   extern platypus::Sensor *sensors[board::NUM_SENSORS];
   extern platypus::Peripheral *peripherals[board::NUM_PERIPHERALS];
-  extern platypus::EBoard *eboard;
 
   // Callbacks structure for serial events
   typedef struct {

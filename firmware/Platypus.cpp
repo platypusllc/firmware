@@ -15,7 +15,6 @@ constexpr float VELOCITY_THRESHOLD = 0.001;
 platypus::Peripheral *platypus::peripherals[board::NUM_PERIPHERALS];
 platypus::Motor *platypus::motors[board::NUM_MOTORS];
 platypus::Sensor *platypus::sensors[board::NUM_SENSORS];
-platypus::EBoard *platypus::eboard;
 
 // TODO: Switch to using HardwareSerial.
 USARTClass *platypus::SERIAL_PORTS[4] = {
@@ -158,115 +157,6 @@ int Led::B()
 {
   return b_;
 }
-
-/*Make adk init use this not hard coded values at top of firmware*/
-EBoard::EBoard()
-  : applicationName_("Platypus Server"), accessoryName_("Platypus Control Board"), companyName_("Platypus LLC"), versionNumber_("3"), serialNumber_("3"), url_("http://senseplatypus.com")
-{
-
-}
-void EBoard::setState(SerialState state)
-{
-  state_ = state;
-}
-SerialState EBoard::getState()
-{
-  return state_;
-}
-EBoard::~EBoard()
-{
-}
-bool EBoard::set(const char *param, const char *value)
-{
-  if (strcmp("cmd",param) == 0)
-  {
-    if (strcmp("arm",value) == 0)
-    {
-      Serial.println("Arming Boat");
-      state_ = SerialState::ACTIVE;
-      Serial.println("STATE: ACTIVE");
-    }
-    else if (strcmp("disarm",value) == 0)
-    {
-      Serial.println("Disarming Boat");
-      state_ = SerialState::CONNECTED;
-      Serial.println("STATE: CONNECTED");
-    }
-  }
-
-  else if (strcmp("info",param) == 0)
-  {
-    char output_str[DEFAULT_BUFFER_SIZE];
-    String buffer;
-    if (strcmp("appName",value) == 0)
-    {
-      buffer = applicationName_;
-    }
-    else if (strcmp("accName",value) == 0)
-    {
-      buffer = accessoryName_;
-    }
-    else if (strcmp("cmpName",value) == 0)
-    {
-      buffer = companyName_;
-    }
-    else if (strcmp("vNum",value) == 0)
-    {
-      buffer = versionNumber_;
-    }
-    else if (strcmp("sNum",value) == 0)
-    {
-      buffer = serialNumber_;
-    }
-    else if (strcmp("url",value) == 0)
-    {
-      buffer = url_;
-    }
-    else if (strcmp("state",value) == 0)
-    {
-      switch (state_)
-      {
-        case SerialState::ACTIVE:
-          buffer = "active";
-          break;
-        case SerialState::CONNECTED:
-          buffer = "connected";
-          break;
-        case SerialState::STANDBY:
-          buffer = "standby";
-          break;
-        default:
-          buffer = "unknown";
-      }
-    }
-    else
-    {
-      buffer = "Value not found";
-    }
-    snprintf(output_str,DEFAULT_BUFFER_SIZE,
-             "{\"e\":{\"type\":\"%s\",\"data\":\"%s\"}}", value, buffer.c_str());
-    send(output_str);
-  }
-  else
-  {
-    return false;
-  }
-  return true;
-}
-
-void EBoard::loop()
-{
-  //loop not implemented into scheduler yet
-}
-
-// void EBoard::disarm()
-// {
-//  state = SerialState::CONNECTED;
-// }
-// void EBoard::arm()
-// {
-//  serial_state == SerialState::ACTIVE;
-// }
 
 Peripheral::Peripheral(int channel, bool enabled)
   : channel_(channel), enable_(board::PERIPHERAL[channel].ENABLE)

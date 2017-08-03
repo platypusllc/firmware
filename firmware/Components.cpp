@@ -2,6 +2,8 @@
 
 using namespace platypus;
 
+platypus::EBoard *platypus::eboard;
+
 #define WAIT_FOR_CONDITION(condition, timeout_ms) for (unsigned int j = 0; j < (timeout_ms) && !(condition); ++j) delay(1);
 
 void displaySensorOffsets(const adafruit_bno055_offsets_t &calibData)
@@ -27,6 +29,160 @@ void displaySensorOffsets(const adafruit_bno055_offsets_t &calibData)
     Serial.print("\nMag Radius: ");
     Serial.print(calibData.mag_radius);
 }
+
+
+/*Make adk init use this not hard coded values at top of firmware*/
+EBoard::EBoard()
+  : applicationName_("Platypus Server"), accessoryName_("Platypus Control Board"), companyName_("Platypus LLC"), versionNumber_("3"), serialNumber_("3"), url_("http://senseplatypus.com")
+{
+
+}
+void EBoard::setState(SerialState state)
+{
+  state_ = state;
+}
+SerialState EBoard::getState()
+{
+  return state_;
+}
+EBoard::~EBoard()
+{
+}
+bool EBoard::set(const char *param, const char *value)
+{
+  if (strcmp("cmd",param) == 0)
+  {
+    if (strcmp("arm",value) == 0)
+    {
+      Serial.println("Arming Boat");
+      state_ = SerialState::ACTIVE;
+      Serial.println("STATE: ACTIVE");
+    }
+    else if (strcmp("disarm",value) == 0)
+    {
+      Serial.println("Disarming Boat");
+      state_ = SerialState::CONNECTED;
+      Serial.println("STATE: CONNECTED");
+    }
+  }
+  else if (strcmp("info",param) == 0)
+  {
+    char output_str[DEFAULT_BUFFER_SIZE];
+    String buffer;
+    if (strcmp("appName",value) == 0)
+    {
+      buffer = applicationName_;
+    }
+    else if (strcmp("accName",value) == 0)
+    {
+      buffer = accessoryName_;
+    }
+    else if (strcmp("cmpName",value) == 0)
+    {
+      buffer = companyName_;
+    }
+    else if (strcmp("vNum",value) == 0)
+    {
+      buffer = versionNumber_;
+    }
+    else if (strcmp("sNum",value) == 0)
+    {
+      buffer = serialNumber_;
+    }
+    else if (strcmp("url",value) == 0)
+    {
+      buffer = url_;
+    }
+    else if (strcmp("state",value) == 0)
+    {
+      switch (state_)
+      {
+        case SerialState::ACTIVE:
+          buffer = "active";
+          break;
+        case SerialState::CONNECTED:
+          buffer = "connected";
+          break;
+        case SerialState::STANDBY:
+          buffer = "standby";
+          break;
+        default:
+          buffer = "unknown";
+      }
+    }
+    else
+    {
+      buffer = "Unknown Command";
+    }
+    snprintf(output_str,DEFAULT_BUFFER_SIZE,
+             "{\"e\":{\"type\":\"%s\",\"data\":\"%s\"}}", value, buffer.c_str());
+    send(output_str);
+  } 
+  else if (param[0] == 's')
+  {
+    int sensorIdx = param[1] - '0';
+    if (sensorIdx >= board::NUM_SENSOR_PORTS){
+      // Target port out of range
+      //Serial.println("Target Port out of range");
+      return false;
+    }
+    Sensor *sensor = sensors[sensorIdx];
+
+    if (strcmp("AtlasDO", value) == 0)
+    {
+      sensors[sensorIdx] = new AtlasDO(sensorIdx);
+    }
+    else if (strcmp("AtlasPH", value) == 0)
+    {
+      sensors[sensorIdx] = new AtlasPH(sensorIdx);
+    } 
+    else if (strcmp("ES2", value) == 0)
+    {
+      sensors[sensorIdx] = new ES2(sensorIdx);
+    } 
+    else if (strcmp("HDS", value) == 0)
+    {
+      sensors[sensorIdx] = new HDS(sensorIdx);
+    } 
+    else if (strcmp("Sampler", value) == 0)
+    {
+      //sensors::[sensorIdx] = new platypus::JSONPassThrough(sensorIdx);
+      sensors[sensorIdx] = new EmptySensor(sensorIdx);
+    } 
+    else if (strcmp("Empty", value) == 0)
+    {
+      sensors[sensorIdx] = new EmptySensor(sensorIdx);
+    } 
+    else 
+    {
+      // Unsupported sensor
+      //Serial.println("Unsupported Sensor");
+      return false;
+    }
+
+    // Free old sensor
+    delete sensor;
+  }
+  else
+  {
+    return false;
+  }
+  return true;
+}
+
+void EBoard::loop()
+{
+  //loop not implemented into scheduler yet
+}
+
+// void EBoard::disarm()
+// {
+//  state = SerialState::CONNECTED;
+// }
+// void EBoard::arm()
+// {
+//  serial_state == SerialState::ACTIVE;
+// }
 
 void VaporPro::arm()
 {
