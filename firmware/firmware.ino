@@ -13,7 +13,12 @@
 // TODO: remove me
 #include "Board.h"
 
-// ADK USB Host configuration 
+//Typedefs
+typedef platypus::SerialState SerialState;
+
+
+// ADK USB Host configuration
+/* Make server accept version 4.x.x */
 char applicationName[] = "Platypus Server"; // the app on Android
 char accessoryName[] = "Platypus Control Board"; // your Arduino board
 char companyName[] = "Platypus LLC";
@@ -43,25 +48,13 @@ char debug_buffer[INPUT_BUFFER_SIZE+1];
 const size_t OUTPUT_BUFFER_SIZE = 576;
 char output_buffer[OUTPUT_BUFFER_SIZE+3];
 
-// System state enumeration
-enum SystemState
-{
-  /** There is no ADK USB device currently plugged in. */
-  DISCONNECTED,
-  /** There is an ADK USB device detected, but it is unresponsive. */
-  CONNECTED,
-  /** There is a Platypus Server currently communicating. */
-  RUNNING  
-};
-SystemState system_state = DISCONNECTED;
+static unsigned long last_command_time = 0;
+static unsigned long time_at_connected = 0;
 
-// Time betweeen commands before we consider the Android
-// server to be unresponsive.
-const size_t RESPONSE_TIMEOUT_MS = 500;
-
-// Time to wait before dropping into DISCONNECTED state when USB cable is disconnected
-// Deals with dodgy USB connections and improves USB C support for all cables
-const size_t CONNECTION_TIMEOUT_MS = 500;
+// Time betweeen commands before we consider the Android/Raspberry PI
+// server to be unresponsive - keep this fairly loose until heartbeat implemented
+const size_t RESPONSE_TIMEOUT_MS = 3000;
+const size_t CONNECT_STANDBY_TIMEOUT = 5000;
 
 // Define the systems on this board
 // TODO: move this board.h?
@@ -71,20 +64,18 @@ platypus::Led rgb_led;
  * Wrapper for ADK send command that copies data to debug port.
  * Requires a null-terminated char* pointer.
  */
-void send(char *str) 
-{ 
-  // Add newline termination
+void send(char *str)
+{
+  // Add newline terminatio
   // TODO: Make sure we don't buffer overflow
   size_t len = strlen(str);
   str[len++] = '\r';
   str[len++] = '\n';
   str[len] = '\0';
-  
-  // Write string to USB.
+
+  // Write string to ADK Port (Android Phone)
   if (adk.isReady()) adk.write(len, (uint8_t*)str);
-  
-  // Copy string to debugging console.
-  Serial.print("-> ");
+  // Write string to Serial Port (Raspberry PI/ODroid)
   Serial.print(str);
 }
 
@@ -95,7 +86,7 @@ void send(char *str)
 void reportError(const char *error_message, const char *buffer)
 {
   // Construct a JSON error message.
-  snprintf(output_buffer, OUTPUT_BUFFER_SIZE, 
+  snprintf(output_buffer, OUTPUT_BUFFER_SIZE,
            "{"
            "\"error\": \"%s\","
            "\"args\": \"%s\""
@@ -110,6 +101,14 @@ void reportError(const char *error_message, const char *buffer)
  */
 void handleCommand(char *buffer)
 {
+
+  if (strcmp(buffer,"arm") == 0)
+    {
+      Serial.println("Arming eboard");
+      platypus::eboard->set("cmd","arm");
+      return;
+    }
+
   // Allocate buffer for JSON parsing
   StaticJsonBuffer<200> jsonBuffer;
 
@@ -118,94 +117,93 @@ void handleCommand(char *buffer)
 
   // Check for parsing error
   if (!command.success())
-  {
-    // Parsing Failure 
-    reportError("Failed to parse JSON command.", buffer);
-    return;
-  }
-
-  for (JsonObject::iterator it=command.begin(); it!=command.end(); ++it)
-  {
-    const char * key = it->key;
-    
-    platypus::Configurable * target_object;
-    size_t object_index;
-
-    // Determine target object
-    switch (key[0]){
-    case 'm': // Motor command
-      object_index = key[1] - '0';
-
-      if (object_index >= board::NUM_MOTORS){
-        reportError("Invalid motor index.", buffer);
-        return;
-      }
-
-      target_object = platypus::motors[object_index];
-      break;
-      
-    case 's': // Sensor command
-      object_index = key[1] - '0';
-
-      if (object_index >= board::NUM_SENSORS){
-        reportError("Invalid sensor index.", buffer);
-        return;
-      }
-
-      target_object = platypus::sensors[object_index];
-      break;
-
-    default: // Unrecognized target
-      reportError("Unknown command target.", buffer);
+    {
+      // Parsing Failure
+      reportError("Failed to parse JSON command.", buffer);
       return;
     }
 
-    // Extract JsonObject with param:value pairs
-    JsonObject& params = it->value;
-
-    // Todo: Move this parsing to specific components and pass ref to params instead
-    // Iterate over and set parameter:value pairs on target object
-    for (JsonObject::iterator paramIt=params.begin(); paramIt!=params.end(); ++paramIt)
+  for (JsonObject::iterator it=command.begin(); it!=command.end(); ++it)
     {
-      const char * param_name = paramIt->key;
-      const char * param_value = paramIt->value;
+      const char * key = it->key;
 
-      /* Debugging Output
-      Serial.print("Sending command to ");
-      Serial.print(key);
-      Serial.print(": ");
-      Serial.print(param_name);
-      Serial.print(" : ");
-      Serial.println(param_value);
-      */
+      platypus::Configurable * target_object;
+      size_t object_index;
 
-      if (!target_object->set(param_name, param_value)) {
-        reportError("Invalid parameter set.", buffer);
-        continue; // Todo: Should we return or continue?
+      // Determine target object
+      switch (key[0]){
+      case 'm': // Motor command
+        object_index = key[1] - '0';
+
+        if (object_index >= board::NUM_MOTORS){
+          reportError("Invalid motor index.", buffer);
+          return;
+        }
+
+        target_object = platypus::motors[object_index];
+        break;
+
+      case 's': // Sensor command
+        object_index = key[1] - '0';
+
+        if (object_index >= board::NUM_SENSORS){
+          reportError("Invalid sensor index.", buffer);
+          return;
+        }
+        target_object = platypus::sensors[object_index];
+        break;
+
+      case 'e': //eboard command
+        target_object = platypus::eboard;
+        break;
+
+      default: // Unrecognized target
+        reportError("Unknown command target.", buffer);
+        return;
       }
+
+      // Extract JsonObject with param:value pairs
+      JsonObject& params = it->value;
+      // Todo: Move this parsing to specific components and pass ref to params instead
+      // Iterate over and set parameter:value pairs on target object
+      for (JsonObject::iterator paramIt=params.begin(); paramIt!=params.end(); ++paramIt)
+        {
+
+          const char * param_name = paramIt->key;
+          const char * param_value = paramIt->value;
+
+          /* Serial.print("Sending command to "); */
+          /* Serial.print(key); */
+          /* Serial.print(": "); */
+          /* Serial.print(param_name); */
+          /* Serial.print(" : "); */
+          /* Serial.println(param_value); */
+
+          if (!target_object->set(param_name, param_value)) {
+            reportError("Invalid parameter set.", buffer);
+            continue; // Todo: Should we return or continue?
+          }
+        }
     }
-  }
 }
 
-void setup() 
+void setup()
 {
   delay(1000);
-  
+
   // Latch power shutdown line high to keep board from turning off.
   pinMode(board::PWR_KILL, OUTPUT);
   digitalWrite(board::PWR_KILL, HIGH);
 
   // Initialize debugging serial console.
   Serial.begin(115200);
-
   // Start the system in the disconnected state
-  system_state = DISCONNECTED;
-  
+
   // Set ADC Precision:
   analogReadResolution(12);
 
-  /*
-  // Set GPS Settings
+  
+  // Set GPS Settings - This should go in Adafruit GPS sensor init
   Serial1.begin(9600);
   Serial1.setTimeout(250);
   // Set output to RMC only
@@ -216,7 +214,12 @@ void setup()
   // Set fix rate to 5Hz
   Serial1.println(PMTK_SET_NMEA_UPDATE_5HZ);
   Serial1.flush();
-  */
+  
+  
+
+  // Initialize EBoard object
+  platypus::eboard = new platypus::EBoard();
+  platypus::eboard->setState(SerialState::STANDBY);
 
   // Initialize and power all peripherals (WiFi & Pump)
   platypus::peripherals[0] = new platypus::Peripheral(0, true);
@@ -226,12 +229,13 @@ void setup()
   platypus::sensors[0] = new platypus::AdafruitGPS(0, 0);
   platypus::sensors[1] = new platypus::AdafruitGPS(1, 1);
   platypus::sensors[2] = new platypus::AdafruitGPS(2, 2);
-  platypus::sensors[3] = new platypus::EmptySensor(3, 3);
+  platypus::sensors[3] = new platypus::EmptySensor(3, 3); // No serial on sensor 3!!!
 
   // Initialize Internal sensors
   platypus::sensors[4] = new platypus::BatterySensor(4);
   platypus::sensors[5] = new platypus::IMU(5);
-  
+
+
   // Initialize motors
   platypus::motors[0] = new platypus::AfroESC(0);
   platypus::motors[1] = new platypus::AfroESC(1);
@@ -240,113 +244,52 @@ void setup()
   debug_buffer[INPUT_BUFFER_SIZE] = '\0';
   input_buffer[INPUT_BUFFER_SIZE] = '\0';
   output_buffer[OUTPUT_BUFFER_SIZE] = '\0';
-  
   // Create secondary tasks for system.
   Scheduler.startLoop(motorUpdateLoop);
-  Scheduler.startLoop(serialConsoleLoop);
+  Scheduler.startLoop(serialLoop);
+  Scheduler.startLoop(ADKLoop);
 
   // Initialize Platypus library.
   platypus::init();
-  
+
   // Print header indicating that board successfully initialized
+  /* Make this info requestable from eboard object
   Serial.println(F("------------------------------"));
   Serial.println(companyName);
   Serial.println(url);
   Serial.println(accessoryName);
   Serial.println(versionNumber);
   Serial.println(F("------------------------------"));
-  
+  */
+
   // Turn LED to startup state.
   rgb_led.set(255, 0, 255);
   delay(1000);
 }
 
-void loop() 
+void loop()
 {
-  // Keep track of how many reads we haven't made so far.
-  static unsigned long last_command_time = 0;
+  /*
+    If the board is in an active state and hasnt recieved a command
+    in a while drop it to connected
+  */
 
-  // Keep track of last time USB connection was detected
-  static unsigned long last_usb_connection_time = 0;
-  
-  // Number of bytes received from USB.
-  uint32_t bytes_read = 0;
-  
-  // Do USB bookkeeping.
-  Usb.Task();
-  
-  // Report system as shutdown if not connected to USB.
-  if (!adk.isReady())
-  {
-    unsigned long current_time = millis();
-    // If not connected to USB, we are 'DISCONNECTED'.
-    if (system_state != DISCONNECTED)
-    {
-      Serial.println("WARNING: USB connection state fault");
-      if (current_time - last_usb_connection_time >= CONNECTION_TIMEOUT_MS){
-        Serial.println("STATE: DISCONNECTED");
-        system_state = DISCONNECTED;
-      }
+  if (platypus::eboard->getState() == SerialState::ACTIVE){
+    if (millis() - last_command_time >= RESPONSE_TIMEOUT_MS){
+      platypus::eboard->setState(SerialState::CONNECTED);
+      //Serial.println("STATE: CONNECTED");
     }
-    
-    // Wait for USB connection again.
-    yield();
-    return;
-  } 
-  else 
-  {  
-    // If connected to USB, we are now 'CONNECTED'!
-    if (system_state == DISCONNECTED)
-    {
-      Serial.println("STATE: CONNECTED");
-      system_state = CONNECTED;
-      last_usb_connection_time = millis();
+  } else if (platypus::eboard->getState() == SerialState::CONNECTED){
+    if (millis() - last_command_time >= CONNECT_STANDBY_TIMEOUT){
+      platypus::eboard->setState(SerialState::STANDBY);
+      //Serial.println("STATE: STANDBY");
     }
+  } else if (millis() - last_command_time < CONNECT_STANDBY_TIMEOUT){
+    platypus::eboard->setState(SerialState::CONNECTED);
+    //Serial.println("STATE: CONNECTED");
   }
-        
-  // Attempt to read command from USB.
-  adk.read(&bytes_read, INPUT_BUFFER_SIZE, (uint8_t*)input_buffer);
-  unsigned long current_command_time = millis();
-  if (bytes_read <= 0) 
-  {
-    // If we haven't received a response in a long time, maybe 
-    // we are 'CONNECTED' but the server is not running.
-    if (current_command_time - last_command_time >= RESPONSE_TIMEOUT_MS)
-    {
-      if (system_state == RUNNING)
-      {
-        Serial.println("STATE: CONNECTED");
-        system_state = CONNECTED; 
-      }
-    }
-    
-    // Wait for more USB data again.
-    yield();
-    return;
-  } 
-  else 
-  {
-    // If we received a command, the server must be 'RUNNING'.
-    if (system_state == CONNECTED) 
-    {
-      Serial.println("STATE: RUNNING");
-      system_state = RUNNING; 
-    }
-    
-    // Update the timestamp of last received command.
-    last_command_time = current_command_time;
-    last_usb_connection_time = current_command_time;
-  }
-  
-  // Properly null-terminate the buffer.
-  input_buffer[bytes_read] = '\0';
-  
-  // Copy incoming message to debug console.
-  //Serial.print("<- ");
-  //Serial.println(input_buffer);
-  
-  // Attempt to parse command
-  handleCommand(input_buffer);
+
+	yield();
 }
 
 /**
@@ -356,124 +299,141 @@ void motorUpdateLoop()
 {
   // Wait for a fixed time period.
   delay(100);
-  
+
   // Set the LED for current system state.
   unsigned c = (millis() >> 8) & 1;
   if (c > 128) c = 255 - c;
- 
-  switch (system_state)
-  {
-  case DISCONNECTED:
-    // Red pulse
-    rgb_led.set(c, 0, 0);
-    break;
-  case CONNECTED:
-    // Yellow pulse
-    rgb_led.set(c, c/4, 0);
-    break;
-  case RUNNING:
-    // Green pulse
-    rgb_led.set(0, c, 0);
-    break;
-  }
-  
+
+
+  switch (platypus::eboard->getState())
+    {
+    case SerialState::STANDBY:
+      // Red pulse
+      rgb_led.set(c, 0, 0);
+      break;
+    case SerialState::CONNECTED:
+      // Yellow pulse
+      rgb_led.set(c, c/4, 0);
+      break;
+    case SerialState::ACTIVE:
+      // Green pulse
+      rgb_led.set(0, c, 0);
+      break;
+    }
+
   // Handle the motors appropriately for each system state.
-  switch (system_state)
+  switch (platypus::eboard->getState())
   {
-  case DISCONNECTED:
-    // Turn off motors.
-    for (size_t motor_idx = 0; motor_idx < board::NUM_MOTORS; ++motor_idx) 
-    {
-      platypus::Motor* motor = platypus::motors[motor_idx];
-      if (motor->enabled())
+    case SerialState::STANDBY:
+      // Turn off motors.
+      for (size_t motor_idx = 0; motor_idx < board::NUM_MOTORS; ++motor_idx)
       {
-        Serial.print("Disabling motor "); Serial.println(motor_idx);
-        motor->disable();
+        platypus::Motor* motor = platypus::motors[motor_idx];
+        if (motor->enabled())
+        {
+          //Serial.print("Disabling motor "); Serial.println(motor_idx);
+          motor->disable();
+        }
       }
-    }
-    break;
-  case CONNECTED:
-    // Decay all motors exponentially towards zero speed.
-    for (size_t motor_idx = 0; motor_idx < board::NUM_MOTORS; ++motor_idx) 
-    {
-      platypus::Motor* motor = platypus::motors[motor_idx];
-      motor->set("v", "0.0");
-    }
-    // NOTE: WE DO NOT BREAK OUT OF THE SWITCH HERE!
-  case RUNNING:
-    // Rearm motors if necessary.
-    for (size_t motor_idx = 0; motor_idx < board::NUM_MOTORS; ++motor_idx) 
-    {
-      platypus::Motor* motor = platypus::motors[motor_idx];
-      if (!motor->enabled()) 
+      break;
+    case SerialState::CONNECTED:
+      // Decay all motors exponentially towards zero speed.
+      for (size_t motor_idx = 0; motor_idx < board::NUM_MOTORS; ++motor_idx)
       {
-        Serial.print("Arming motor "); Serial.print(motor_idx);
-        motor->arm();
-        Serial.println(F("Motor Armed"));
+        platypus::Motor* motor = platypus::motors[motor_idx];
+        motor->set("v", "0.0");
       }
-    }
-    break;
+      break;
+    case SerialState::ACTIVE:
+      // Rearm motors if necessary.
+      for (size_t motor_idx = 0; motor_idx < board::NUM_MOTORS; ++motor_idx)
+      {
+        platypus::Motor* motor = platypus::motors[motor_idx];
+        if (!motor->enabled())
+        {
+          //Serial.print("Arming motor "); Serial.print(motor_idx);
+          motor->arm();
+          //Serial.println(F("Motor Armed"));
+        }
+      }
+      break;
   }
-  
+
   // Send status updates while connected to server.
-  if (system_state == RUNNING)
-  {
-    // TODO: move this to another location (e.g. Motor)
-    // Send motor status update over USB
-    snprintf(output_buffer, OUTPUT_BUFFER_SIZE,
-      "{"
-        "\"m0\":{"
-          "\"v\":%f"
-        "},"
-        "\"m1\":{"
-          "\"v\":%f"
-        "}"
-      "}",
-      platypus::motors[0]->velocity(),
-      platypus::motors[1]->velocity()
-    );
-    send(output_buffer);
-  }
+  if (platypus::eboard->getState() == SerialState::ACTIVE)
+    {
+      // TODO: move this to another location (e.g. Motor)
+      // Send motor status update over USB
+      snprintf(output_buffer, OUTPUT_BUFFER_SIZE,
+               "{"
+               "\"m0\":{"
+               "\"v\":%f"
+               "},"
+               "\"m1\":{"
+               "\"v\":%f"
+               "}"
+               "}",
+               platypus::motors[0]->velocity(),
+               platypus::motors[1]->velocity()
+               );
+      send(output_buffer);
+    }
+  yield();
 }
 
 /**
- * Reads from serial debugging console and attempts to execute commands.
+ * Reads from serial console and attempts to execute commands.
  */
-void serialConsoleLoop()
+
+void serialLoop()
 {
-  // Index to last character in debug buffer.
   static size_t debug_buffer_idx = 0;
-  
   // Wait until characters are received.
-  while (!Serial.available()) yield();
-
-  // Put the new character into the buffer, ignore \n and \r
-  char c = Serial.read();
-  if (c != '\n' && c != '\r'){
-    debug_buffer[debug_buffer_idx++] = c;
-  }
-  
-  // If it is the end of a line, or we are out of space, parse the buffer.
-  if (debug_buffer_idx >= INPUT_BUFFER_SIZE || c == '\n' || c == '\r') 
-  {
-    // Properly null-terminate the buffer.
-    debug_buffer[debug_buffer_idx] = '\0';
-    debug_buffer_idx = 0;
-
-    //Serial.println(debug_buffer);
-    if (strcmp(debug_buffer, "DOc") == 0){
-      platypus::sensors[1]->calibrate(1);
-    } else if (strcmp(debug_buffer, "DOc0") == 0){
-      platypus::sensors[1]->calibrate(0);
-    } else if (strcmp(debug_buffer, "PHcm") == 0){
-      platypus::sensors[2]->calibrate(0.0);
-    } else if (strcmp(debug_buffer, "PHcl") == 0){
-      platypus::sensors[2]->calibrate(-1);
-    } else if (strcmp(debug_buffer, "PHch") == 0){
-      platypus::sensors[2]->calibrate(1);
+  if (Serial.available())
+    {
+			last_command_time = millis();
+      // Put the new character into the buffer, ignore \n and \r
+      char c = Serial.read();
+      if (c != '\n' && c != '\r'){
+        debug_buffer[debug_buffer_idx++] = c;
+      }
+      // If it is the end of a line, or we are out of space, parse the buffer.
+      if (debug_buffer_idx >= INPUT_BUFFER_SIZE || c == '\n' || c == '\r')
+        {
+          // Properly null-terminate the buffer.
+          debug_buffer[debug_buffer_idx] = '\0';
+          debug_buffer_idx = 0;
+          handleCommand(debug_buffer);
+        }
     }
-    // Attempt to parse command.
-    handleCommand(debug_buffer); 
-  }
+  yield();
 }
 
+void ADKLoop()
+{
+  uint32_t bytes_read;
+  Usb.Task();
+
+  if (adk.isReady())
+    {
+			last_command_time = millis();
+      adk.read(&bytes_read, INPUT_BUFFER_SIZE, (uint8_t*)input_buffer);
+      if (bytes_read <= 0)
+      {
+        yield();
+        return;
+      }
+      else
+      {
+        input_buffer[bytes_read] = '\0';
+
+        if (platypus::eboard->getState() != SerialState::ACTIVE)
+        {
+          platypus::eboard->setState(SerialState::ACTIVE);
+          //Serial.println("STATE: ACTIVE");
+        }
+        handleCommand(input_buffer);
+      }
+    }
+  yield();
+}

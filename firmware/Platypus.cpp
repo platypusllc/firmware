@@ -1,16 +1,9 @@
 #include "Platypus.h"
 
-// Define for LEGACY support
-//#define LEGACY
-
-#ifndef LEGACY
 
 #include <Adafruit_NeoPixel.h>
 // LED serial controller.
-Adafruit_NeoPixel pixels = Adafruit_NeoPixel(board::NUM_LEDS, board::LED,
-                                             NEO_GRB + NEO_KHZ800);
-#endif
-
+Adafruit_NeoPixel pixels = Adafruit_NeoPixel(board::NUM_LEDS, board::LED, NEO_GRB + NEO_KHZ800);
 
 using namespace platypus;
 
@@ -22,7 +15,7 @@ constexpr float VELOCITY_THRESHOLD = 0.001;
 platypus::Peripheral *platypus::peripherals[board::NUM_PERIPHERALS];
 platypus::Motor *platypus::motors[board::NUM_MOTORS];
 platypus::Sensor *platypus::sensors[board::NUM_SENSORS];
-
+platypus::EBoard *platypus::eboard;
 
 // TODO: Switch to using HardwareSerial.
 USARTClass *platypus::SERIAL_PORTS[4] = {
@@ -40,7 +33,7 @@ SerialHandler_t platypus::SERIAL_HANDLERS[4] = {
 };
 
 
-void serialEvent1() 
+void serialEvent1()
 {
   if (SERIAL_HANDLERS[0].handler != NULL)
   {
@@ -48,7 +41,7 @@ void serialEvent1()
   }
 }
 
-void serialEvent2() 
+void serialEvent2()
 {
   if (SERIAL_HANDLERS[1].handler != NULL)
   {
@@ -56,8 +49,8 @@ void serialEvent2()
   }
 }
 
-void serialEvent3() 
-{ 
+void serialEvent3()
+{
   if (SERIAL_HANDLERS[2].handler != NULL)
   {
     (*SERIAL_HANDLERS[2].handler)(SERIAL_HANDLERS[2].data);
@@ -67,9 +60,9 @@ void serialEvent3()
 uint32_t platypus::swap(uint32_t bytes)
 {
   return ((bytes << 24) & 0xFF000000)
-         | ((bytes <<  8) & 0x00FF0000)
-         | ((bytes >>  8) & 0x0000FF00)
-         | ((bytes >> 24) & 0x000000FF);
+    | ((bytes <<  8) & 0x00FF0000)
+    | ((bytes >>  8) & 0x0000FF00)
+    | ((bytes >> 24) & 0x000000FF);
 }
 
 /**
@@ -92,15 +85,16 @@ void platypusLoop_()
     }
   }
 
-  // Run each sensor loop task once.  
+  // Run each sensor loop task once.
   for (int sensorIdx = 0; sensorIdx < board::NUM_SENSORS; ++sensorIdx)
   {
     Sensor *sensor = platypus::sensors[sensorIdx];
-    if (sensor != NULL) 
+    if (sensor != NULL)
     {
       platypus::Sensor::onLoop_(sensor);
     }
   }
+
 
   yield();
 }
@@ -115,24 +109,11 @@ void platypus::init()
 Led::Led()
   : r_(0), g_(0), b_(0)
 {
-  #ifdef LEGACY
-  pinMode(board::LEGACY_LED.R, OUTPUT);
-  digitalWrite(board::LEGACY_LED.R, HIGH);
-  pinMode(board::LEGACY_LED.G, OUTPUT);
-  digitalWrite(board::LEGACY_LED.G, HIGH);
-  pinMode(board::LEGACY_LED.B, OUTPUT);
-  digitalWrite(board::LEGACY_LED.B, HIGH);
-  #endif
-
 }
 
 Led::~Led()
 {
-  #ifdef LEGACY
-  pinMode(board::LEGACY_LED.R, INPUT);
-  pinMode(board::LEGACY_LED.G, INPUT);
-  pinMode(board::LEGACY_LED.B, INPUT);
-  #endif
+
 }
 
 void Led::set(int red, int green, int blue)
@@ -141,18 +122,11 @@ void Led::set(int red, int green, int blue)
   g_ = green;
   b_ = blue;
 
-  #ifdef LEGACY
-
-  digitalWrite(board::LEGACY_LED.R, !r_);
-  digitalWrite(board::LEGACY_LED.G, !g_);
-  digitalWrite(board::LEGACY_LED.B, !b_);
-
-  #endif
   /*
-  while (!pixels.canShow());
-  for (size_t pixel_idx = 0; pixel_idx < board::NUM_LEDS; ++pixel_idx)
+    while (!pixels.canShow());
+    for (size_t pixel_idx = 0; pixel_idx < board::NUM_LEDS; ++pixel_idx)
     pixels.setPixelColor(pixel_idx, r_, g_, b_);
-  pixels.show();*/
+    pixels.show();*/
 }
 
 void Led::R(int red)
@@ -184,6 +158,98 @@ int Led::B()
 {
   return b_;
 }
+
+/*Make adk init use this not hard coded values at top of firmware*/
+EBoard::EBoard()
+  : applicationName_("Platypus Server"), accessoryName_("Platypus Control Board"), companyName_("Platypus LLC"), versionNumber_("3"), serialNumber_("3"), url_("http://senseplatypus.com")
+{
+
+}
+void EBoard::setState(SerialState state)
+{
+  state_ = state;
+}
+SerialState EBoard::getState()
+{
+  return state_;
+}
+EBoard::~EBoard()
+{
+}
+bool EBoard::set(const char *param, const char *value)
+{
+  if (strcmp("cmd",param) == 0)
+  {
+    if (strcmp("arm",value) == 0)
+    {
+      Serial.println("Arming Boat");
+      state_ = SerialState::ACTIVE;
+      Serial.println("STATE: ACTIVE");
+    }
+    else if (strcmp("disarm",value) == 0)
+    {
+      Serial.println("Disarming Boat");
+      state_ = SerialState::CONNECTED;
+      Serial.println("STATE: CONNECTED");
+    }
+  }
+
+  else if (strcmp("info",param) == 0)
+  {
+    char output_str[DEFAULT_BUFFER_SIZE];
+    String buffer;
+    if (strcmp("appName",value) == 0)
+    {
+      buffer = applicationName_;
+    }
+    else if (strcmp("accName",value) == 0)
+    {
+      buffer = accessoryName_;
+    }
+    else if (strcmp("cmpName",value) == 0)
+    {
+      buffer = companyName_;
+    }
+    else if (strcmp("vNum",value) == 0)
+    {
+      buffer = versionNumber_;
+    }
+    else if (strcmp("sNum",value) == 0)
+    {
+      buffer = serialNumber_;
+    }
+    else if (strcmp("url",value) == 0)
+    {
+      buffer = url_;
+    }
+    else
+    {
+      buffer = "Value not found";
+    }
+    snprintf(output_str,DEFAULT_BUFFER_SIZE,
+             "{\"e\":{\"info:%s\"}}",buffer.c_str());
+    send(output_str);
+  }
+  else
+  {
+    return false;
+  }
+  return true;
+}
+
+void EBoard::loop()
+{
+  //loop not implemented into scheduler yet
+}
+
+// void EBoard::disarm()
+// {
+//  state = SerialState::CONNECTED;
+// }
+// void EBoard::arm()
+// {
+//  serial_state == SerialState::ACTIVE;
+// }
 
 Peripheral::Peripheral(int channel, bool enabled)
   : channel_(channel), enable_(board::PERIPHERAL[channel].ENABLE)
@@ -221,7 +287,14 @@ Motor::Motor(int channel,int motorMin,int motorMax,int motorCenter,int motorFDB,
   disable();
 
   // Attach Servo object to signal pin
-  servo_.attach(board::MOTOR[channel_].SERVO);
+	/* This is commented out to support changes to for BR thrusters
+		 Since velocity now sends 0 when !enabled, when the board boots 
+		 the pin is attached yet and not enabled, which will send a 0 command
+		 and then arm the motors. I think we can also just get rid of that !enabled
+		 statement in velocity since now when its not enabled it detaches that servo pin
+	*/
+  //servo_.attach(board::MOTOR[channel_].SERVO);
+
 }
 
 Motor::~Motor()
@@ -233,6 +306,12 @@ Motor::~Motor()
 
 void Motor::velocity(float velocity)
 {
+	if (!enabled()) //accidently arming boat on start
+		{
+			servo_.writeMicroseconds(motorCenter_);
+			return;
+		}
+	
   if (velocity > 1.0) {
     velocity = 1.0;
   }
@@ -256,8 +335,8 @@ void Motor::velocity(float velocity)
   }
   //float command = (velocity * 200) + 1500; //binding it from 1300 to 1700 because it sounds like there is damage being done at max 1900?
   servo_.writeMicroseconds(command);
-  // printf("velocity is: %d \n",velocity);
-  // printf("command is %d \n",command);
+	// printf("velocity is: %d \n",velocity);
+	// printf("command is %d \n",command);
 }
 
 // Deals with ESC softswitch exclusively
@@ -288,7 +367,7 @@ bool Motor::set(const char *param, const char *value)
     }
 
     desiredVelocity_ = v;
-    
+
     return true;
   }
   // Return false for unknown command.
@@ -308,18 +387,18 @@ void Motor::loop()
 
   float v = (1.0 - VELOCITY_ALPHA) * velocity_ + VELOCITY_ALPHA * desiredVelocity_;
   velocity(v);
-  
+
 }
 
 void Motor::onLoop_(void *data)
-{ 
+{
   // Resolve self-reference and call member function.
   Motor *self = (Motor*)data;
   self->loop();
 }
 
 Sensor::Sensor(int id) : id_(id)
-{  
+{
   // Abstract Class - should not be instantiated
 }
 
@@ -339,13 +418,13 @@ void Sensor::loop()
 }
 
 void Sensor::onLoop_(void *data)
-{ 
+{
   // Resolve self-reference and call member function.
   Sensor *self = (Sensor*)data;
   self->loop();
 }
 
-ExternalSensor::ExternalSensor(int id, int port) : Sensor(id), port_(port) 
+ExternalSensor::ExternalSensor(int id, int port) : Sensor(id), port_(port)
 {
   //Unknown if following code is necessary...
 
@@ -371,18 +450,18 @@ ExternalSensor::ExternalSensor(int id, int port) : Sensor(id), port_(port)
     // Disable half-duplex
     pinMode(board::HALF_DUPLEX01, OUTPUT);
     digitalWrite(board::HALF_DUPLEX01, LOW);
-  } 
-  else 
+  }
+  else
   {
     // Disable half-duplex
     pinMode(board::HALF_DUPLEX23, OUTPUT);
     digitalWrite(board::HALF_DUPLEX23, LOW);
   }
-  
+
   // Disable loopback test
   pinMode(board::LOOPBACK, OUTPUT);
   digitalWrite(board::LOOPBACK, LOW);
-  
+
   // Disable 12V output
   pinMode(board::SENSOR_PORT[port].PWR_ENABLE, OUTPUT);
   digitalWrite(board::SENSOR_PORT[port].PWR_ENABLE, LOW);
@@ -430,7 +509,7 @@ PoweredSensor::PoweredSensor(int id, int port, bool poweredOn)
 {
   //PowerOff to be sure sensor is off
   powerOff();
-  
+
   if (poweredOn){
     powerOn();
   } else {
@@ -464,7 +543,7 @@ bool PoweredSensor::powerOff(){
   }
 }
 
-SerialSensor::SerialSensor(int id, int port, int baud, int type, int dataLength) 
+SerialSensor::SerialSensor(int id, int port, int baud, int type, int dataLength)
   : ExternalSensor(id, port), recv_index_(0), baudRate_(baud), serialType_(type)
 {
   minDataStringLength_ = dataLength;
@@ -473,33 +552,33 @@ SerialSensor::SerialSensor(int id, int port, int baud, int type, int dataLength)
     // Enable RSxxx receiver
     pinMode(board::SENSOR_PORT[port].RX_DISABLE, OUTPUT);
     digitalWrite(board::SENSOR_PORT[port].RX_DISABLE, LOW);
-    
+
     // Enable RSxxx transmitter
     pinMode(board::SENSOR_PORT[port].TX_ENABLE, OUTPUT);
     digitalWrite(board::SENSOR_PORT[port].TX_ENABLE, HIGH);
-    
+
     // Enable RS485 termination resistor
     pinMode(board::SENSOR_PORT[port].RS485_TE, OUTPUT);
     digitalWrite(board::SENSOR_PORT[port].RS485_TE, HIGH);
-    
+
     // Select RS485 (deselect RS232)
     pinMode(board::SENSOR_PORT[port].RS485_232, OUTPUT);
     digitalWrite(board::SENSOR_PORT[port].RS485_232, HIGH);
   }
-  
+
   if (SERIAL_PORTS[port] != nullptr)
   {
     // Register serial event handler
-    SerialHandler_t handler = {SerialSensor::onSerial_, this}; 
+    SerialHandler_t handler = {SerialSensor::onSerial_, this};
     SERIAL_HANDLERS[port] = handler;
-    
+
     SERIAL_PORTS[port]->begin(baud);
   }
 }
 
 void SerialSensor::onSerial(){
   char c = SERIAL_PORTS[port_]->read();
-  
+
   // Ignore null and tab characters
   if (c == '\0' || c == '\t') {
     return;
@@ -525,10 +604,10 @@ void SerialSensor::onSerial(){
                id_,
                this->name(),
                recv_buffer_
-              );
-      send(output_str);  
+        );
+      send(output_str);
     }
-    
+
     memset(recv_buffer_, 0, recv_index_);
     recv_index_ = 0;
   }

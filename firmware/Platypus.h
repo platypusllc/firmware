@@ -13,21 +13,30 @@
  */
 extern void send(char *str);
 
-namespace platypus 
-{  
+namespace platypus
+{
   const int DEFAULT_BUFFER_SIZE = 128;
+
+  typedef enum
+  {
+    /** Board is not armed, hasnt recieved any commands **/
+    STANDBY,
+    /** adk.isready(), there is a USB host present  **/
+    CONNECTED,
+    /** boat is getting and running commands **/
+    ACTIVE
+  } SerialState;
 
   // Main library initialization function.
   void init();
-  
+
   class Configurable
   {
-  public:     
+  public:
     virtual bool set(const char *param, const char *value);
   };
-
-  class Led 
-  { 
+  class Led
+  {
   public:
     Led();
     virtual ~Led();
@@ -38,11 +47,11 @@ namespace platypus
     int G();
     void B(int blue);
     int B();
-    
+
   private:
     Led(const Led&);
     Led& operator=(const Led&);
-    
+
     int r_, g_, b_;
   };
 
@@ -68,9 +77,31 @@ namespace platypus
     const int enable_;
     bool enabled_;
   };
-  
+
+  class EBoard : public Configurable
+  {
+  public:
+    EBoard();
+    virtual ~EBoard();
+    virtual bool set(const char *param, const char* value);
+    virtual void loop();
+    void disarm();
+    void arm();
+    void setState(SerialState state);
+    SerialState getState();
+
+  private:
+    const String applicationName_;
+    const String accessoryName_;
+    const String companyName_;
+    const String versionNumber_;
+    const String serialNumber_;
+    const String url_;
+    SerialState state_ = SerialState::STANDBY;
+  };
+
   class Motor : public Configurable
-  { 
+  {
   public:
     Motor(int channel, int motorMin = 1000, int motorMax = 2000, int motorCenter = 1500, int motorFDB = 25, int motorRDB = -25);
     virtual ~Motor();
@@ -78,17 +109,17 @@ namespace platypus
     virtual void arm() = 0;
     virtual bool set(const char *param, const char *value);
     virtual void loop();
-    
+
     void velocity(float velocity);
     float velocity(){ return velocity_; };
 
     // Enable ESCs (softswitch)
     void enable(bool enabled);
     bool enabled(){ return enabled_; };
-    
-    void enable(){ enable(true); };
-    void disable(){ enable(false); };
-    
+
+    void enable(){ enable(true); servo_.attach(board::MOTOR[channel_].SERVO);};
+    void disable(){ enable(false); servo_.detach();};
+
   private:
     Servo servo_;
     const int channel_;
@@ -96,22 +127,23 @@ namespace platypus
     bool enabled_;
     float velocity_;
     float desiredVelocity_;
+
     int motorMax_; 
     int motorMin_; 
     int motorCenter_;
     int motorFDB_; //motor forward deadband (positive val)
     int motorRDB_; //motor reverse deadband (negative val)
-    
+
   public:
     static void onLoop_(void *data);
   };
-  
+
   class Sensor : public Configurable
   {
   public:
     Sensor(int id);
     virtual ~Sensor();
-    
+
     virtual bool set(const char* param, const char* value);
     virtual char *name() = 0;
     //virtual void onSerial();
@@ -119,7 +151,7 @@ namespace platypus
 
   protected:
     const int id_;
-    
+
   public:
     //static void onSerial_(void *data);
     static void onLoop_(void *data);
@@ -136,27 +168,27 @@ namespace platypus
     const int port_;
 
   };
-  
-  class AnalogSensor : public ExternalSensor 
+
+  class AnalogSensor : public ExternalSensor
   {
   public:
     AnalogSensor(int id, int port);
 
     bool set(const char* param, const char* value);
     virtual char *name() = 0;
-    
+
     void scale(float scale);
     float scale(){ return scale_; };
-    
+
     void offset(float offset);
     float offset(){ return offset_; };
-    
+
   private:
     float scale_;
     float offset_;
   };
-  
-  class PoweredSensor : virtual public ExternalSensor 
+
+  class PoweredSensor : virtual public ExternalSensor
   {
   public:
     PoweredSensor(int id, int port, bool poweredOn=true);
@@ -189,23 +221,24 @@ namespace platypus
     unsigned int recv_index_;
   };
 
-  
+
   extern platypus::Motor *motors[board::NUM_MOTORS];
   extern platypus::Sensor *sensors[board::NUM_SENSORS];
   extern platypus::Peripheral *peripherals[board::NUM_PERIPHERALS];
-  
-    // Callbacks structure for serial events
+  extern platypus::EBoard *eboard;
+
+  // Callbacks structure for serial events
   typedef struct {
     void (*handler)(void *arg);
     void *data;
   } SerialHandler_t;
-  
+
   // Callbacks for serial events
   extern SerialHandler_t SERIAL_HANDLERS[4];
-  
+
   // Array of available serial ports
   extern USARTClass *SERIAL_PORTS[4];
-  
+
   // Helper function to do endian conversion
   uint32_t swap(uint32_t bytes);
 }
