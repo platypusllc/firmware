@@ -455,7 +455,19 @@ SerialSensor::SerialSensor(int id, int port, int baud, int type, int dataLength)
 {
   minDataStringLength_ = dataLength;
 
-  if (type == RS485){
+  if (type == TTL)
+  {
+    pinMode(board::SENSOR_PORT[port].TX_ENABLE, OUTPUT);
+    digitalWrite(board::SENSOR_PORT[port].TX_ENABLE, HIGH);
+
+    pinMode(board::SENSOR_PORT[port].RS485_TE, OUTPUT);
+    digitalWrite(board::SENSOR_PORT[port].RS485_TE, LOW);
+
+    pinMode(board::SENSOR_PORT[port].RS485_232, OUTPUT);
+    digitalWrite(board::SENSOR_PORT[port].RS485_232, HIGH);
+  } 
+  else if (type == RS485)
+  {
     // Enable RSxxx receiver
     pinMode(board::SENSOR_PORT[port].RX_DISABLE, OUTPUT);
     digitalWrite(board::SENSOR_PORT[port].RX_DISABLE, LOW);
