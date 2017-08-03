@@ -146,8 +146,11 @@ bool EBoard::set(const char *param, const char *value)
     } 
     else if (strcmp("Sampler", value) == 0)
     {
-      //sensors::[sensorIdx] = new platypus::JSONPassThrough(sensorIdx);
-      sensors[sensorIdx] = new EmptySensor(sensorIdx);
+      sensors[sensorIdx] = new JSONPassThrough(sensorIdx);
+    } 
+    else if (strcmp("AdafruitGPS", value) == 0)
+    {
+      sensors[sensorIdx] = new AdafruitGPS(sensorIdx);
     } 
     else if (strcmp("Empty", value) == 0)
     {
@@ -395,7 +398,7 @@ void IMU::loop()
 }
 
 AdafruitGPS::AdafruitGPS(int id, int port)
-  : ExternalSensor(id, port), SerialSensor(id, port, 9600, RS232, 0) // Should be TTL here?
+  : ExternalSensor(id, port), SerialSensor(id, port, 9600, TTL, 0)
 {
   // Note: This currently does not work after SerialSensor Init!
 
@@ -407,6 +410,7 @@ AdafruitGPS::AdafruitGPS(int id, int port)
   SERIAL_PORTS[port]->println(PMTK_API_SET_FIX_CTL_5HZ);
   // Set fix rate to 5Hz
   SERIAL_PORTS[port]->println(PMTK_SET_NMEA_UPDATE_5HZ);
+  SERIAL_PORTS[port]->flush();
 }
 
 ServoSensor::ServoSensor(int id, int port) 

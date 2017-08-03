@@ -196,6 +196,7 @@ namespace platypus
   class AdafruitGPS : public SerialSensor
   {
   public:
+    AdafruitGPS(int id) : AdafruitGPS(id, id){};
     AdafruitGPS(int id, int port);
     virtual char *name(){ return "gps"; };
   };
