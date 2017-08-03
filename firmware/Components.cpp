@@ -4,6 +4,30 @@ using namespace platypus;
 
 #define WAIT_FOR_CONDITION(condition, timeout_ms) for (unsigned int j = 0; j < (timeout_ms) && !(condition); ++j) delay(1);
 
+void displaySensorOffsets(const adafruit_bno055_offsets_t &calibData)
+{
+    Serial.print("Accelerometer: ");
+    Serial.print(calibData.accel_offset_x); Serial.print(" ");
+    Serial.print(calibData.accel_offset_y); Serial.print(" ");
+    Serial.print(calibData.accel_offset_z); Serial.print(" ");
+
+    Serial.print("\nGyro: ");
+    Serial.print(calibData.gyro_offset_x); Serial.print(" ");
+    Serial.print(calibData.gyro_offset_y); Serial.print(" ");
+    Serial.print(calibData.gyro_offset_z); Serial.print(" ");
+
+    Serial.print("\nMag: ");
+    Serial.print(calibData.mag_offset_x); Serial.print(" ");
+    Serial.print(calibData.mag_offset_y); Serial.print(" ");
+    Serial.print(calibData.mag_offset_z); Serial.print(" ");
+
+    Serial.print("\nAccel Radius: ");
+    Serial.print(calibData.accel_radius);
+
+    Serial.print("\nMag Radius: ");
+    Serial.print(calibData.mag_radius);
+}
+
 void VaporPro::arm()
 {
   disable();
@@ -75,6 +99,7 @@ void AfroESC::arm()
   disable();
   delay(1000);
   velocity(0.0); //sends it 1500 for arming
+  delay(100);
   enable();
   delay(1000);
 }
@@ -135,44 +160,46 @@ IMU::IMU(int id, int interval)
 
   bno_.getCalibration(&sysCalib_, &gyroCalib_, &accelCalib_, &magCalib_);
 
-
-  /* Want to move this to EEPROM and put int option to recalibrate */
+  /* Need option to recalibrate - Current Values for Portugal */
   adafruit_bno055_offsets_t calib;
-  calib.accel_offset_x = 0;
-  calib.accel_offset_y = 35;
-  calib.accel_offset_z = 24;
-  calib.gyro_offset_x = 65533;
-  calib.gyro_offset_y = 0;
-  calib.gyro_offset_z = 65535;
-  calib.mag_offset_x = 140;
-  calib.mag_offset_y = 65208;
-  calib.mag_offset_z = 173;
+  calib.accel_offset_x = 65527;
+  calib.accel_offset_y = 65450;
+  calib.accel_offset_z = 65498;
+  calib.gyro_offset_x = 65534;
+  calib.gyro_offset_y = 65535;
+  calib.gyro_offset_z = 0;
+  calib.mag_offset_x = 65487;
+  calib.mag_offset_y = 65380;
+  calib.mag_offset_z = 324;
   calib.accel_radius = 1000;
-  calib.mag_radius = 894;
+  calib.mag_radius = 769;
 
   bno_.setSensorOffsets(calib);
+  
   
 
   // Wait until calibration values are within limits
   //while (!bno_.isFullyCalibrated())
-  while (sysCalib_ < 3)
+  // Looser requirement for faster arming. Should pause in server instead
+  while (sysCalib_ < 3 || magCalib_ < 3)
   {
     delay(100);
-    Serial.println(F("Warning: Waiting for IMU to calibrate, please move Boat around"));
-    Serial.println(sysCalib_);
-    Serial.println(magCalib_);
-    Serial.println(accelCalib_);
-    Serial.println(gyroCalib_);
+    //Serial.println(F("Warning: Waiting for IMU to calibrate, please move Boat around"));
+    //Serial.println(sysCalib_);
+    //Serial.println(magCalib_);
+    //Serial.println(accelCalib_);
+    //Serial.println(gyroCalib_);
     bno_.getCalibration(&sysCalib_, &gyroCalib_, &accelCalib_, &magCalib_);
   }
 
 
-  /* Todo: Put in option to recalibrate
-  adafruit_bno055_offsets_t newCalib;
+  //Todo: Put in option to recalibrate
+  //adafruit_bno055_offsets_t newCalib;
 
-  bno_.getSensorOffsets(newCalib);
-  displaySensorOffsets(newCalib);
-  */
+  //bno_.getSensorOffsets(newCalib);
+  //displaySensorOffsets(newCalib);
+  //delay(5000);
+  
 }
 
 char* IMU::name()
@@ -190,12 +217,7 @@ void IMU::loop()
     bno_.getEvent(&event);
     lastMeasurementTime_ = millis();
 
-
-    if (sysCalib_ < 3)
-    {
-      Serial.println("Warning poor IMU calibration");
-    }
-
+    // Todo: return other values from imu as well
     char output_str[DEFAULT_BUFFER_SIZE + 3];
     snprintf(output_str, DEFAULT_BUFFER_SIZE,
              "{"
@@ -217,7 +239,7 @@ void IMU::loop()
 }
 
 AdafruitGPS::AdafruitGPS(int id, int port)
-  : ExternalSensor(id, port), SerialSensor(id, port, 9600, RS232, 0)
+  : ExternalSensor(id, port), SerialSensor(id, port, 9600, RS232, 0) // Should be TTL here?
 {
   // Note: This currently does not work after SerialSensor Init!
 

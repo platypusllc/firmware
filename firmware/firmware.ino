@@ -51,10 +51,10 @@ char output_buffer[OUTPUT_BUFFER_SIZE+3];
 static unsigned long last_command_time = 0;
 static unsigned long time_at_connected = 0;
 
-// Time betweeen commands before we consider the Android
-// server to be unresponsive.
-const size_t RESPONSE_TIMEOUT_MS = 500;
-const size_t CONNECT_STANDBY_TIMEOUT = 1000;
+// Time betweeen commands before we consider the Android/Raspberry PI
+// server to be unresponsive - keep this fairly loose until heartbeat implemented
+const size_t RESPONSE_TIMEOUT_MS = 3000;
+const size_t CONNECT_STANDBY_TIMEOUT = 5000;
 
 // Define the systems on this board
 // TODO: move this board.h?
@@ -202,8 +202,8 @@ void setup()
   // Set ADC Precision:
   analogReadResolution(12);
 
-  /*
-  // Set GPS Settings
+  
+  // Set GPS Settings - This should go in Adafruit GPS sensor init
   Serial1.begin(9600);
   Serial1.setTimeout(250);
   // Set output to RMC only
@@ -214,7 +214,8 @@ void setup()
   // Set fix rate to 5Hz
   Serial1.println(PMTK_SET_NMEA_UPDATE_5HZ);
   Serial1.flush();
-  */
+  
+  
 
   // Initialize EBoard object
   platypus::eboard = new platypus::EBoard();
@@ -228,7 +229,7 @@ void setup()
   platypus::sensors[0] = new platypus::AdafruitGPS(0, 0);
   platypus::sensors[1] = new platypus::AdafruitGPS(1, 1);
   platypus::sensors[2] = new platypus::AdafruitGPS(2, 2);
-  platypus::sensors[3] = new platypus::EmptySensor(3, 3);
+  platypus::sensors[3] = new platypus::EmptySensor(3, 3); // No serial on sensor 3!!!
 
   // Initialize Internal sensors
   platypus::sensors[4] = new platypus::BatterySensor(4);
@@ -252,13 +253,14 @@ void setup()
   platypus::init();
 
   // Print header indicating that board successfully initialized
-
+  /* Make this info requestable from eboard object
   Serial.println(F("------------------------------"));
   Serial.println(companyName);
   Serial.println(url);
   Serial.println(accessoryName);
   Serial.println(versionNumber);
   Serial.println(F("------------------------------"));
+  */
 
   // Turn LED to startup state.
   rgb_led.set(255, 0, 255);
@@ -271,62 +273,24 @@ void loop()
     If the board is in an active state and hasnt recieved a command
     in a while drop it to connected
   */
-	if (millis() - last_command_time >= RESPONSE_TIMEOUT_MS)
-		{
-			/*You were active, didnt send anything for R.TO now youre being kicked down to connected */
-			if (platypus::eboard->getState() == SerialState::ACTIVE)
-				{
-					platypus::eboard->setState(SerialState::CONNECTED);
-					Serial.println("STATE: CONNECTED");
-					yield();
-					return;
-				}
-		}
-	
-	if (millis() - last_command_time >= CONNECT_STANDBY_TIMEOUT)
-	{
-		/*You were in connected without recieving a command for a while  */
-		if (platypus::eboard->getState() == SerialState::CONNECTED)
-		{
-			platypus::eboard->setState(SerialState::STANDBY);
-			Serial.println("STATE: STANDBY");
-		}
-		yield();
-		return;
-	}	
-	/* You were in standby but got a command! bumping you up to connected */
-	else
-	{
-		if (platypus::eboard->getState() == SerialState::STANDBY)
-		{
-			platypus::eboard->setState(SerialState::CONNECTED);
-			Serial.println("STATE: CONNECTED1");
-		}
-	}
+
+  if (platypus::eboard->getState() == SerialState::ACTIVE){
+    if (millis() - last_command_time >= RESPONSE_TIMEOUT_MS){
+      platypus::eboard->setState(SerialState::CONNECTED);
+      //Serial.println("STATE: CONNECTED");
+    }
+  } else if (platypus::eboard->getState() == SerialState::CONNECTED){
+    if (millis() - last_command_time >= CONNECT_STANDBY_TIMEOUT){
+      platypus::eboard->setState(SerialState::STANDBY);
+      //Serial.println("STATE: STANDBY");
+    }
+  } else if (millis() - last_command_time < CONNECT_STANDBY_TIMEOUT){
+    platypus::eboard->setState(SerialState::CONNECTED);
+    //Serial.println("STATE: CONNECTED");
+  }
+
 	yield();
 }
-
-void batteryUpdateLoop()
-{
-  int rawVoltage = analogRead(board::V_BATT);
-  double voltageReading = 0.008879*rawVoltage + 0.09791;
-
-  char output_str[128];
-  snprintf(output_str, 128,
-           "{"
-           "\"s4\":{"
-           "\"type\":\"battery\","
-           "\"data\":\"%.3f %f %f\""
-           "}"
-           "}",
-           voltageReading,
-           platypus::motors[0]->velocity(),
-           platypus::motors[1]->velocity()
-           );
-  send(output_str);
-  yield();
-}
-
 
 /**
  * Periodically sends motor velocity updates.
@@ -363,14 +327,14 @@ void motorUpdateLoop()
     case SerialState::STANDBY:
       // Turn off motors.
       for (size_t motor_idx = 0; motor_idx < board::NUM_MOTORS; ++motor_idx)
+      {
+        platypus::Motor* motor = platypus::motors[motor_idx];
+        if (motor->enabled())
         {
-          platypus::Motor* motor = platypus::motors[motor_idx];
-          if (motor->enabled())
-          {
-            //Serial.print("Disabling motor "); Serial.println(motor_idx);
-            motor->disable();
-          }
+          //Serial.print("Disabling motor "); Serial.println(motor_idx);
+          motor->disable();
         }
+      }
       break;
     case SerialState::CONNECTED:
       // Decay all motors exponentially towards zero speed.
@@ -380,9 +344,6 @@ void motorUpdateLoop()
         motor->set("v", "0.0");
       }
       break;
-      // NOTE: WE DO NOT BREAK OUT OF THE SWITCH HERE!
-      // NOTE: WE DO NOW
-
     case SerialState::ACTIVE:
       // Rearm motors if necessary.
       for (size_t motor_idx = 0; motor_idx < board::NUM_MOTORS; ++motor_idx)
@@ -469,7 +430,7 @@ void ADKLoop()
         if (platypus::eboard->getState() != SerialState::ACTIVE)
         {
           platypus::eboard->setState(SerialState::ACTIVE);
-          Serial.println("STATE: ACTIVE");
+          //Serial.println("STATE: ACTIVE");
         }
         handleCommand(input_buffer);
       }
