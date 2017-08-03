@@ -222,12 +222,29 @@ bool EBoard::set(const char *param, const char *value)
     {
       buffer = url_;
     }
+    else if (strcmp("state",value) == 0)
+    {
+      switch (state_)
+      {
+        case SerialState::ACTIVE:
+          buffer = "active";
+          break;
+        case SerialState::CONNECTED:
+          buffer = "connected";
+          break;
+        case SerialState::STANDBY:
+          buffer = "standby";
+          break;
+        default:
+          buffer = "unknown";
+      }
+    }
     else
     {
       buffer = "Value not found";
     }
     snprintf(output_str,DEFAULT_BUFFER_SIZE,
-             "{\"e\":{\"info:%s\"}}",buffer.c_str());
+             "{\"e\":{\"type\":\"%s\",\"data\":\"%s\"}}", value, buffer.c_str());
     send(output_str);
   }
   else

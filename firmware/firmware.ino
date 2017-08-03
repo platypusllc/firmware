@@ -306,7 +306,7 @@ void motorUpdateLoop()
 
 
   switch (platypus::eboard->getState())
-    {
+  {
     case SerialState::STANDBY:
       // Red pulse
       rgb_led.set(c, 0, 0);
@@ -319,7 +319,7 @@ void motorUpdateLoop()
       // Green pulse
       rgb_led.set(0, c, 0);
       break;
-    }
+  }
 
   // Handle the motors appropriately for each system state.
   switch (platypus::eboard->getState())
