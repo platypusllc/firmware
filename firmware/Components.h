@@ -261,7 +261,17 @@ namespace platypus
     virtual char *name();
     //void onSerial();
   };
-  
+
+  class JSONPassThrough : public SerialSensor, public PoweredSensor
+  {
+  public:
+		JSONPassThrough(int id) : JSONPassThrough(id,id){};
+		JSONPassThrough(int id, int port);
+    bool set(const char * param, const char * value);
+    virtual char * name();
+    void loop();
+    void onSerial();
+  };  
 }
 
 #endif //COMPONENTS_H
