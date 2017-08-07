@@ -971,7 +971,8 @@ char* HDS::name()
   return "hds";
 }
 
-JSONPassThrough::JSONPassThrough(int id, int port):ExternalSensor(id,port),SerialSensor(id, port, 9600,0),PoweredSensor(id,port,true)
+JSONPassThrough::JSONPassThrough(int id, int port)
+  :ExternalSensor(id,port), SerialSensor(id, port, 9600, TTL), PoweredSensor(id,port,true)
 {
 
 }
@@ -985,18 +986,18 @@ void JSONPassThrough::onSerial() {
     return;
   }
   if (c != '\r' && c != '\n' && recv_index_ < DEFAULT_BUFFER_SIZE)
-    {
-      recv_buffer_[recv_index_] = c;
-      ++recv_index_;
-    }
+  {
+    recv_buffer_[recv_index_] = c;
+    ++recv_index_;
+  }
   else if (recv_index_ > 0)
-    {
-      recv_buffer_[recv_index_] = '\0';
-      //Serial.print(String("Raw Sensor Input:") + recv_buffer_);
-      send(recv_buffer_);
-      memset(recv_buffer_, 0, recv_index_);
-      recv_index_ = 0;
-    }
+  {
+    recv_buffer_[recv_index_] = '\0';
+    //Serial.print(String("Raw Sensor Input:") + recv_buffer_);
+    send(recv_buffer_);
+    memset(recv_buffer_, 0, recv_index_);
+    recv_index_ = 0;
+  }
 }
 
 bool JSONPassThrough::set(const char * param, const char * value){
@@ -1015,7 +1016,9 @@ bool JSONPassThrough::set(const char * param, const char * value){
 
 
 char * JSONPassThrough::name() {
+  return "JSON";
 }
+
 void JSONPassThrough::loop(){
 }
 

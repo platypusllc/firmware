@@ -96,12 +96,14 @@ void reportError(const char *error_message, const char *buffer)
 void handleCommand(char *buffer)
 {
 
+  /* Don't need this? SHould be handled below
   if (strcmp(buffer,"arm") == 0)
     {
       Serial.println("Arming eboard");
       platypus::eboard->set("cmd","arm");
       return;
     }
+  */
 
   // Allocate buffer for JSON parsing
   StaticJsonBuffer<200> jsonBuffer;
@@ -205,14 +207,14 @@ void setup()
   platypus::peripherals[1] = new platypus::Peripheral(1, true);
 
   // Initialize External sensors
-  platypus::sensors[0] = new platypus::JSONPassThrough(0, 0);
+  platypus::sensors[0] = new platypus::ServoSensor(0, 0);
   platypus::sensors[1] = new platypus::AdafruitGPS(1, 1);
   platypus::sensors[2] = new platypus::AdafruitGPS(2, 2);
   platypus::sensors[3] = new platypus::EmptySensor(3, 3); // No serial on sensor 3!!!
 
   // Initialize Internal sensors
   platypus::sensors[4] = new platypus::BatterySensor(4);
-  platypus::sensors[5] = new platypus::IMU(5);
+  //platypus::sensors[5] = new platypus::IMU(5);
 
 
   // Initialize motors
@@ -256,16 +258,16 @@ void loop()
   if (platypus::eboard->getState() == SerialState::ACTIVE){
     if (millis() - last_command_time >= RESPONSE_TIMEOUT_MS){
       platypus::eboard->setState(SerialState::CONNECTED);
-      //Serial.println("STATE: CONNECTED");
+      Serial.println("STATE: CONNECTED");
     }
   } else if (platypus::eboard->getState() == SerialState::CONNECTED){
     if (millis() - last_command_time >= CONNECT_STANDBY_TIMEOUT){
       platypus::eboard->setState(SerialState::STANDBY);
-      //Serial.println("STATE: STANDBY");
+      Serial.println("STATE: STANDBY");
     }
   } else if (millis() - last_command_time < CONNECT_STANDBY_TIMEOUT){
     platypus::eboard->setState(SerialState::CONNECTED);
-    //Serial.println("STATE: CONNECTED");
+    Serial.println("STATE: CONNECTED");
   }
 
 	yield();
@@ -409,7 +411,7 @@ void ADKLoop()
         if (platypus::eboard->getState() != SerialState::ACTIVE)
         {
           platypus::eboard->setState(SerialState::ACTIVE);
-          //Serial.println("STATE: ACTIVE");
+          Serial.println("STATE: ACTIVE");
         }
         handleCommand(input_buffer);
       }

@@ -46,13 +46,19 @@ namespace platypus
 
   typedef enum
   {
-    /** Board is not armed, hasnt recieved any commands **/
+    /** Board is not armed, hasn't recieved any commands **/
     STANDBY,
     /** adk.isready(), there is a USB host present  **/
     CONNECTED,
     /** boat is getting and running commands **/
     ACTIVE
   } SerialState;
+
+  typedef enum
+  {
+    DIFFERENTIAL,
+    VECTORED
+  } VehicleType;
 
   typedef enum 
   {
@@ -99,6 +105,7 @@ namespace platypus
     const String serialNumber_;
     const String url_;
     SerialState state_ = SerialState::STANDBY;
+    VehicleType type_ = VehicleType::DIFFERENTIAL;
   };
 
   // ESCs //
