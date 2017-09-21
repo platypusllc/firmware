@@ -93,9 +93,12 @@ void send(char *str)
   // Write string to USB.
   if (adk.isReady()) adk.write(len, (uint8_t*)str);
 
-  // Copy string to debugging console.
-  //Serial.print("-> ");
-  //Serial.print(str);
+  // Copy string to debugging console.  
+  if (str[2] != 'm') // don't print motor commands
+  {
+    Serial.print("-> ");
+    Serial.print(str);
+  }
 }
 
 /**
@@ -444,8 +447,11 @@ void loop()
   input_buffer[bytes_read] = '\0';
 
   // Copy incoming message to debug console.
-  Serial.print("<- ");
-  Serial.println(input_buffer);
+  if (!(input_buffer[12]=='}' && input_buffer[2]=='m')) // don't print pure zero motor commands
+  {
+    Serial.print("<- ");
+    Serial.println(input_buffer);
+  }
 
   // Attempt to parse command
   handleCommand(input_buffer);

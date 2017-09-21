@@ -997,7 +997,7 @@ void JSONPassThrough::onSerial() {
              recv_buffer_
             );
 
-    
+    Serial.print("sampler: "); Serial.println(output_str);
     send(output_str);
     memset(recv_buffer_, 0, recv_index_);
     recv_index_ = 0;
