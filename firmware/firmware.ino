@@ -97,12 +97,12 @@ void handleCommand(char *buffer)
 {
 
   /* Don't need this? SHould be handled below
-  if (strcmp(buffer,"arm") == 0)
-    {
-      Serial.println("Arming eboard");
-      platypus::eboard->set("cmd","arm");
-      return;
-    }
+     if (strcmp(buffer,"arm") == 0)
+     {
+     Serial.println("Arming eboard");
+     platypus::eboard->set("cmd","arm");
+     return;
+     }
   */
 
   // Allocate buffer for JSON parsing
@@ -196,7 +196,7 @@ void setup()
   // Start the system in the disconnected state
 
   // Set ADC Precision:
-  analogReadResolution(12);  
+  analogReadResolution(12);
 
   // Initialize EBoard object
   platypus::eboard = new platypus::EBoard();
@@ -235,12 +235,12 @@ void setup()
 
   // Print header indicating that board successfully initialized
   /* Make this info requestable from eboard object
-  Serial.println(F("------------------------------"));
-  Serial.println(companyName);
-  Serial.println(url);
-  Serial.println(accessoryName);
-  Serial.println(versionNumber);
-  Serial.println(F("------------------------------"));
+     Serial.println(F("------------------------------"));
+     Serial.println(companyName);
+     Serial.println(url);
+     Serial.println(accessoryName);
+     Serial.println(versionNumber);
+     Serial.println(F("------------------------------"));
   */
 
   // Turn LED to startup state.
@@ -270,7 +270,7 @@ void loop()
     Serial.println("STATE: CONNECTED");
   }
 
-	yield();
+  yield();
 }
 
 /**
@@ -287,7 +287,7 @@ void motorUpdateLoop()
 
 
   switch (platypus::eboard->getState())
-  {
+    {
     case SerialState::STANDBY:
       // Red pulse
       rgb_led.set(c, 0, 0);
@@ -300,45 +300,45 @@ void motorUpdateLoop()
       // Green pulse
       rgb_led.set(0, c, 0);
       break;
-  }
+    }
 
   // Handle the motors appropriately for each system state.
   switch (platypus::eboard->getState())
-  {
+    {
     case SerialState::STANDBY:
       // Turn off motors.
       for (size_t motor_idx = 0; motor_idx < board::NUM_MOTORS; ++motor_idx)
-      {
-        platypus::Motor* motor = platypus::motors[motor_idx];
-        if (motor->enabled())
         {
-          //Serial.print("Disabling motor "); Serial.println(motor_idx);
-          motor->disable();
+          platypus::Motor* motor = platypus::motors[motor_idx];
+          if (motor->enabled())
+            {
+              //Serial.print("Disabling motor "); Serial.println(motor_idx);
+              motor->disable();
+            }
         }
-      }
       break;
     case SerialState::CONNECTED:
       // Decay all motors exponentially towards zero speed.
       for (size_t motor_idx = 0; motor_idx < board::NUM_MOTORS; ++motor_idx)
-      {
-        platypus::Motor* motor = platypus::motors[motor_idx];
-        motor->set("v", "0.0");
-      }
+        {
+          platypus::Motor* motor = platypus::motors[motor_idx];
+          motor->set("v", "0.0");
+        }
       break;
     case SerialState::ACTIVE:
       // Rearm motors if necessary.
       for (size_t motor_idx = 0; motor_idx < board::NUM_MOTORS; ++motor_idx)
-      {
-        platypus::Motor* motor = platypus::motors[motor_idx];
-        if (!motor->enabled())
         {
-          //Serial.print("Arming motor "); Serial.print(motor_idx);
-          motor->arm();
-          //Serial.println(F("Motor Armed"));
+          platypus::Motor* motor = platypus::motors[motor_idx];
+          if (!motor->enabled())
+            {
+              //Serial.print("Arming motor "); Serial.print(motor_idx);
+              motor->arm();
+              //Serial.println(F("Motor Armed"));
+            }
         }
-      }
       break;
-  }
+    }
 
   // Send status updates while connected to server.
   if (platypus::eboard->getState() == SerialState::ACTIVE)
@@ -372,7 +372,7 @@ void serialLoop()
   // Wait until characters are received.
   if (Serial.available())
     {
-			last_command_time = millis();
+      last_command_time = millis();
       // Put the new character into the buffer, ignore \n and \r
       char c = Serial.read();
       if (c != '\n' && c != '\r'){
@@ -384,6 +384,19 @@ void serialLoop()
           // Properly null-terminate the buffer.
           debug_buffer[debug_buffer_idx] = '\0';
           debug_buffer_idx = 0;
+
+	  /*Calibration code move this to handleCommand eventually with eboard target */
+          if (strcmp(debug_buffer, "DOc") == 0){
+            platypus::sensors[1]->calibrate(1);
+          } else if (strcmp(debug_buffer, "DOc0") == 0){
+            platypus::sensors[1]->calibrate(0);
+          } else if (strcmp(debug_buffer, "PHcm") == 0){
+            platypus::sensors[2]->calibrate(0.0);
+          } else if (strcmp(debug_buffer, "PHcl") == 0){
+            platypus::sensors[2]->calibrate(-1);
+          } else if (strcmp(debug_buffer, "PHch") == 0){
+            platypus::sensors[2]->calibrate(1);
+          }
           handleCommand(debug_buffer);
         }
     }
@@ -397,24 +410,24 @@ void ADKLoop()
 
   if (adk.isReady())
     {
-			last_command_time = millis();
+      last_command_time = millis();
       adk.read(&bytes_read, INPUT_BUFFER_SIZE, (uint8_t*)input_buffer);
       if (bytes_read <= 0)
-      {
-        yield();
-        return;
-      }
-      else
-      {
-        input_buffer[bytes_read] = '\0';
-
-        if (platypus::eboard->getState() != SerialState::ACTIVE)
         {
-          platypus::eboard->setState(SerialState::ACTIVE);
-          Serial.println("STATE: ACTIVE");
+          yield();
+          return;
         }
-        handleCommand(input_buffer);
-      }
+      else
+        {
+          input_buffer[bytes_read] = '\0';
+
+          if (platypus::eboard->getState() != SerialState::ACTIVE)
+            {
+              platypus::eboard->setState(SerialState::ACTIVE);
+              Serial.println("STATE: ACTIVE");
+            }
+          handleCommand(input_buffer);
+        }
     }
   yield();
 }
