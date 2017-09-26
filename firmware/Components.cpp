@@ -265,7 +265,16 @@ SerialSensor::SerialSensor(int channel, int baudRate, int serialType, int dataSt
     pinMode(board::SENSOR[channel].RS485_232, OUTPUT);
     digitalWrite(board::SENSOR[channel].RS485_232, HIGH);
   }
-  
+  else if (serialType == DIRECT)
+  {
+    //TX signal unable to pass through bypass resistor
+    //Need to enable RS485 driver to succecssfully transmit
+    digitalWrite(board::SENSOR[channel].TX_ENABLE, HIGH);
+    digitalWrite(board::SENSOR[channel].RS485_232, HIGH);
+  }
+  //Short delay allows hardware switching to take place
+  //before configuration signals are sent
+  delay(1);
   SERIAL_PORTS[channel]->begin(baudRate);
 }
 
@@ -953,6 +962,146 @@ uint32_t Winch::encoder(bool *valid)
 {
   uint32_t enc1 = roboclaw_.ReadEncM1(addr, NULL, valid);
   return enc1;
+}
+
+JSONPassThrough::JSONPassThrough(int channel)
+:Sensor(channel),SerialSensor(channel, 9600, DIRECT),PoweredSensor(channel, true)
+{
+  
+}
+
+void JSONPassThrough::onSerial() {
+  
+  char c = SERIAL_PORTS[channel_]->read();
+  
+  // Ignore null and tab characters
+  if (c == '\0' || c == '\t') {
+    return;
+  }
+  if (c != '\r' && c != '\n' && recv_index_ < DEFAULT_BUFFER_SIZE)
+  {
+    recv_buffer_[recv_index_] = c;
+    ++recv_index_;
+  }
+  else if (recv_index_ > 0)
+  {
+    recv_buffer_[recv_index_] = '\0';
+ //   Serial.print(String("Raw Sensor Input:") + recv_buffer_);
+
+  char output_str[DEFAULT_BUFFER_SIZE + 3];
+    snprintf(output_str, DEFAULT_BUFFER_SIZE,
+             "{"
+             "\"grabsampler\":"
+             "%s"
+             "}",
+             recv_buffer_
+            );
+
+    Serial.print("sampler: "); Serial.println(output_str);
+    send(output_str);
+    memset(recv_buffer_, 0, recv_index_);
+    recv_index_ = 0;
+  }       
+}
+
+bool JSONPassThrough::set(const char* param, const char* value){
+    
+    char output_str[DEFAULT_BUFFER_SIZE + 3];
+    snprintf(output_str, DEFAULT_BUFFER_SIZE,
+             "{"
+             "\"%s\":"
+             "%s"
+             "}",
+             param,
+             value
+            );
+    SERIAL_PORTS[channel_]->println(output_str);  
+}
+
+
+char * JSONPassThrough::name() {
+  return "json_pass_through";
+}
+void JSONPassThrough::loop(){
+}
+/*The winch pass through code is the same as the JSON pass through but formats the set command differently */
+//default baud is 9600
+WinchPassThrough::WinchPassThrough(int channel):Sensor(channel),SerialSensor(channel, 9600 , DIRECT)
+{
+  time = millis();
+}
+
+void WinchPassThrough::onSerial() {
+   
+
+  char c = SERIAL_PORTS[channel_]->read();
+
+  // Ignore null and tab characters
+  if (c == '\0' || c == '\t') {
+    return;
+  }
+  if (c != '\r' && c != '\n' && recv_index_ < DEFAULT_BUFFER_SIZE)
+  {
+    recv_buffer_[recv_index_] = c;
+    ++recv_index_;
+  }
+  else if (recv_index_ > 0)
+  {
+    recv_buffer_[recv_index_] = '\0';
+    char output_str[DEFAULT_BUFFER_SIZE + 3];
+    snprintf(output_str, DEFAULT_BUFFER_SIZE,
+	     "{\"winch\":" //change this to winch
+	     "%s"
+	     "}\r",
+    	     recv_buffer_
+            );
+    
+    if (recv_buffer_[0] != '\0'); //dont send empty recieved messages 
+    {
+      send(output_str);
+    }
+    recv_buffer_[0] = '\0';
+
+    memset(recv_buffer_, 0, recv_index_);
+    recv_index_ = 0;
+    
+  }       
+}
+
+bool WinchPassThrough::set(const char* param, const char* value){
+    char output_str[DEFAULT_BUFFER_SIZE + 3];
+    snprintf(output_str, DEFAULT_BUFFER_SIZE,
+             "{"
+             "\"%s\":"
+             "%s"
+             "}\r",
+             param,
+             value
+            );
+   SERIAL_PORTS[channel_]->println(output_str);
+}
+
+
+char * WinchPassThrough::name() {
+  return "winch_pass_through";
+}
+void WinchPassThrough::loop(){
+ if (millis() - time >= 1000)
+ {
+     char output_str[DEFAULT_BUFFER_SIZE + 100];
+     snprintf(output_str, DEFAULT_BUFFER_SIZE,
+             "{"
+             "\"%s\":"
+             "%s"
+             "}\r",
+             "g",
+             "depth"
+            );
+    SERIAL_PORTS[channel_]->println(output_str);
+    time = millis();
+
+ }
+   
 }
 
 RC::RC(int channel) 
