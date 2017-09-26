@@ -217,6 +217,11 @@ void handleCommand(char *buffer)
           platypus::sensors[object_index] = new platypus::ES2(object_index);
           Serial.print("    S"); Serial.print(object_index); Serial.println(" is now ES2");
         }        
+        else if (strcmp(sensor_type, "BlueBox") == 0)
+        {
+          platypus::sensors[object_index] = new platypus::BlueBox(object_index);
+          Serial.print("    S"); Serial.print(object_index); Serial.println(" is now BlueBox");          
+        }
         else if (strcmp(sensor_type, "GY26Compass") == 0)
         {
           platypus::sensors[object_index] = new platypus::GY26Compass(object_index);

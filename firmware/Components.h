@@ -231,6 +231,15 @@ namespace platypus
     void onSerial();
   };
 
+  class BlueBox : public SerialSensor{
+    public:
+    BlueBox(int channel);
+    ~BlueBox();
+    char * name();
+    void loop();
+    void onSerial();
+  };  
+
   class GY26Compass : public SerialSensor
   {
   private:
