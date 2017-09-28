@@ -884,19 +884,26 @@ void BlueBox::onSerial(){
     char c = SERIAL_PORTS[channel_]->read();
   
     // Ignore null and tab characters
-    if (c == '\0' || c == '\t') {
+    if (c == '\0' || c == '\t' || c == 0xB0) { // 0xB0 is the degrees symbol. Not necessary, so just skip it
       return;
     }
     if (c != '\r' && c != '\n' && recv_index_ < DEFAULT_BUFFER_SIZE)
     {
+      if (c == 0xB5) // micro units character. Special ASCII, simplify by substituting in 'u'
+      {
+        c = 'u';
+      }      
+      //Serial.print("BB: "); Serial.println(c);
       recv_buffer_[recv_index_] = c;
+      
       ++recv_index_;
     }
     else if (recv_index_ > 0)
     {
       recv_buffer_[recv_index_] = '\0';
   
-      if (recv_index_ >  minDataStringLength_){
+      if (recv_index_ >  minDataStringLength_)
+      {
         char output_str[DEFAULT_BUFFER_SIZE + 3];
         snprintf(output_str, DEFAULT_BUFFER_SIZE,
                  "{"
@@ -909,6 +916,7 @@ void BlueBox::onSerial(){
                  this->name(),
                  recv_buffer_
                 );
+                
         send(output_str);  
       }
       
