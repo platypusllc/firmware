@@ -870,6 +870,61 @@ void GY26Compass::loop(){
   }
 }
 
+BlueBox::BlueBox(int channel) : Sensor(channel) , SerialSensor(channel, 38400){}
+
+BlueBox::~BlueBox(){}
+
+char * BlueBox::name(){
+  return "bluebox";
+}
+
+void BlueBox::loop(){}
+
+void BlueBox::onSerial(){
+    char c = SERIAL_PORTS[channel_]->read();
+  
+    // Ignore null and tab characters
+    if (c == '\0' || c == '\t' || c == 0xB0) { // 0xB0 is the degrees symbol. Not necessary, so just skip it
+      return;
+    }
+    if (c != '\r' && c != '\n' && recv_index_ < DEFAULT_BUFFER_SIZE)
+    {
+      if (c == 0xB5) // micro units character. Special ASCII, simplify by substituting in 'u'
+      {
+        c = 'u';
+      }      
+      //Serial.print("BB: "); Serial.println(c);
+      recv_buffer_[recv_index_] = c;
+      
+      ++recv_index_;
+    }
+    else if (recv_index_ > 0)
+    {
+      recv_buffer_[recv_index_] = '\0';
+  
+      if (recv_index_ >  minDataStringLength_)
+      {
+        char output_str[DEFAULT_BUFFER_SIZE + 3];
+        snprintf(output_str, DEFAULT_BUFFER_SIZE,
+                 "{"
+                 "\"s%u\":{"
+                 "\"type\":\"%s\","
+                 "\"data\":\"%s\""
+                 "}"
+                 "}",
+                 channel_,
+                 this->name(),
+                 recv_buffer_
+                );
+                
+        send(output_str);  
+      }
+      
+      memset(recv_buffer_, 0, recv_index_);
+      recv_index_ = 0;
+    }
+}
+
 
 HDS::HDS(int channel)
   : Sensor(channel), PoweredSensor(channel, true), SerialSensor(channel, 4800, RS485)
