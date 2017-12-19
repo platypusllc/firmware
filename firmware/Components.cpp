@@ -1022,3 +1022,17 @@ char * JSONPassThrough::name() {
 void JSONPassThrough::loop(){
 }
 
+RC::RC(int id, int port)
+  : Sensor(id),
+    RC_Controller(board::SENSOR_PORT[port].GPIO[board::RX_NEG],
+		  board::SENSOR_PORT[port].GPIO[board::TX_NEG],
+		  board::SENSOR_PORT[port].GPIO[board::RX_POS],
+		  board::SENSOR_PORT[port].GPIO[board::TX_POS])
+{ 
+
+}
+
+char * RC::name()
+{
+  return "RC_Controller";
+}

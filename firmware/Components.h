@@ -5,6 +5,7 @@
 #include <Adafruit_Sensor.h>
 #include <Adafruit_BNO055.h>
 
+#include "RC.h"
 #include "Platypus.h"
 
 #define DEFAULT_BATTERY_INTERVAL 5000
@@ -41,7 +42,7 @@
 // turn off output
 #define PMTK_SET_NMEA_OUTPUT_OFF "$PMTK314,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0*28"
 
-namespace platypus 
+namespace platypus
 {
 
   typedef enum
@@ -60,7 +61,7 @@ namespace platypus
     VECTORED
   } VehicleType;
 
-  typedef enum 
+  typedef enum
   {
     OFF,
     INIT,
@@ -109,48 +110,48 @@ namespace platypus
   };
 
   // ESCs //
-  class VaporPro : public Motor 
+  class VaporPro : public Motor
   {
   public:
-    VaporPro(int channel) : Motor(channel) {}
+  VaporPro(int channel) : Motor(channel) {}
     void arm();
   };
 
-  class HobbyKingBoat : public Motor 
+  class HobbyKingBoat : public Motor
   {
   public:
-    HobbyKingBoat(int channel) : Motor(channel) {}
-    void arm();
-  };
-  
-  class Seaking : public Motor 
-  {
-  public:
-    Seaking(int channel) : Motor(channel) {}
+  HobbyKingBoat(int channel) : Motor(channel) {}
     void arm();
   };
 
-  class Swordfish : public Motor 
+  class Seaking : public Motor
   {
   public:
-    Swordfish(int channel) : Motor(channel) {}
+  Seaking(int channel) : Motor(channel) {}
     void arm();
   };
 
-  class Dynamite : public Motor 
+  class Swordfish : public Motor
+  {
+  public:
+  Swordfish(int channel) : Motor(channel) {}
+    void arm();
+  };
+
+  class Dynamite : public Motor
   {
   public:
     // Motor Deadband range is *approx* 1425 to 1530
-    Dynamite(int channel) : Motor(channel, 1000, 2000, 1500, 30, -75) {}
+  Dynamite(int channel) : Motor(channel, 1000, 2000, 1500, 30, -75) {}
     void arm();
   };
-    
+
   class AfroESC : public Motor
   {
   public:
     // Motor range is 1100 to 1900
     // Motor deadband is 1475 to 1525
-    AfroESC(int channel) : Motor(channel, 1100, 1900, 1500, 25, -25) {}
+  AfroESC(int channel) : Motor(channel, 1100, 1900, 1500, 25, -25) {}
     void arm();
   };
 
@@ -188,14 +189,14 @@ namespace platypus
     uint8_t accelCalib_;
     uint8_t magCalib_;
   };
-  
+
   // External Sensors //
   class EmptySensor :  public ExternalSensor
   {
-  // Empty Sensor placeholder representing a non-connected port
+    // Empty Sensor placeholder representing a non-connected port
   public:
-    EmptySensor(int id) : EmptySensor(id, id){};
-    EmptySensor(int id, int port) : ExternalSensor(id, port){};
+  EmptySensor(int id) : EmptySensor(id, id){};
+  EmptySensor(int id, int port) : ExternalSensor(id, port){};
 
     virtual char *name(){ return "empty"; };
   };
@@ -203,24 +204,24 @@ namespace platypus
   class AdafruitGPS : public SerialSensor
   {
   public:
-    AdafruitGPS(int id) : AdafruitGPS(id, id){};
+  AdafruitGPS(int id) : AdafruitGPS(id, id){};
     AdafruitGPS(int id, int port);
     virtual char *name(){ return "gps"; };
   };
 
-  class ServoSensor : public ExternalSensor 
+  class ServoSensor : public ExternalSensor
   {
   public:
-    ServoSensor(int id) : ServoSensor(id, id){};
+  ServoSensor(int id) : ServoSensor(id, id){};
     ServoSensor(int id, int port);
     ~ServoSensor();
 
     bool set(const char* param, const char* value);
     virtual char *name();
-    
+
     void position(float velocity);
     float position(){ return position_; };
-    
+
   private:
     Servo servo_;
     float position_;
@@ -229,7 +230,7 @@ namespace platypus
   class ES2 : public PoweredSensor, public SerialSensor
   {
   public:
-    ES2(int id) : ES2(id, id){};
+  ES2(int id) : ES2(id, id){};
     ES2(int id, int port, int inteval = DEFAULT_ES2_INTERVAL);
     virtual char *name();
     void loop();
@@ -240,11 +241,11 @@ namespace platypus
     const int interval_;
     const int minReadTime_;
   };
-  
+
   class AtlasPH : public SerialSensor
   {
   public:
-    AtlasPH(int id) : AtlasPH(id, id){};
+  AtlasPH(int id) : AtlasPH(id, id){};
     AtlasPH(int id, int port, int interval = DEFAULT_ATLAS_INTERVAL);
     bool set(const char * param, const char * value);
     virtual char * name();
@@ -266,9 +267,9 @@ namespace platypus
   };
 
   class AtlasDO : public SerialSensor
-  {    
+  {
   public:
-    AtlasDO(int id) : AtlasDO(id, id){};
+  AtlasDO(int id) : AtlasDO(id, id){};
     AtlasDO(int id, int port, int interval = DEFAULT_ATLAS_INTERVAL);
     bool set(const char * param, const char * value);
     virtual char * name();
@@ -292,11 +293,11 @@ namespace platypus
     void sendCommand();
 
   };
-  
+
   class HDS : public PoweredSensor, public SerialSensor
   {
   public:
-    HDS(int id) : HDS(id, id){};
+  HDS(int id) : HDS(id, id){};
     HDS(int id, int port);
     virtual char *name();
     //void onSerial();
@@ -305,16 +306,29 @@ namespace platypus
   class JSONPassThrough : public SerialSensor, public PoweredSensor
   {
   public:
-		JSONPassThrough(int id) : JSONPassThrough(id,id){};
-		JSONPassThrough(int id, int port);
+  JSONPassThrough(int id) : JSONPassThrough(id,id){};
+    JSONPassThrough(int id, int port);
     bool set(const char * param, const char * value);
     virtual char * name();
     void loop();
     void onSerial();
-  };  
+  };
+
+  class RC : public Sensor, public RC_Controller
+  {
+  public:
+    RC(int id, int port);
+    char *name();
+  };
+
+
+
 
   extern platypus::EBoard *eboard;
 
 }
+
+
+
 
 #endif //COMPONENTS_H

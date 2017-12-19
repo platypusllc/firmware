@@ -284,6 +284,33 @@ bool Motor::set(const char *param, const char *value)
   }
 }
 
+bool Motor::set(const char *param, const float value)
+{
+  // Set motor velocity.
+  if (!strncmp("v", param, 2))
+  {
+    float v = value;
+
+    // Cap velocity command to between -1.0 and 1.0
+    if (v > 1.0) {
+      v = 1.0;
+    }
+    else if (v < -1.0) {
+      v = -1.0;
+    }
+
+    desiredVelocity_ = v;
+
+    return true;
+  }
+  // Return false for unknown command.
+  else
+  {
+    return false;
+  }
+}
+
+
 void Motor::loop()
 {
   // At the desired velocity - Do nothing

@@ -30,6 +30,9 @@ char url[] = "http://senseplatypus.com";
 char firmwareVersion[] = "4.2.0";
 char boardVersion[] = "4.2.0";
 
+//pRC Controller handle
+RC_Controller * pRC = NULL;
+
 // ADK USB Host
 USBHost Usb;
 ADK adk(&Usb, companyName, applicationName, accessoryName, versionNumber, url, serialNumber);
@@ -53,6 +56,41 @@ const size_t CONNECT_STANDBY_TIMEOUT = 5000;
 // Define the systems on this board
 // TODO: move this board.h?
 platypus::Led rgb_led;
+
+void enabledListener()
+{
+  if(pRC != NULL)
+    {
+      pRC->update();
+
+      delay(200);
+      if(pRC->isOverrideEnabled())
+        {
+          rgb_led.set(1, 1, 0);
+          if(!platypus::motors[0]->enabled()) platypus::motors[0]->enable();
+          if(!platypus::motors[1]->enabled()) platypus::motors[1]->enable();
+
+
+          platypus::motors[0]->set("v",pRC->leftVelocity());
+          platypus::motors[1]->set("v",pRC->rightVelocity());
+
+          //Serial.println(String("LV: ") + pRC->leftVelocity() + ", " + platypus::motors[0]->velocity());
+          //Serial.println(String("RV: ") + pRC->rightVelocity()+ ", " + platypus::motors[1]->velocity());
+        }
+
+      Serial.println(String("arming:   ") + pRC->armingVal());
+      Serial.println(String("aux:      ") + pRC->auxVal());
+      Serial.println(String("rudder:   ") + pRC->rudderVal());
+      Serial.println(String("throttle: ") + pRC->throttleVal());
+      //*/
+    }
+  yield();
+}
+
+
+
+
+
 
 /**
  * Wrapper for ADK send command that copies data to debug port.
@@ -97,12 +135,12 @@ void handleCommand(char *buffer)
 {
 
   /* Don't need this? SHould be handled below
-  if (strcmp(buffer,"arm") == 0)
-    {
-      Serial.println("Arming eboard");
-      platypus::eboard->set("cmd","arm");
-      return;
-    }
+     if (strcmp(buffer,"arm") == 0)
+     {
+     Serial.println("Arming eboard");
+     platypus::eboard->set("cmd","arm");
+     return;
+     }
   */
 
   // Allocate buffer for JSON parsing
@@ -129,6 +167,15 @@ void handleCommand(char *buffer)
       // Determine target object
       switch (key[0]){
       case 'm': // Motor command
+
+
+        //pRC is attached and the override is set
+        //ignore any motor commands sent by server
+        if( pRC != NULL && pRC->isOverrideEnabled() )
+          return;
+
+
+
         object_index = key[1] - '0';
 
         if (object_index >= board::NUM_MOTORS){
@@ -196,7 +243,7 @@ void setup()
   // Start the system in the disconnected state
 
   // Set ADC Precision:
-  analogReadResolution(12);  
+  analogReadResolution(12);
 
   // Initialize EBoard object
   platypus::eboard = new platypus::EBoard();
@@ -209,12 +256,16 @@ void setup()
   // Initialize External sensors
   platypus::sensors[0] = new platypus::ServoSensor(0, 0);
   platypus::sensors[1] = new platypus::AdafruitGPS(1, 1);
-  platypus::sensors[2] = new platypus::AdafruitGPS(2, 2);
+  platypus::sensors[2] = new platypus::RC(2, 2);
   platypus::sensors[3] = new platypus::EmptySensor(3, 3); // No serial on sensor 3!!!
 
   // Initialize Internal sensors
   platypus::sensors[4] = new platypus::BatterySensor(4);
   //platypus::sensors[5] = new platypus::IMU(5);
+
+  // RC
+  pRC = (platypus::RC *)platypus::sensors[2];
+  Scheduler.startLoop(enabledListener);
 
 
   // Initialize motors
@@ -235,12 +286,12 @@ void setup()
 
   // Print header indicating that board successfully initialized
   /* Make this info requestable from eboard object
-  Serial.println(F("------------------------------"));
-  Serial.println(companyName);
-  Serial.println(url);
-  Serial.println(accessoryName);
-  Serial.println(versionNumber);
-  Serial.println(F("------------------------------"));
+     Serial.println(F("------------------------------"));
+     Serial.println(companyName);
+     Serial.println(url);
+     Serial.println(accessoryName);
+     Serial.println(versionNumber);
+     Serial.println(F("------------------------------"));
   */
 
   // Turn LED to startup state.
@@ -270,7 +321,7 @@ void loop()
     Serial.println("STATE: CONNECTED");
   }
 
-	yield();
+  yield();
 }
 
 /**
@@ -278,6 +329,18 @@ void loop()
  */
 void motorUpdateLoop()
 {
+
+  if(pRC != NULL)
+    {
+      while(pRC->isOverrideEnabled())
+        {
+          pRC->setMotorUpdateBlocked(true);
+          yield();
+        }
+      pRC->setMotorUpdateBlocked(false);
+    }
+
+
   // Wait for a fixed time period.
   delay(100);
 
@@ -287,7 +350,7 @@ void motorUpdateLoop()
 
 
   switch (platypus::eboard->getState())
-  {
+    {
     case SerialState::STANDBY:
       // Red pulse
       rgb_led.set(c, 0, 0);
@@ -300,45 +363,45 @@ void motorUpdateLoop()
       // Green pulse
       rgb_led.set(0, c, 0);
       break;
-  }
+    }
 
   // Handle the motors appropriately for each system state.
   switch (platypus::eboard->getState())
-  {
+    {
     case SerialState::STANDBY:
       // Turn off motors.
       for (size_t motor_idx = 0; motor_idx < board::NUM_MOTORS; ++motor_idx)
-      {
-        platypus::Motor* motor = platypus::motors[motor_idx];
-        if (motor->enabled())
         {
-          //Serial.print("Disabling motor "); Serial.println(motor_idx);
-          motor->disable();
+          platypus::Motor* motor = platypus::motors[motor_idx];
+          if (motor->enabled())
+            {
+              //Serial.print("Disabling motor "); Serial.println(motor_idx);
+              motor->disable();
+            }
         }
-      }
       break;
     case SerialState::CONNECTED:
       // Decay all motors exponentially towards zero speed.
       for (size_t motor_idx = 0; motor_idx < board::NUM_MOTORS; ++motor_idx)
-      {
-        platypus::Motor* motor = platypus::motors[motor_idx];
-        motor->set("v", "0.0");
-      }
+        {
+          platypus::Motor* motor = platypus::motors[motor_idx];
+          motor->set("v", "0.0");
+        }
       break;
     case SerialState::ACTIVE:
       // Rearm motors if necessary.
       for (size_t motor_idx = 0; motor_idx < board::NUM_MOTORS; ++motor_idx)
-      {
-        platypus::Motor* motor = platypus::motors[motor_idx];
-        if (!motor->enabled())
         {
-          //Serial.print("Arming motor "); Serial.print(motor_idx);
-          motor->arm();
-          //Serial.println(F("Motor Armed"));
+          platypus::Motor* motor = platypus::motors[motor_idx];
+          if (!motor->enabled())
+            {
+              //Serial.print("Arming motor "); Serial.print(motor_idx);
+              motor->arm();
+              //Serial.println(F("Motor Armed"));
+            }
         }
-      }
       break;
-  }
+    }
 
   // Send status updates while connected to server.
   if (platypus::eboard->getState() == SerialState::ACTIVE)
@@ -372,7 +435,7 @@ void serialLoop()
   // Wait until characters are received.
   if (Serial.available())
     {
-			last_command_time = millis();
+      last_command_time = millis();
       // Put the new character into the buffer, ignore \n and \r
       char c = Serial.read();
       if (c != '\n' && c != '\r'){
@@ -397,24 +460,24 @@ void ADKLoop()
 
   if (adk.isReady())
     {
-			last_command_time = millis();
+      last_command_time = millis();
       adk.read(&bytes_read, INPUT_BUFFER_SIZE, (uint8_t*)input_buffer);
       if (bytes_read <= 0)
-      {
-        yield();
-        return;
-      }
-      else
-      {
-        input_buffer[bytes_read] = '\0';
-
-        if (platypus::eboard->getState() != SerialState::ACTIVE)
         {
-          platypus::eboard->setState(SerialState::ACTIVE);
-          Serial.println("STATE: ACTIVE");
+          yield();
+          return;
         }
-        handleCommand(input_buffer);
-      }
+      else
+        {
+          input_buffer[bytes_read] = '\0';
+
+          if (platypus::eboard->getState() != SerialState::ACTIVE)
+            {
+              platypus::eboard->setState(SerialState::ACTIVE);
+              Serial.println("STATE: ACTIVE");
+            }
+          handleCommand(input_buffer);
+        }
     }
   yield();
 }
