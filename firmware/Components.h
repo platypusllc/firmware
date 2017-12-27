@@ -76,6 +76,7 @@ namespace platypus
     GET_CALIB, // Get calibration status
     CALIB_ATM, // Atlas DO: Calibrate to atmospheric oxygen levels
     CALIB_ZERO, // Atlas DO: Calibrate to 0 dissolved oxygen
+    FACTORY_RESET, // Atlas DO: Calibrate to 0 dissolved oxygen
     CALIB_LOW, // Atlas pH: Lowpoint Calibration
     CALIB_MID, // Atlas pH: Midpoint Calibration
     CALIB_HIGH,// Atlas pH: Highpoint Calibration

@@ -385,17 +385,21 @@ void serialLoop()
           debug_buffer[debug_buffer_idx] = '\0';
           debug_buffer_idx = 0;
 
-	  /*Calibration code move this to handleCommand eventually with eboard target */
+	        /*Calibration code move this to handleCommand eventually with eboard target */
           if (strcmp(debug_buffer, "DOc") == 0){
             platypus::sensors[1]->calibrate(1);
           } else if (strcmp(debug_buffer, "DOc0") == 0){
             platypus::sensors[1]->calibrate(0);
+          } else if (strcmp(debug_buffer, "DOf") == 0){ // factory reset
+            platypus::sensors[1]->calibrate(2);
           } else if (strcmp(debug_buffer, "PHcm") == 0){
             platypus::sensors[2]->calibrate(0.0);
           } else if (strcmp(debug_buffer, "PHcl") == 0){
             platypus::sensors[2]->calibrate(-1);
           } else if (strcmp(debug_buffer, "PHch") == 0){
             platypus::sensors[2]->calibrate(1);
+          } else if (strcmp(debug_buffer, "PHf") == 0){
+            platypus::sensors[2]->calibrate(2);
           }
           handleCommand(debug_buffer);
         }
