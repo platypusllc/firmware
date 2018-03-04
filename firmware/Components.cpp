@@ -2,6 +2,8 @@
 
 using namespace platypus;
 
+platypus::EBoard *platypus::eboard;
+
 #define WAIT_FOR_CONDITION(condition, timeout_ms) for (unsigned int j = 0; j < (timeout_ms) && !(condition); ++j) delay(1);
 
 void displaySensorOffsets(const adafruit_bno055_offsets_t &calibData)
@@ -27,6 +29,163 @@ void displaySensorOffsets(const adafruit_bno055_offsets_t &calibData)
     Serial.print("\nMag Radius: ");
     Serial.print(calibData.mag_radius);
 }
+
+
+/*Make adk init use this not hard coded values at top of firmware*/
+EBoard::EBoard()
+  : applicationName_("Platypus Server"), accessoryName_("Platypus Control Board"), companyName_("Platypus LLC"), versionNumber_("3"), serialNumber_("3"), url_("http://senseplatypus.com")
+{
+
+}
+void EBoard::setState(SerialState state)
+{
+  state_ = state;
+}
+SerialState EBoard::getState()
+{
+  return state_;
+}
+EBoard::~EBoard()
+{
+}
+bool EBoard::set(const char *param, const char *value)
+{
+  if (strcmp("cmd",param) == 0)
+  {
+    if (strcmp("arm",value) == 0)
+    {
+      Serial.println("Arming Boat");
+      state_ = SerialState::ACTIVE;
+      Serial.println("STATE: ACTIVE");
+    }
+    else if (strcmp("disarm",value) == 0)
+    {
+      Serial.println("Disarming Boat");
+      state_ = SerialState::CONNECTED;
+      Serial.println("STATE: CONNECTED");
+    }
+  }
+  else if (strcmp("info",param) == 0)
+  {
+    char output_str[DEFAULT_BUFFER_SIZE];
+    String buffer;
+    if (strcmp("appName",value) == 0)
+    {
+      buffer = applicationName_;
+    }
+    else if (strcmp("accName",value) == 0)
+    {
+      buffer = accessoryName_;
+    }
+    else if (strcmp("cmpName",value) == 0)
+    {
+      buffer = companyName_;
+    }
+    else if (strcmp("vNum",value) == 0)
+    {
+      buffer = versionNumber_;
+    }
+    else if (strcmp("sNum",value) == 0)
+    {
+      buffer = serialNumber_;
+    }
+    else if (strcmp("url",value) == 0)
+    {
+      buffer = url_;
+    }
+    else if (strcmp("state",value) == 0)
+    {
+      switch (state_)
+      {
+        case SerialState::ACTIVE:
+          buffer = "active";
+          break;
+        case SerialState::CONNECTED:
+          buffer = "connected";
+          break;
+        case SerialState::STANDBY:
+          buffer = "standby";
+          break;
+        default:
+          buffer = "unknown";
+      }
+    }
+    else
+    {
+      buffer = "Unknown Command";
+    }
+    snprintf(output_str,DEFAULT_BUFFER_SIZE,
+             "{\"e\":{\"type\":\"%s\",\"data\":\"%s\"}}", value, buffer.c_str());
+    send(output_str);
+  } 
+  else if (param[0] == 's')
+  {
+    int sensorIdx = param[1] - '0';
+    if (sensorIdx >= board::NUM_SENSOR_PORTS){
+      // Target port out of range
+      //Serial.println("Target Port out of range");
+      return false;
+    }
+    Sensor *sensor = sensors[sensorIdx];
+
+    if (strcmp("AtlasDO", value) == 0)
+    {
+      sensors[sensorIdx] = new AtlasDO(sensorIdx);
+    }
+    else if (strcmp("AtlasPH", value) == 0)
+    {
+      sensors[sensorIdx] = new AtlasPH(sensorIdx);
+    } 
+    else if (strcmp("ES2", value) == 0)
+    {
+      sensors[sensorIdx] = new ES2(sensorIdx);
+    } 
+    else if (strcmp("HDS", value) == 0)
+    {
+      sensors[sensorIdx] = new HDS(sensorIdx);
+    } 
+    else if (strcmp("Sampler", value) == 0)
+    {
+      sensors[sensorIdx] = new JSONPassThrough(sensorIdx);
+    } 
+    else if (strcmp("AdafruitGPS", value) == 0)
+    {
+      sensors[sensorIdx] = new AdafruitGPS(sensorIdx);
+    } 
+    else if (strcmp("Empty", value) == 0)
+    {
+      sensors[sensorIdx] = new EmptySensor(sensorIdx);
+    } 
+    else 
+    {
+      // Unsupported sensor
+      //Serial.println("Unsupported Sensor");
+      return false;
+    }
+
+    // Free old sensor
+    delete sensor;
+  }
+  else
+  {
+    return false;
+  }
+  return true;
+}
+
+void EBoard::loop()
+{
+  //loop not implemented into scheduler yet
+}
+
+// void EBoard::disarm()
+// {
+//  state = SerialState::CONNECTED;
+// }
+// void EBoard::arm()
+// {
+//  serial_state == SerialState::ACTIVE;
+// }
 
 void VaporPro::arm()
 {
@@ -239,7 +398,7 @@ void IMU::loop()
 }
 
 AdafruitGPS::AdafruitGPS(int id, int port)
-  : ExternalSensor(id, port), SerialSensor(id, port, 9600, RS232, 0) // Should be TTL here?
+  : ExternalSensor(id, port), SerialSensor(id, port, 9600, TTL, 0)
 {
   // Note: This currently does not work after SerialSensor Init!
 
@@ -251,6 +410,7 @@ AdafruitGPS::AdafruitGPS(int id, int port)
   SERIAL_PORTS[port]->println(PMTK_API_SET_FIX_CTL_5HZ);
   // Set fix rate to 5Hz
   SERIAL_PORTS[port]->println(PMTK_SET_NMEA_UPDATE_5HZ);
+  SERIAL_PORTS[port]->flush();
 }
 
 ServoSensor::ServoSensor(int id, int port) 
@@ -406,7 +566,10 @@ void AtlasPH::setTemp(double temp) {
 }
 
 void AtlasPH::calibrate(int flag){
-  if (flag < 0){
+  if (flag == 2){
+    //reset to factory defaults
+    lastCommand_ = FACTORY_RESET;
+  } else if (flag < 0){
     //calibrate lowpoint
     lastCommand_ = CALIB_LOW;
   } else if (flag > 0){
@@ -446,6 +609,11 @@ void AtlasPH::sendCommand(){
     SERIAL_PORTS[port_]->print("\r");
     break;
 
+  case FACTORY_RESET:
+    Serial.println(F("Reset pH probe to Factory Settings"));
+    SERIAL_PORTS[port_]->print("Factory\r");
+    break;
+    
   case CALIB_LOW:
     Serial.println(F("Calibrate pH probe lowpoint"));
     SERIAL_PORTS[port_]->print("Cal,low,4.00\r");
@@ -465,18 +633,23 @@ void AtlasPH::sendCommand(){
 
 void AtlasPH::onSerial(){
   char c = SERIAL_PORTS[port_]->read();
+
+  //Serial.println(F("On Serial called"));
   
   // Ignore null and tab characters
   if (c == '\0' || c == '\t') {
+    //Serial.println(F("Ignore null & tab"));
     return;
   }
   if (c != '\r' && c != '\n' && recv_index_ < DEFAULT_BUFFER_SIZE)
   {
+    //Serial.println("added character: " + String(c));
     recv_buffer_[recv_index_] = c;
     ++recv_index_;
   }
   else if (recv_index_ > 0)
   {
+    //Serial.println("recv index > 0: " + recv_index_);
     recv_buffer_[recv_index_] = '\0';
 
     //Serial.print("Raw Sensor Input: ");
@@ -493,7 +666,7 @@ void AtlasPH::onSerial(){
       } else if (!strcmp(recv_buffer_, "*OK")){
         //Serial.println("OK Confirmation Response Received");
         
-        if (lastCommand_ == CALIB_MID || lastCommand_ == CALIB_LOW || lastCommand_ == CALIB_HIGH){
+        if (lastCommand_ == CALIB_MID || lastCommand_ == CALIB_LOW || lastCommand_ == CALIB_HIGH || lastCommand_ == FACTORY_RESET){
           lastCommand_ = GET_CALIB;
           this->sendCommand();
           //lastCommand = NONE;
@@ -612,8 +785,10 @@ void AtlasDO::calibrate(int flag){
   if (flag == 0){
     //calib 0 solution
     lastCommand_ = CALIB_ZERO;
-  } else {
+  } else if (flag == 1){
     lastCommand_ = CALIB_ATM;
+  } else if (flag == 2){
+    lastCommand_ = FACTORY_RESET;
   }
 
   this->sendCommand();
@@ -663,6 +838,11 @@ void AtlasDO::sendCommand(){
   case CALIB_ZERO:
     Serial.println(F("Calibrate DO probe to 0"));
     SERIAL_PORTS[port_]->print("Cal,0\r");
+    break;
+
+  case FACTORY_RESET:
+    Serial.println(F("Reset DO probe to factory default settings & cal"));
+    SERIAL_PORTS[port_]->print("Factory\r");
     break;
 
   }
@@ -737,7 +917,7 @@ void AtlasDO::onSerial(){
       } else if (!strcmp(recv_buffer_, "*OK")){
         //Serial.println("OK Confirmation Response Received");
         
-        if (lastCommand_ == CALIB_ATM || lastCommand_ == CALIB_ZERO){
+        if (lastCommand_ == CALIB_ATM || lastCommand_ == CALIB_ZERO || lastCommand_ == FACTORY_RESET){
           lastCommand_ = GET_CALIB;
           this->sendCommand();
           //state = IDLE;
@@ -811,7 +991,8 @@ char* HDS::name()
   return "hds";
 }
 
-JSONPassThrough::JSONPassThrough(int id, int port):ExternalSensor(id,port),SerialSensor(id, port, 9600,0),PoweredSensor(id,port,true)
+JSONPassThrough::JSONPassThrough(int id, int port)
+  :ExternalSensor(id,port), SerialSensor(id, port, 9600, TTL), PoweredSensor(id,port,true)
 {
 
 }
@@ -825,18 +1006,18 @@ void JSONPassThrough::onSerial() {
     return;
   }
   if (c != '\r' && c != '\n' && recv_index_ < DEFAULT_BUFFER_SIZE)
-    {
-      recv_buffer_[recv_index_] = c;
-      ++recv_index_;
-    }
+  {
+    recv_buffer_[recv_index_] = c;
+    ++recv_index_;
+  }
   else if (recv_index_ > 0)
-    {
-      recv_buffer_[recv_index_] = '\0';
-      //Serial.print(String("Raw Sensor Input:") + recv_buffer_);
-      send(recv_buffer_);
-      memset(recv_buffer_, 0, recv_index_);
-      recv_index_ = 0;
-    }
+  {
+    recv_buffer_[recv_index_] = '\0';
+    //Serial.print(String("Raw Sensor Input:") + recv_buffer_);
+    send(recv_buffer_);
+    memset(recv_buffer_, 0, recv_index_);
+    recv_index_ = 0;
+  }
 }
 
 bool JSONPassThrough::set(const char * param, const char * value){
@@ -855,7 +1036,9 @@ bool JSONPassThrough::set(const char * param, const char * value){
 
 
 char * JSONPassThrough::name() {
+  return "JSON";
 }
+
 void JSONPassThrough::loop(){
 }
 
