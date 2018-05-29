@@ -207,9 +207,9 @@ void setup()
   platypus::peripherals[1] = new platypus::Peripheral(1, true);
 
   // Initialize External sensors
-  platypus::sensors[0] = new platypus::ServoSensor(0, 0);
-  platypus::sensors[1] = new platypus::AdafruitGPS(1, 1);
-  platypus::sensors[2] = new platypus::AdafruitGPS(2, 2);
+  platypus::sensors[0] = new platypus::ES2(0, 0);
+  platypus::sensors[1] = new platypus::AtlasDO(1, 1);
+  platypus::sensors[2] = new platypus::AtlasPH(2, 2);
   platypus::sensors[3] = new platypus::EmptySensor(3, 3); // No serial on sensor 3!!!
 
   // Initialize Internal sensors
@@ -218,8 +218,8 @@ void setup()
 
 
   // Initialize motors
-  platypus::motors[0] = new platypus::AfroESC(0);
-  platypus::motors[1] = new platypus::AfroESC(1);
+  platypus::motors[0] = new platypus::Dynamite(0);
+  platypus::motors[1] = new platypus::Dynamite(1);
 
   // Make the ADK buffers into null terminated string.
   debug_buffer[INPUT_BUFFER_SIZE] = '\0';

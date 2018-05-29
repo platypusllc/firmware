@@ -139,7 +139,11 @@ bool EBoard::set(const char *param, const char *value)
     else if (strcmp("ES2", value) == 0)
     {
       sensors[sensorIdx] = new ES2(sensorIdx);
-    } 
+    }
+    else if (strcmp("ADS1X15", value) == 0)
+    {
+      sensors[sensorIdx] = new ADS1X15(sensorIdx);
+    }
     else if (strcmp("HDS", value) == 0)
     {
       sensors[sensorIdx] = new HDS(sensorIdx);
@@ -496,6 +500,92 @@ void ES2::loop()
   
 }
 
+ADS1X15::ADS1X15(int id, int port, int signalCount, adsGain_t gain, int interval)
+  : ExternalSensor(id, port), PoweredSensor(id, port, true), SerialSensor(id, port, 3300, TTL), interval_(interval), signalCount_(signalCount), gain_(gain), ads(0x48)
+{
+  lastMeasurementTime_ = 0;
+  state_ = INIT;
+
+  ads.setGain(gain_);
+
+  for (int i=0; i < 4; ++i)
+  {
+    lastVoltagesRead_[i] = NAN;
+  }
+
+  ads.begin();
+}
+
+char* ADS1X15::name()
+{
+  return "ADS1X15";
+}
+
+void ADS1X15::loop()
+{
+  switch (state_){
+  // Initializing calibration status from sensor config
+  case INIT:
+    ads.setGain(gain_);
+    state_ = IDLE;
+    break;
+
+  // Sensor Idle, waiting to poll
+  case IDLE:
+    if (millis() - lastMeasurementTime_ > interval_){
+      for (int i = 0; i < signalCount_; ++i){
+        int16_t value = ads.readADC_SingleEnded(i);
+        lastValuesRead_[i] = value;
+        switch (gain_){
+          case GAIN_TWOTHIRDS:
+            lastVoltagesRead_[i] = (value * 0.1875)/1000;
+            break;
+          case GAIN_ONE:
+            lastVoltagesRead_[i] = (value * 0.125)/1000;
+            break;
+          case GAIN_TWO:
+            lastVoltagesRead_[i] = (value * 0.0625)/1000;
+            break;
+          case GAIN_FOUR:
+            lastVoltagesRead_[i] = (value * 0.03125)/1000;
+            break;
+          case GAIN_EIGHT:
+            lastVoltagesRead_[i] = (value * 0.015625)/1000;
+            break;
+          case GAIN_SIXTEEN:
+            lastVoltagesRead_[i] = (value * 0.0078125)/1000;
+            break;
+          default:
+            lastVoltagesRead_[i] = NAN;
+            Serial.println("invalid gain selected for sensor ADS1X15");
+            break;
+        }
+      }
+
+      lastMeasurementTime_ = millis();
+      char output_str[DEFAULT_BUFFER_SIZE + 3];
+      snprintf(output_str, DEFAULT_BUFFER_SIZE,
+               "{"
+               "\"s%u\":{"
+               "\"type\":\"%s\","
+               "\"data\":\"%s\"[%f,%f,%f,%f]"
+               "}"
+               "}",
+               id_,
+               this->name(),
+               lastVoltagesRead_[0],
+               lastVoltagesRead_[1],
+               lastVoltagesRead_[2],
+               lastVoltagesRead_[3]
+              );
+      send(output_str);
+    }
+    break;
+    default:
+      Serial.println("ADS1X15 state n/a: " + state_);
+  }
+}
+
 AtlasPH::AtlasPH(int id, int port, int interval) 
   : ExternalSensor(id, port), SerialSensor(id, port, 9600), interval_(interval)
 {
@@ -631,7 +721,7 @@ void AtlasPH::sendCommand(){
   }
 }
 
-void AtlasPH::onSerial(){
+void AtlasPH::onSerial() {
   char c = SERIAL_PORTS[port_]->read();
 
   //Serial.println(F("On Serial called"));

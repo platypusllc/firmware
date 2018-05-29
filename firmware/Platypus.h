@@ -179,7 +179,8 @@ namespace platypus
     enum SERIAL_TYPE{
       RS232,
       RS485,
-			TTL
+			TTL,
+      I2C
     };
 
   protected:

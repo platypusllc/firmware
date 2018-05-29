@@ -4,12 +4,14 @@
 #include <Wire.h>
 #include <Adafruit_Sensor.h>
 #include <Adafruit_BNO055.h>
+#include <Adafruit_ADS1015.h>
 
 #include "Platypus.h"
 
 #define DEFAULT_BATTERY_INTERVAL 5000
 #define DEFAULT_ATLAS_INTERVAL 3000
 #define DEFAULT_ES2_INTERVAL 1500
+#define DEFAULT_ADS1X15_INTERVAL 1000
 #define DEFAULT_IMU_INTERVAL 200
 
 // Adafruit GPS Setting Strings
@@ -225,6 +227,38 @@ namespace platypus
   private:
     Servo servo_;
     float position_;
+  };
+
+  // class for getting analog to digital values using the ADS1X15 chips (ADS1115 or ADS1015)
+  class ADS1X15 : public PoweredSensor, public SerialSensor
+  {
+  public:
+    ADS1X15(int id) : ADS1X15(id, id){};
+    // GAIN uses the values from the adafruit ADS1x15 library, which are defined as the follows:
+    //  GAIN_TWOTHIRDS   = 2/3x gain +/- 6.144V  1 bit = 3mV      0.1875mV (default)
+    //  GAIN_ONE         = 1x gain   +/- 4.096V  1 bit = 2mV      0.125mV
+    //  GAIN_TWO         = 2x gain   +/- 2.048V  1 bit = 1mV      0.0625mV
+    //  GAIN_FOUR        = 4x gain   +/- 1.024V  1 bit = 0.5mV    0.03125mV
+    //  GAIN_EIGHT       = 8x gain   +/- 0.512V  1 bit = 0.25mV   0.015625mV
+    //  GAIN_SIXTEEN     = 16x gain  +/- 0.256V  1 bit = 0.125mV  0.0078125mV
+    // To get better resolution, lower this gain. BE CAREFUL, THIS CAN DAMAGE THE CHIP IF YOUR INPUT GOES ABOVE THE LIMITS OR Vcc
+    ADS1X15(int id, int port, int signalCount = 4, adsGain_t gain = GAIN_TWOTHIRDS, int inteval = DEFAULT_ES2_INTERVAL);
+    virtual char *name();
+    void loop();
+
+  protected:
+    SensorState state_;
+    int lastMeasurementTime_;
+    // signal count is the number of signals to measure. There are 4 addresses available, and all 4 can be measured by this one driver
+    int signalCount_;
+    adsGain_t gain_;
+    const int interval_;
+    // value of the input in integer value (unscaled)
+    int16_t lastValuesRead_[4];
+    // value of the input in volts
+    float lastVoltagesRead_[4];
+
+    Adafruit_ADS1015 ads;
   };
 
   class ES2 : public PoweredSensor, public SerialSensor

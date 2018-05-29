@@ -8,6 +8,7 @@ following Arduino libraries.
 * Arduino SAM Boards
 * Scheduler
 * ArduinoJson
+* Adafruit ADS1X15 (for ADS1X15 analog to I2C converters)
 
 Contents
 --------
