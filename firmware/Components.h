@@ -229,8 +229,8 @@ namespace platypus
     float position_;
   };
 
-  // class for getting analog to digital values using the ADS1X15 chips (ADS1115 or ADS1015)
-  class ADS1X15 : public PoweredSensor, public SerialSensor
+  // class for getting the analog to digital values using the ADS1X15 chips (ADS1115 or ADS1015)
+  class ADS1X15 : public PoweredSensor
   {
   public:
     ADS1X15(int id) : ADS1X15(id, id){};
@@ -258,7 +258,7 @@ namespace platypus
     // value of the input in volts
     float lastVoltagesRead_[4];
 
-    Adafruit_ADS1015 ads;
+    Adafruit_ADS1115 ads;
   };
 
   class ES2 : public PoweredSensor, public SerialSensor

@@ -501,12 +501,25 @@ void ES2::loop()
 }
 
 ADS1X15::ADS1X15(int id, int port, int signalCount, adsGain_t gain, int interval)
-  : ExternalSensor(id, port), PoweredSensor(id, port, true), SerialSensor(id, port, 3300, TTL), interval_(interval), signalCount_(signalCount), gain_(gain), ads(0x48)
+  : ExternalSensor(id, port), PoweredSensor(id, port, true), interval_(interval), signalCount_(signalCount), gain_(gain)
 {
   lastMeasurementTime_ = 0;
   state_ = INIT;
+  
+  pinMode(board::SENSOR_PORT[port].RX_DISABLE, OUTPUT);
+  digitalWrite(board::SENSOR_PORT[port].RX_DISABLE, LOW);
 
-  ads.setGain(gain_);
+  // Enable RSxxx transmitter
+  pinMode(board::SENSOR_PORT[port].TX_ENABLE, OUTPUT);
+  digitalWrite(board::SENSOR_PORT[port].TX_ENABLE, HIGH);
+
+  pinMode(board::SENSOR_PORT[port].RS485_TE, OUTPUT);
+  digitalWrite(board::SENSOR_PORT[port].RS485_TE, LOW);
+
+  pinMode(board::SENSOR_PORT[port].RS485_232, OUTPUT);
+  digitalWrite(board::SENSOR_PORT[port].RS485_232, HIGH);
+
+//  ads.setGain(gain_);
 
   for (int i=0; i < 4; ++i)
   {
@@ -524,63 +537,67 @@ char* ADS1X15::name()
 void ADS1X15::loop()
 {
   switch (state_){
-  // Initializing calibration status from sensor config
-  case INIT:
-    ads.setGain(gain_);
-    state_ = IDLE;
-    break;
-
-  // Sensor Idle, waiting to poll
-  case IDLE:
-    if (millis() - lastMeasurementTime_ > interval_){
-      for (int i = 0; i < signalCount_; ++i){
-        int16_t value = ads.readADC_SingleEnded(i);
-        lastValuesRead_[i] = value;
-        switch (gain_){
-          case GAIN_TWOTHIRDS:
-            lastVoltagesRead_[i] = (value * 0.1875)/1000;
-            break;
-          case GAIN_ONE:
-            lastVoltagesRead_[i] = (value * 0.125)/1000;
-            break;
-          case GAIN_TWO:
-            lastVoltagesRead_[i] = (value * 0.0625)/1000;
-            break;
-          case GAIN_FOUR:
-            lastVoltagesRead_[i] = (value * 0.03125)/1000;
-            break;
-          case GAIN_EIGHT:
-            lastVoltagesRead_[i] = (value * 0.015625)/1000;
-            break;
-          case GAIN_SIXTEEN:
-            lastVoltagesRead_[i] = (value * 0.0078125)/1000;
-            break;
-          default:
-            lastVoltagesRead_[i] = NAN;
-            Serial.println("invalid gain selected for sensor ADS1X15");
-            break;
+    // Initializing calibration status from sensor config
+    case INIT:
+      ads.setGain(gain_);
+      state_ = IDLE;
+      Serial.println("Initialized ADS1X15");
+      break;
+  
+    // Sensor Idle, waiting to poll
+    case IDLE:
+      if (millis() - lastMeasurementTime_ > interval_){
+        Serial.println("Reading ADS1X15");
+        for (int i = 0; i < signalCount_; ++i){
+          int16_t value = ads.readADC_SingleEnded(i);
+          lastValuesRead_[i] = value;
+          switch (gain_){
+            case GAIN_TWOTHIRDS:
+              lastVoltagesRead_[i] = (value * 0.1875)/1000;
+              break;
+            case GAIN_ONE:
+              lastVoltagesRead_[i] = (value * 0.125)/1000;
+              break;
+            case GAIN_TWO:
+              lastVoltagesRead_[i] = (value * 0.0625)/1000;
+              break;
+            case GAIN_FOUR:
+              lastVoltagesRead_[i] = (value * 0.03125)/1000;
+              break;
+            case GAIN_EIGHT:
+              lastVoltagesRead_[i] = (value * 0.015625)/1000;
+              break;
+            case GAIN_SIXTEEN:
+              lastVoltagesRead_[i] = (value * 0.0078125)/1000;
+              break;
+            default:
+              lastVoltagesRead_[i] = NAN;
+              Serial.println("invalid gain selected for sensor ADS1X15");
+              break;
+          }
+          Serial.print("A");Serial.print(i); Serial.print(": "); Serial.print(value); Serial.print(", ");Serial.println(lastVoltagesRead_[i]);
         }
+        Serial.println("Done reading ADS1X15");
+  
+        lastMeasurementTime_ = millis();
+  //      char output_str[DEFAULT_BUFFER_SIZE + 3];
+  //      snprintf(output_str, DEFAULT_BUFFER_SIZE,
+  //               "{"
+  //               "\"s%u\":{"
+  //               "\"type\":\"%s\","
+  //               "\"data\":\"%s\"[%f,%f,%f,%f]"
+  //               "}"
+  //               "}",
+  //               id_,
+  //               this->name(),
+  //               lastVoltagesRead_[0],
+  //               lastVoltagesRead_[1],
+  //               lastVoltagesRead_[2],
+  //               lastVoltagesRead_[3]
+  //              );
+  //      send(output_str);
       }
-
-      lastMeasurementTime_ = millis();
-      char output_str[DEFAULT_BUFFER_SIZE + 3];
-      snprintf(output_str, DEFAULT_BUFFER_SIZE,
-               "{"
-               "\"s%u\":{"
-               "\"type\":\"%s\","
-               "\"data\":\"%s\"[%f,%f,%f,%f]"
-               "}"
-               "}",
-               id_,
-               this->name(),
-               lastVoltagesRead_[0],
-               lastVoltagesRead_[1],
-               lastVoltagesRead_[2],
-               lastVoltagesRead_[3]
-              );
-      send(output_str);
-    }
-    break;
+      break;
     default:
       Serial.println("ADS1X15 state n/a: " + state_);
   }

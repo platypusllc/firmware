@@ -94,7 +94,6 @@ void platypusLoop_()
     }
   }
 
-
   yield();
 }
 

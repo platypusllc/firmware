@@ -207,9 +207,9 @@ void setup()
   platypus::peripherals[1] = new platypus::Peripheral(1, true);
 
   // Initialize External sensors
-  platypus::sensors[0] = new platypus::ES2(0, 0);
-  platypus::sensors[1] = new platypus::AtlasDO(1, 1);
-  platypus::sensors[2] = new platypus::AtlasPH(2, 2);
+  platypus::sensors[0] = new platypus::ADS1X15(0, 0, 1);
+  platypus::sensors[1] = new platypus::EmptySensor(1, 1);
+  platypus::sensors[2] = new platypus::EmptySensor(2, 2);
   platypus::sensors[3] = new platypus::EmptySensor(3, 3); // No serial on sensor 3!!!
 
   // Initialize Internal sensors
