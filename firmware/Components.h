@@ -230,7 +230,7 @@ namespace platypus
   };
 
   // class for getting the analog to digital values using the ADS1X15 chips (ADS1115 or ADS1015)
-  class ADS1X15 : public PoweredSensor
+  class ADS1X15 : public Sensor
   {
   public:
     ADS1X15(int id) : ADS1X15(id, id){};

@@ -501,23 +501,98 @@ void ES2::loop()
 }
 
 ADS1X15::ADS1X15(int id, int port, int signalCount, adsGain_t gain, int interval)
-  : ExternalSensor(id, port), PoweredSensor(id, port, true), interval_(interval), signalCount_(signalCount), gain_(gain)
+  : Sensor(id), interval_(interval), signalCount_(signalCount), gain_(gain)
 {
   lastMeasurementTime_ = 0;
   state_ = INIT;
+
   
+  //Unknown if following code is necessary...
+
+  // Disable RSxxx receiver
   pinMode(board::SENSOR_PORT[port].RX_DISABLE, OUTPUT);
-  digitalWrite(board::SENSOR_PORT[port].RX_DISABLE, LOW);
+  digitalWrite(board::SENSOR_PORT[port].RX_DISABLE, HIGH);
 
-  // Enable RSxxx transmitter
+  // Disable RSxxx transmitter
   pinMode(board::SENSOR_PORT[port].TX_ENABLE, OUTPUT);
-  digitalWrite(board::SENSOR_PORT[port].TX_ENABLE, HIGH);
+  digitalWrite(board::SENSOR_PORT[port].TX_ENABLE, LOW);
 
+  // Disable RS485 termination resistor
   pinMode(board::SENSOR_PORT[port].RS485_TE, OUTPUT);
   digitalWrite(board::SENSOR_PORT[port].RS485_TE, LOW);
 
+  // Select RS232 (deselect RS485)
   pinMode(board::SENSOR_PORT[port].RS485_232, OUTPUT);
-  digitalWrite(board::SENSOR_PORT[port].RS485_232, HIGH);
+  digitalWrite(board::SENSOR_PORT[port].RS485_232, LOW);
+
+  // TODO: deconflict this!
+  if (port < 2)
+  {
+    // Disable half-duplex
+    pinMode(board::HALF_DUPLEX01, OUTPUT);
+    digitalWrite(board::HALF_DUPLEX01, LOW);
+  }
+  else
+  {
+    // Disable half-duplex
+    pinMode(board::HALF_DUPLEX23, OUTPUT);
+    digitalWrite(board::HALF_DUPLEX23, LOW);
+  }
+
+  // Disable loopback test
+  pinMode(board::LOOPBACK, OUTPUT);
+  digitalWrite(board::LOOPBACK, LOW);
+
+  // Disable 12V output
+  pinMode(board::SENSOR_PORT[port].PWR_ENABLE, OUTPUT);
+  digitalWrite(board::SENSOR_PORT[port].PWR_ENABLE, LOW);
+
+    pinMode(board::SENSOR_PORT[port].TX_ENABLE, OUTPUT);
+    digitalWrite(board::SENSOR_PORT[port].TX_ENABLE, HIGH);
+
+    pinMode(board::SENSOR_PORT[port].RS485_TE, OUTPUT);
+    digitalWrite(board::SENSOR_PORT[port].RS485_TE, LOW);
+
+    pinMode(board::SENSOR_PORT[port].RS485_232, OUTPUT);
+    digitalWrite(board::SENSOR_PORT[port].RS485_232, HIGH);
+  
+//  
+//    pinMode(board::SENSOR_PORT[port].TX_ENABLE, OUTPUT);
+//    digitalWrite(board::SENSOR_PORT[port].TX_ENABLE, LOW);
+//
+//    pinMode(board::SENSOR_PORT[port].RS485_TE, OUTPUT);
+//    digitalWrite(board::SENSOR_PORT[port].RS485_TE, HIGH);
+//
+//    pinMode(board::SENSOR_PORT[port].RS485_232, OUTPUT);
+//    digitalWrite(board::SENSOR_PORT[port].RS485_232, LOW);
+//
+//    pinMode(board::SENSOR_PORT[port].RX_DISABLE, OUTPUT);
+//    digitalWrite(board::SENSOR_PORT[port].RX_DISABLE, LOW);
+
+    
+//  pinMode(board::SENSOR_PORT[port].RX_DISABLE, OUTPUT);
+//  digitalWrite(board::SENSOR_PORT[port].RX_DISABLE, LOW);
+//
+//  // Enable RSxxx transmitter
+//  pinMode(board::SENSOR_PORT[port].TX_ENABLE, OUTPUT);
+//  digitalWrite(board::SENSOR_PORT[port].TX_ENABLE, HIGH);
+//
+//  pinMode(board::SENSOR_PORT[port].RS485_TE, OUTPUT);
+//  digitalWrite(board::SENSOR_PORT[port].RS485_TE, LOW);
+//
+//  pinMode(board::SENSOR_PORT[port].RS485_232, OUTPUT);
+//  digitalWrite(board::SENSOR_PORT[port].RS485_232, LOW);
+
+//  pinMode(board::HALF_DUPLEX01, OUTPUT);
+//  digitalWrite(board::HALF_DUPLEX01, LOW);
+//  
+//  // Disable loopback test
+//  pinMode(board::LOOPBACK, OUTPUT);
+//  digitalWrite(board::LOOPBACK, LOW);
+//
+//  // Disable 12V output
+//  pinMode(board::SENSOR_PORT[port].PWR_ENABLE, OUTPUT);
+//  digitalWrite(board::SENSOR_PORT[port].PWR_ENABLE, LOW);
 
 //  ads.setGain(gain_);
 
@@ -525,8 +600,6 @@ ADS1X15::ADS1X15(int id, int port, int signalCount, adsGain_t gain, int interval
   {
     lastVoltagesRead_[i] = NAN;
   }
-
-  ads.begin();
 }
 
 char* ADS1X15::name()
@@ -539,9 +612,11 @@ void ADS1X15::loop()
   switch (state_){
     // Initializing calibration status from sensor config
     case INIT:
-      ads.setGain(gain_);
+//      ads.setGain(gain_);
+      ads.begin();
       state_ = IDLE;
       Serial.println("Initialized ADS1X15");
+    
       break;
   
     // Sensor Idle, waiting to poll
@@ -585,7 +660,7 @@ void ADS1X15::loop()
   //               "{"
   //               "\"s%u\":{"
   //               "\"type\":\"%s\","
-  //               "\"data\":\"%s\"[%f,%f,%f,%f]"
+  //               "\"data\":\"[%f,%f,%f,%f]"
   //               "}"
   //               "}",
   //               id_,
