@@ -340,12 +340,23 @@ namespace platypus
   class JSONPassThrough : public SerialSensor, public PoweredSensor
   {
   public:
-		JSONPassThrough(int id) : JSONPassThrough(id,id){};
-		JSONPassThrough(int id, int port);
+    JSONPassThrough(int id) : JSONPassThrough(id,id){};
+    JSONPassThrough(int id, int port);
     bool set(const char * param, const char * value);
     virtual char * name();
     void loop();
     void onSerial();
+  };  
+
+  class Turbidity : public SerialSensor, public PoweredSensor
+  {
+  public:
+    Turbidity(int id) : Turbidity(id,id){};
+    Turbidity(int id, int port);
+    virtual char * name();
+    void loop();
+    void onSerial();
+    void onSerial_(void* data);
   };  
 
   extern platypus::EBoard *eboard;

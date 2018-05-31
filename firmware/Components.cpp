@@ -1218,7 +1218,7 @@ bool JSONPassThrough::set(const char * param, const char * value){
 
 
 char * JSONPassThrough::name() {
-  return "JSON";
+  return "atlas_do";
 }
 
 void JSONPassThrough::loop(){
