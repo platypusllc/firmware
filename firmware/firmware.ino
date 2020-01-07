@@ -105,23 +105,25 @@ void handleCommand(char *buffer)
      }
   */
 
-  // Allocate buffer for JSON parsing
-  StaticJsonBuffer<200> jsonBuffer;
+// Allocate buffer for JSON parsing
+  StaticJsonDocument<200> jsonBuffer;
 
   // Attempt to parse JSON in buffer
-  JsonObject& command = jsonBuffer.parseObject(buffer);
+  DeserializationError error  = deserializeJson(jsonBuffer, buffer);
 
   // Check for parsing error
-  if (!command.success())
+  if (error)
     {
       // Parsing Failure
-      reportError("Failed to parse JSON command.", buffer);
+      reportError(error.c_str(), buffer);
       return;
     }
 
-  for (JsonObject::iterator it=command.begin(); it!=command.end(); ++it)
-    {
-      const char * key = it->key;
+  JsonObject command = jsonBuffer.as<JsonObject>();
+
+  for (JsonPair p :  command)
+  {
+      const char * key = p.key().c_str();
 
       platypus::Configurable * target_object;
       size_t object_index;
@@ -159,24 +161,32 @@ void handleCommand(char *buffer)
       }
 
       // Extract JsonObject with param:value pairs
-      JsonObject& params = it->value;
+      JsonObject paramsObj = p.value().as<JsonObject>();
       // Todo: Move this parsing to specific components and pass ref to params instead
       // Iterate over and set parameter:value pairs on target object
-      for (JsonObject::iterator paramIt=params.begin(); paramIt!=params.end(); ++paramIt)
+      for (JsonPair param : paramsObj)
         {
 
-          const char * param_name = paramIt->key;
-          const char * param_value = paramIt->value;
+          const char * param_name = param.key().c_str();
+          bool setSuccess = false;
 
-          /* Serial.print("Sending command to "); */
-          /* Serial.print(key); */
-          /* Serial.print(": "); */
-          /* Serial.print(param_name); */
-          /* Serial.print(" : "); */
-          /* Serial.println(param_value); */
+          //Serial.print("Sending command to ");
+          //Serial.print(key);
+          //Serial.print(": ");
+          //Serial.print(param_name);
+          //Serial.print(" : ");
+          if (param.value().is<char*>())
+          {
+            setSuccess = target_object->set(param_name, param.value().as<char*>());
+            //Serial.println(param.value().as<char*>());
+          } else if (param.value().is<float>())
+          {
+            setSuccess = target_object->set(param_name, param.value().as<float>());
+            //Serial.println(param.value().as<float>());
+          }
 
-          if (!target_object->set(param_name, param_value)) {
-            reportError("Invalid parameter set.", buffer);
+          if (!setSuccess) {
+            reportError("Could not set specified parameter.", buffer);
             continue; // Todo: Should we return or continue?
           }
         }
@@ -207,10 +217,10 @@ void setup()
   platypus::peripherals[1] = new platypus::Peripheral(1, true);
 
   // Initialize External sensors
-  platypus::sensors[0] = new platypus::ServoSensor(0, 0);
-  platypus::sensors[1] = new platypus::AdafruitGPS(1, 1);
-  platypus::sensors[2] = new platypus::AdafruitGPS(2, 2);
-  platypus::sensors[3] = new platypus::EmptySensor(3, 3); // No serial on sensor 3!!!
+  platypus::sensors[0] = new platypus::AtlasDO(0, 0);
+  platypus::sensors[1] = new platypus::AtlasPH(1, 1);
+  platypus::sensors[2] = new platypus::ES2(2, 2);
+  platypus::sensors[3] = new platypus::HDS(3, 3); // No serial on sensor 3!!!
 
   // Initialize Internal sensors
   platypus::sensors[4] = new platypus::BatterySensor(4);

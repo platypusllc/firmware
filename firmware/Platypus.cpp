@@ -105,6 +105,16 @@ void platypus::init()
   //pixels.show();
 }
 
+bool Configurable::set(const char* param, const char* value)
+{
+  return false;
+}
+
+bool Configurable::set(const char* param, float value)
+{
+  return false;
+}
+
 Led::Led()
   : r_(0), g_(0), b_(0)
 {
@@ -258,22 +268,25 @@ void Motor::enable(bool enabled)
   }
 }
 
-bool Motor::set(const char *param, const char *value)
+bool Motor::set(const char* param, const char* value)
+{
+  this->set(param, atof(value));
+}
+
+bool Motor::set(const char* param, float value)
 {
   // Set motor velocity.
   if (!strncmp("v", param, 2))
   {
-    float v = atof(value);
-
     // Cap velocity command to between -1.0 and 1.0
-    if (v > 1.0) {
-      v = 1.0;
+    if (value > 1.0) {
+      value = 1.0;
     }
-    else if (v < -1.0) {
-      v = -1.0;
+    else if (value < -1.0) {
+      value = -1.0;
     }
 
-    desiredVelocity_ = v;
+    desiredVelocity_ = value;
 
     return true;
   }
@@ -378,19 +391,19 @@ ExternalSensor::ExternalSensor(int id, int port) : Sensor(id), port_(port)
 AnalogSensor::AnalogSensor(int id, int port)
   : ExternalSensor(id, port), scale_(1.0f), offset_(0.0f) {}
 
-bool AnalogSensor::set(const char* param, const char* value)
+bool AnalogSensor::set(const char* param, float value)
 {
   // Set analog scale.
   if (!strncmp("scale", param, 6))
   {
-    float s = atof(value);
+    float s = value;
     scale(s);
     return true;
   }
   // Set analog offset.
   else if (!strncmp("offset", param, 7))
   {
-    float o = atof(value);
+    float o = value;
     offset(o);
     return true;
   }

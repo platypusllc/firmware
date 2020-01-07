@@ -24,7 +24,9 @@ namespace platypus
   {
   public:
     virtual bool set(const char *param, const char *value);
+    virtual bool set(const char* param, float value);
   };
+  
   class Led
   {
   public:
@@ -75,7 +77,8 @@ namespace platypus
     virtual ~Motor();
 
     virtual void arm() = 0;
-    virtual bool set(const char *param, const char *value);
+    bool set(const char *param, const char *value);
+    bool set(const char* param, float value);
     virtual void loop();
 
     void velocity(float velocity);
@@ -142,7 +145,7 @@ namespace platypus
   public:
     AnalogSensor(int id, int port);
 
-    bool set(const char* param, const char* value);
+    bool set(const char* param, float value);
     virtual char *name() = 0;
 
     void scale(float scale);
